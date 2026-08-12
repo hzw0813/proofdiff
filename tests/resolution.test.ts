@@ -17,7 +17,7 @@ function hasEdge(graph: RepositoryGraph, importer: string, target: string): bool
   return graph.dependencies.get(importer)?.has(target) ?? false;
 }
 
-test("compiler paths resolve exact, wildcard, inherited, baseUrl, ordered fallback, and existing probes", async (context) => {
+test("compiler paths resolve exact, wildcard, inherited, baseUrl, ordered fallback, and mode-supported probes", async (context) => {
   const { graph } = await fixtureGraph(context, {
     "tsconfig.json": `{
       // Inheritance and trailing commas are normal tsconfig syntax.
@@ -26,6 +26,7 @@ test("compiler paths resolve exact, wildcard, inherited, baseUrl, ordered fallba
     }`,
     "config/tsconfig.base.json": `{
       "compilerOptions": {
+        "moduleResolution": "Bundler",
         "baseUrl": "..",
         "paths": {
           "@exact": ["missing/exact", "src/exact.ts"],
@@ -60,12 +61,163 @@ test("compiler paths resolve exact, wildcard, inherited, baseUrl, ordered fallba
   assert.ok(graph.staticResolutions.every((item) => /does not establish runtime resolution/.test(item.limitation)));
 });
 
+test("compiler paths follow supported post-substitution module resolution semantics", async (context) => {
+  const nodeNextEsm = await fixtureGraph(context, {
+    "package.json": JSON.stringify({ type: "module" }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: {
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      paths: { "@file": ["./src/file"], "@directory": ["./src/directory"] },
+    } }),
+    "src/file.ts": "export {}\n",
+    "src/directory/index.ts": "export {}\n",
+    "test/consumer.test.ts": "import '@file'; import '@directory';\n",
+  });
+  assert.equal(nodeNextEsm.graph.staticResolutions.length, 0);
+  assert.match(nodeNextEsm.graph.diagnostics.join("\n"), /extensionless paths target.*NodeNext/i);
+
+  const explicitExtensions = await fixtureGraph(context, {
+    "package.json": JSON.stringify({ type: "module" }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: {
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      paths: {
+        "@js": ["./src/js.js"],
+        "@mjs-wrong": ["./src/mjs-wrong.mjs"],
+        "@mjs": ["./src/mjs.mjs"],
+        "@cjs": ["./src/cjs.cjs"],
+      },
+    } }),
+    "src/js.ts": "export {}\n",
+    "src/js.js": "export {}\n",
+    "src/mjs-wrong.ts": "export {}\n",
+    "src/mjs.mts": "export {}\n",
+    "src/cjs.cts": "export {}\n",
+    "test/consumer.test.ts": "import '@js'; import '@mjs-wrong'; import '@mjs'; import '@cjs';\n",
+  });
+  assert.deepEqual(explicitExtensions.graph.staticResolutions.map((item) => [item.specifier, item.target]), [
+    ["@js", "src/js.ts"],
+    ["@mjs", "src/mjs.mts"],
+    ["@cjs", "src/cjs.cts"],
+  ]);
+  assert.equal(hasEdge(explicitExtensions.graph, "test/consumer.test.ts", "src/js.js"), false);
+  assert.equal(hasEdge(explicitExtensions.graph, "test/consumer.test.ts", "src/mjs-wrong.ts"), false);
+
+  for (const moduleResolution of ["Bundler", "Node10"] as const) {
+    const supported = await fixtureGraph(context, {
+      "tsconfig.json": JSON.stringify({ compilerOptions: {
+        module: moduleResolution === "Bundler" ? "ESNext" : "CommonJS",
+        moduleResolution,
+        paths: { "@file": ["./src/file"], "@directory": ["./src/directory"] },
+      } }),
+      "src/file.ts": "export {}\n",
+      "src/directory/index.ts": "export {}\n",
+      "test/consumer.test.ts": "import '@file'; import '@directory';\n",
+    });
+    assert.deepEqual(supported.graph.staticResolutions.map((item) => item.target), ["src/file.ts", "src/directory/index.ts"], moduleResolution);
+  }
+});
+
+test("compiler paths fail closed on unsupported post-substitution precedence", async (context) => {
+  const cases: Array<{ name: string; files: Record<string, string>; diagnostic: RegExp; forbidden: string }> = [
+    {
+      name: "missing module resolution",
+      files: {
+        "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["./src/value"] } } }),
+        "src/value.ts": "export {}\n",
+        "test/c.test.ts": "import '@value';\n",
+      },
+      diagnostic: /extensionless paths target.*explicit moduleResolution/i,
+      forbidden: "src/value.ts",
+    },
+    {
+      name: "non-relative target without baseUrl",
+      files: {
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["src/value"] } } }),
+        "src/value.ts": "export {}\n",
+        "test/c.test.ts": "import '@value';\n",
+      },
+      diagnostic: /must begin with \.\/ or \.\.\//,
+      forbidden: "src/value.ts",
+    },
+    {
+      name: "directory package metadata",
+      files: {
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/value", "./src/fallback.ts"] } } }),
+        "src/value/package.json": JSON.stringify({ types: "./types.d.ts" }),
+        "src/value/types.d.ts": "export declare const value: number;\n",
+        "src/value/index.ts": "export {}\n",
+        "src/fallback.ts": "export {}\n",
+        "test/c.test.ts": "import '@value';\n",
+      },
+      diagnostic: /directory package metadata.*outside the supported subset/i,
+      forbidden: "src/value/index.ts",
+    },
+    {
+      name: "non-default module suffixes",
+      files: {
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", moduleSuffixes: [".native", ""], paths: { "@value": ["./src/value.js"] } } }),
+        "src/value.ts": "export {}\n",
+        "src/value.native.ts": "export {}\n",
+        "test/c.test.ts": "import '@value';\n",
+      },
+      diagnostic: /moduleSuffixes.*unsupported/i,
+      forbidden: "src/value.ts",
+    },
+    {
+      name: "omitted mts extension",
+      files: {
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/value"] } } }),
+        "src/value.mts": "export {}\n",
+        "test/c.test.ts": "import '@value';\n",
+      },
+      diagnostic: /matched paths targets did not resolve|did not resolve/i,
+      forbidden: "src/value.mts",
+    },
+    {
+      name: "unsupported explicit extension preempts fallback",
+      files: {
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/value.vue", "./src/fallback.ts"] } } }),
+        "src/value.vue.ts": "export {}\n",
+        "src/fallback.ts": "export {}\n",
+        "test/c.test.ts": "import '@value';\n",
+      },
+      diagnostic: /unsupported explicit extension/i,
+      forbidden: "src/fallback.ts",
+    },
+  ];
+
+  for (const item of cases) {
+    const { graph } = await fixtureGraph(context, item.files);
+    assert.equal(graph.staticResolutions.length, 0, item.name);
+    assert.equal(hasEdge(graph, "test/c.test.ts", item.forbidden), false, item.name);
+    assert.match(graph.diagnostics.join("\n"), item.diagnostic, item.name);
+  }
+
+  const exportWithoutExtension = await fixtureGraph(context, {
+    "package.json": JSON.stringify({ name: "fixture", exports: { "./value": "./src/value" } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler" } }),
+    "src/value.ts": "export {}\n",
+    "test/c.test.ts": "import 'fixture/value';\n",
+  });
+  assert.equal(exportWithoutExtension.graph.staticResolutions.length, 0);
+  assert.equal(hasEdge(exportWithoutExtension.graph, "test/c.test.ts", "src/value.ts"), false);
+  assert.match(exportWithoutExtension.graph.diagnostics.join("\n"), /explicit supported extension/i);
+
+  const explicitDefaultSuffix = await fixtureGraph(context, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "node", moduleSuffixes: [""], paths: { "@value": ["./src/value"] } } }),
+    "src/value.ts": "export {}\n",
+    "test/c.test.ts": "import '@value';\n",
+  });
+  assert.equal(hasEdge(explicitDefaultSuffix.graph, "test/c.test.ts", "src/value.ts"), true);
+});
+
 test("compiler paths use exact and longest-prefix precedence without changing relative imports", async (context) => {
   const { graph } = await fixtureGraph(context, {
     "tsconfig.json": JSON.stringify({ compilerOptions: { paths: {
-      "@app/*": ["src/general/*"],
-      "@app/special/*": ["src/special/*"],
-      "@app/special/value": ["src/exact.ts"],
+      "@app/*": ["./src/general/*"],
+      "@app/special/*": ["./src/special/*"],
+      "@app/special/value": ["./src/exact.ts"],
     } } }),
     "src/exact.ts": "export const value = 1;\n",
     "src/general/value.ts": "export const value = 1;\n",
@@ -122,7 +274,7 @@ test("compiler paths fail closed on malformed, cyclic, unsupported, escaping, am
     {
       name: "ambiguous equal prefix",
       files: {
-        "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value/*x": ["src/a.ts"], "@value/*": ["src/b.ts"] } } }),
+        "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value/*x": ["./src/a.ts"], "@value/*": ["./src/b.ts"] } } }),
         "src/a.ts": "export {};\n",
         "src/b.ts": "export {};\n",
         "test/c.test.ts": "import '@value/x';\n",
@@ -132,7 +284,7 @@ test("compiler paths fail closed on malformed, cyclic, unsupported, escaping, am
     {
       name: "candidate expansion",
       files: {
-        "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["missing/a", "missing/b", "missing/c", "src/value"] } } }),
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./missing/a", "./missing/b", "./missing/c", "./missing/d", "./missing/e", "./missing/f", "./missing/g", "./src/value"] } } }),
         "src/value.ts": "export {};\n",
         "test/c.test.ts": "import '@value';\n",
       },
@@ -175,28 +327,28 @@ test("compiler paths reject missing evidence, preserve case, normalize Windows t
   assert.match(baseUrlPreemptsPackageSelf.graph.diagnostics.join("\n"), /standalone baseUrl precedence/);
 
   const windows = await fixtureGraph(context, {
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["src\\value"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": [".\\src\\value"] } } }),
     "src/value.ts": "export {};\n",
     "test/c.test.ts": "import '@value';\n",
   });
   assert.equal(hasEdge(windows.graph, "test/c.test.ts", "src/value.ts"), true);
 
   const wrongCase = await fixtureGraph(context, {
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["src/Value"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/Value"] } } }),
     "src/value.ts": "export {};\n",
     "test/c.test.ts": "import '@value';\n",
   });
   assert.equal(wrongCase.graph.staticResolutions.length, 0);
 
   const explicitExtensionNearMiss = await fixtureGraph(context, {
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["src/value.ts"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["./src/value.ts"] } } }),
     "src/value.ts/index.ts": "export {};\n",
     "test/c.test.ts": "import '@value';\n",
   });
   assert.equal(explicitExtensionNearMiss.graph.staticResolutions.length, 0);
 
   const nodeModulesTarget = await fixtureGraph(context, {
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["node_modules/value/index.ts"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["./node_modules/value/index.ts"] } } }),
     "node_modules/value/index.ts": "export {};\n",
     "test/c.test.ts": "import '@value';\n",
   });
@@ -221,7 +373,7 @@ test("compiler paths reject missing evidence, preserve case, normalize Windows t
 test("hidden higher-precedence files prevent fallback edges", async (context) => {
   const aliasRoot = await initializeRepository({
     ".gitignore": "dist/\n",
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@value": ["dist/value", "src/value"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./dist/value", "./src/value"] } } }),
     "src/value.ts": "export {};\n",
     "test/c.test.ts": "import '@value';\n",
   });
@@ -233,17 +385,17 @@ test("hidden higher-precedence files prevent fallback edges", async (context) =>
   assert.match(aliasGraph.diagnostics.join("\n"), /higher-precedence candidate dist\/value\.ts exists outside the bounded Git inventory/);
 
   const packageRoot = await initializeRepository({
-    ".gitignore": "src/*.js\n",
+    ".gitignore": "src/*.ts\n",
     "package.json": JSON.stringify({ name: "fixture", exports: { "./value": "./src/value.js" } }),
-    "src/value.ts": "export {};\n",
+    "src/value.js": "export {};\n",
     "test/c.test.ts": "import 'fixture/value';\n",
   });
   context.after(() => rm(packageRoot, { recursive: true, force: true }));
-  await writeFiles(packageRoot, { "src/value.js": "export {};\n" });
+  await writeFiles(packageRoot, { "src/value.ts": "export {};\n" });
   const packageInventory = await listRepositoryFiles(packageRoot);
   const packageGraph = await buildRepositoryGraph(packageRoot, packageInventory.files, []);
   assert.equal(packageGraph.staticResolutions.length, 0);
-  assert.match(packageGraph.diagnostics.join("\n"), /higher-precedence package self-export candidate src\/value\.js/);
+  assert.match(packageGraph.diagnostics.join("\n"), /higher-precedence package self-export candidate src\/value\.ts/);
 });
 
 test("package self-exports resolve exact root/subpaths and explicit nested source conditions", async (context) => {
@@ -393,7 +545,7 @@ test("nearest package ownership isolates monorepo self-references", async (conte
 
 test("resolved aliases and self-exports create only static transitive relationships", async (context) => {
   const alias = await fixtureGraph(context, {
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@app/value": ["src/barrel.ts"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "@app/value": ["./src/barrel.ts"] } } }),
     "src/value.ts": "export const value = 1;\n",
     "src/barrel.ts": "export { value } from './value.js';\n",
     "test/value.test.ts": "import { value } from '@app/value'; void value;\n",
@@ -419,7 +571,7 @@ test("resolved aliases and self-exports create only static transitive relationsh
 test("new static edges do not qualify helpers or strengthen zero-test runtime evidence", async (context) => {
   const helperRoot = await initializeRepository({
     "package.json": JSON.stringify({ name: "helper-boundary", type: "module", scripts: { test: "node --test" } }),
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "#value": ["src/value.js"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "#value": ["./src/value.js"] } } }),
     "src/value.js": "export const value = 1;\n",
     "tests/fixtures/helper.js": "import { value } from '#value'; export const fixture = value;\n",
   });

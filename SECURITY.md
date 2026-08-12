@@ -45,7 +45,7 @@ Reports contain repository paths, symbol names, relationships, target-qualificat
 
 No telemetry, analytics, update checks, remote APIs, or source-code uploads exist in ProofDiff.
 
-Static module resolution does not execute configuration or repository code. It does not invoke TypeScript, Node resolution, a bundler, package manager, lifecycle script, or installed dependency. Compiler inheritance is limited to repository-relative string paths, package identity comes only from the importing file's nearest package boundary, and successful non-relative edges remain relationship evidence rather than execution evidence.
+Static module resolution does not execute configuration or repository code. It does not invoke TypeScript, Node resolution, a bundler, package manager, lifecycle script, or installed dependency. Compiler inheritance is limited to repository-relative string paths. Post-`paths` probing is mode-gated and bounded: explicit extension substitution follows fixed TypeScript families, extensionless file/index lookup requires explicit Bundler or Node10 configuration, and unmodeled NodeNext context, directory package metadata, suffix precedence, or extensions create no edge. Package identity comes only from the importing file's nearest package boundary, and successful non-relative edges remain relationship evidence rather than execution evidence.
 
 ## Vulnerability reporting
 

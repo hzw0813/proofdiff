@@ -19,6 +19,8 @@ const MAX_NON_RELATIVE_IMPORTS = 50_000;
 const MAX_RESOLUTION_EVIDENCE = 10_000;
 
 const JAVASCRIPT_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
+const EXTENSIONLESS_PATH_MODULE_RESOLUTIONS = new Set(["bundler", "node", "node10"]);
+const OMITTED_EXPLICIT_EXTENSIONS = [".mts", ".cts", ".mjs", ".cjs"];
 const POTENTIALLY_ACTIVE_BUILTIN_CONDITIONS = new Set(["types", "node-addons", "node", "import", "require", "module-sync"]);
 const PACKAGE_EXPORT_MODULE_RESOLUTIONS = new Set(["node16", "node18", "node20", "nodenext", "bundler"]);
 
@@ -115,15 +117,33 @@ export function javascriptModuleCandidates(baseInput: string): string[] {
   return unique(candidates);
 }
 
-function configuredModuleCandidates(base: string): string[] {
-  const extension = path.posix.extname(base).toLowerCase();
-  if (extension === "") return javascriptModuleCandidates(base);
-  if (!JAVASCRIPT_EXTENSIONS.includes(extension)) return [base];
-  const candidates = [base];
-  if (/\.m?js$|\.cjs$/.test(base)) {
-    candidates.push(base.replace(/\.(?:mjs|cjs|js)$/, ".ts"), base.replace(/\.(?:mjs|cjs|js)$/, ".tsx"));
+function explicitConfiguredModuleCandidates(base: string): string[] | null {
+  if (base.endsWith(".js")) {
+    const stem = base.slice(0, -3);
+    return [`${stem}.ts`, `${stem}.tsx`, `${stem}.d.ts`, base, `${stem}.jsx`];
   }
-  return unique(candidates);
+  if (base.endsWith(".jsx")) {
+    const stem = base.slice(0, -4);
+    return [`${stem}.tsx`, `${stem}.d.ts`, base];
+  }
+  if (base.endsWith(".mjs")) {
+    const stem = base.slice(0, -4);
+    return [`${stem}.mts`, `${stem}.d.mts`, base];
+  }
+  if (base.endsWith(".cjs")) {
+    const stem = base.slice(0, -4);
+    return [`${stem}.cts`, `${stem}.d.cts`, base];
+  }
+  if ([".ts", ".tsx", ".mts", ".cts"].some((extension) => base.endsWith(extension))) return [base];
+  return null;
+}
+
+function extensionlessConfiguredModuleCandidates(base: string): { files: string[]; indexes: string[] } {
+  const substitutions = [".ts", ".tsx", ".d.ts", ".js", ".jsx"];
+  return {
+    files: substitutions.map((extension) => `${base}${extension}`),
+    indexes: substitutions.map((extension) => `${base}/index${extension}`),
+  };
 }
 
 function parseJsonc(source: string): unknown {
@@ -461,6 +481,14 @@ export class BoundedStaticModuleResolver {
       if (typeof options.moduleResolution !== "string") return this.rejectConfig(configPath, "moduleResolution must be a string");
       config.moduleResolution = options.moduleResolution.toLowerCase();
     }
+    if (options && Object.hasOwn(options, "moduleSuffixes")) {
+      if (!Array.isArray(options.moduleSuffixes) || !options.moduleSuffixes.every((suffix) => typeof suffix === "string")) {
+        return this.rejectConfig(configPath, "moduleSuffixes must be a string array");
+      }
+      if (options.moduleSuffixes.length !== 1 || options.moduleSuffixes[0] !== "") {
+        return this.rejectConfig(configPath, "non-default moduleSuffixes precedence is unsupported");
+      }
+    }
     if (options && Object.hasOwn(options, "resolvePackageJsonExports")) {
       if (typeof options.resolvePackageJsonExports !== "boolean") return this.rejectConfig(configPath, "resolvePackageJsonExports must be boolean");
       config.resolvePackageJsonExports = options.resolvePackageJsonExports;
@@ -529,50 +557,112 @@ export class BoundedStaticModuleResolver {
         ? { kind: "blocked", reason: "standalone baseUrl precedence is outside the supported subset", diagnosticKey: `${config.configPath}:baseUrl-precedence` }
         : { kind: "not-applicable" };
     }
-    const match = this.matchCompilerPath(config.paths, specifier);
+    const paths = config.paths;
+    const match = this.matchCompilerPath(paths, specifier);
     if (match === null) {
       return config.baseUrl
         ? { kind: "blocked", reason: "standalone baseUrl precedence is outside the supported subset", diagnosticKey: `${config.configPath}:baseUrl-precedence` }
         : { kind: "not-applicable" };
     }
     if (match === "ambiguous") return { kind: "blocked", reason: "multiple equally specific wildcard mappings matched" };
-    const base = config.baseUrl?.path ?? path.posix.dirname(config.paths.origin);
+    const base = config.baseUrl?.path ?? path.posix.dirname(paths.origin);
     let candidateCount = 0;
     const priorCandidates: string[] = [];
-    for (const targetPattern of match.targets) {
-      const substituted = match.capture === null ? targetPattern : targetPattern.replace("*", match.capture);
-      const mapped = joinRepositoryPath(base === "." ? "" : base, substituted);
-      if (mapped === null) return { kind: "blocked", reason: `mapped target ${JSON.stringify(substituted)} escapes the repository` };
-      if (mapped.split("/").includes("node_modules")) return { kind: "blocked", reason: "mapped target enters node_modules, which is outside the supported repository-local subset" };
-      const candidates = configuredModuleCandidates(mapped);
+    let unsupportedOmittedExtension: string | null = null;
+
+    const attemptCandidates = async (candidates: string[]): Promise<
+      | { kind: "resolved"; target: string }
+      | { kind: "missing" }
+      | { kind: "blocked"; reason: string }
+    > => {
       candidateCount += candidates.length;
       if (candidateCount > MAX_CANDIDATES_PER_IMPORT) return { kind: "blocked", reason: `candidate expansion exceeded ${MAX_CANDIDATES_PER_IMPORT}` };
       const targetIndex = candidates.findIndex((candidate) => this.available.has(candidate));
       if (targetIndex === -1) {
         priorCandidates.push(...candidates);
-        continue;
+        return { kind: "missing" };
       }
       const target = candidates[targetIndex]!;
       const hidden = await this.hiddenPrecedenceCandidate([...priorCandidates, ...candidates.slice(0, targetIndex)]);
       if (hidden) return { kind: "blocked", reason: `higher-precedence candidate ${hidden} exists outside the bounded Git inventory` };
       if (!(await this.targetIsInside(target))) return { kind: "blocked", reason: `mapped target ${target} resolves outside the repository through a symlink` };
-      return {
-        kind: "resolved",
-        resolution: {
+      return { kind: "resolved", target };
+    };
+
+    const resolvedAttempt = (target: string, lookup: string): PathResolutionAttempt => ({
+      kind: "resolved",
+      resolution: {
+        target,
+        evidence: {
+          importer,
+          specifier,
+          mechanism: "typescript-paths",
+          metadataPath: paths.origin,
+          matchedKey: match.key,
           target,
-          evidence: {
-            importer,
-            specifier,
-            mechanism: "typescript-paths",
-            metadataPath: config.paths.origin,
-            matchedKey: match.key,
-            target,
-            confidence: "high",
-            detail: `${config.configPath}${config.configPath === config.paths.origin ? "" : ` inherits ${config.paths.origin}, which`} maps ${JSON.stringify(match.key)} to the repository-local target ${target}${config.baseUrl ? ` using baseUrl from ${config.baseUrl.origin}` : ""}.`,
-            limitation: "Static compiler-configuration evidence only; it does not establish runtime resolution, runnable-test identity, or execution.",
-          },
+          confidence: "high",
+          detail: `${config.configPath}${config.configPath === paths.origin ? "" : ` inherits ${paths.origin}, which`} maps ${JSON.stringify(match.key)} to the repository-local target ${target}${config.baseUrl ? ` using baseUrl from ${config.baseUrl.origin}` : ""} through ${lookup}.`,
+          limitation: "Static compiler-configuration evidence only; it does not establish runtime resolution, runnable-test identity, or execution.",
         },
-      };
+      },
+    });
+
+    for (const targetPattern of match.targets) {
+      const normalizedPattern = normalizeConfiguredPath(targetPattern);
+      if (!config.baseUrl && !normalizedPattern.startsWith("./") && !normalizedPattern.startsWith("../")) {
+        return { kind: "blocked", reason: `paths target ${JSON.stringify(targetPattern)} must begin with ./ or ../ when baseUrl is not set` };
+      }
+      const substituted = match.capture === null ? targetPattern : targetPattern.replace("*", match.capture);
+      const mapped = joinRepositoryPath(base === "." ? "" : base, substituted);
+      if (mapped === null) return { kind: "blocked", reason: `mapped target ${JSON.stringify(substituted)} escapes the repository` };
+      if (mapped.split("/").includes("node_modules")) return { kind: "blocked", reason: "mapped target enters node_modules, which is outside the supported repository-local subset" };
+
+      if (path.posix.extname(mapped) !== "") {
+        const candidates = explicitConfiguredModuleCandidates(mapped);
+        if (candidates === null) return { kind: "blocked", reason: `mapped target ${mapped} has an unsupported explicit extension` };
+        const attempt = await attemptCandidates(candidates);
+        if (attempt.kind === "blocked") return attempt;
+        if (attempt.kind === "resolved") return resolvedAttempt(attempt.target, "documented explicit-extension substitution");
+        continue;
+      }
+
+      if (!config.moduleResolution || !EXTENSIONLESS_PATH_MODULE_RESOLUTIONS.has(config.moduleResolution)) {
+        const configuredMode = config.moduleResolution ? JSON.stringify(config.moduleResolution) : "no explicit moduleResolution";
+        return { kind: "blocked", reason: `extensionless paths target ${mapped} is unresolved under ${configuredMode}; only explicit Bundler or Node10 extensionless lookup is supported` };
+      }
+      if (await this.hiddenFileExists(mapped)) {
+        return { kind: "blocked", reason: `exact extensionless target ${mapped} exists, but extensionless physical-file loading is outside the supported source subset` };
+      }
+
+      const candidates = extensionlessConfiguredModuleCandidates(mapped);
+      const fileAttempt = await attemptCandidates(candidates.files);
+      if (fileAttempt.kind === "blocked") return fileAttempt;
+      if (fileAttempt.kind === "resolved") return resolvedAttempt(fileAttempt.target, `${config.moduleResolution} extensionless file lookup`);
+
+      for (const extension of OMITTED_EXPLICIT_EXTENSIONS) {
+        const unsupported = `${mapped}${extension}`;
+        if (await this.hiddenFileExists(unsupported)) {
+          unsupportedOmittedExtension ??= unsupported;
+          break;
+        }
+      }
+      if (await this.hiddenFileExists(`${mapped}/package.json`)) {
+        return { kind: "blocked", reason: `directory package metadata at ${mapped}/package.json has higher precedence than index lookup and is outside the supported subset` };
+      }
+
+      const indexAttempt = await attemptCandidates(candidates.indexes);
+      if (indexAttempt.kind === "blocked") return indexAttempt;
+      if (indexAttempt.kind === "resolved") return resolvedAttempt(indexAttempt.target, `${config.moduleResolution} directory index lookup`);
+      for (const extension of OMITTED_EXPLICIT_EXTENSIONS) {
+        const unsupported = `${mapped}/index${extension}`;
+        if (await this.hiddenFileExists(unsupported)) {
+          unsupportedOmittedExtension ??= unsupported;
+          break;
+        }
+      }
+    }
+    if (unsupportedOmittedExtension) {
+      return { kind: "blocked", reason: `matched paths targets did not resolve because TypeScript does not infer the omitted extension for ${unsupportedOmittedExtension}` };
     }
     return config.baseUrl
       ? { kind: "blocked", reason: "the matched paths targets were missing and standalone baseUrl fallback is outside the supported subset", diagnosticKey: `${config.configPath}:baseUrl-fallback:${match.key}` }
@@ -694,7 +784,11 @@ export class BoundedStaticModuleResolver {
       this.note(`${packagePath}: package self-export target ${JSON.stringify(selected.target)} escapes its owning package.`);
       return null;
     }
-    const candidates = configuredModuleCandidates(mapped);
+    const candidates = explicitConfiguredModuleCandidates(mapped);
+    if (candidates === null) {
+      this.note(`${packagePath}: package self-export target ${JSON.stringify(selected.target)} does not name an explicit supported extension.`);
+      return null;
+    }
     if (candidates.length > MAX_CANDIDATES_PER_IMPORT) {
       this.note(`${packagePath}: package self-export candidate expansion exceeded ${MAX_CANDIDATES_PER_IMPORT}.`);
       return null;

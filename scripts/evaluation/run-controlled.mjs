@@ -74,7 +74,7 @@ const controls = [
     purpose: "A clear tsconfig paths mapping creates a static relationship without creating runtime evidence.",
     files: {
       "package.json": JSON.stringify({ name: "alias-control", private: true, type: "module", scripts: { test: "vitest run" } }, null, 2),
-      "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@app/*": ["src/*"] } } }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", baseUrl: ".", paths: { "@app/*": ["src/*"] } } }, null, 2),
       "src/math.ts": "export function add(a: number, b: number) { return a + b; }\n",
       "test/math.test.ts": "import { add } from '@app/math'; export const observed = add(1, 2);\n"
     },
