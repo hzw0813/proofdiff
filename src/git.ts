@@ -10,11 +10,15 @@ export class GitError extends Error {
   override name = "GitError";
 }
 
+export function gitNullDevice(platform: NodeJS.Platform = process.platform): string {
+  return platform === "win32" ? "NUL" : os.devNull;
+}
+
 function gitEnvironment(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     PATH: safeExecutablePath(),
     GIT_CONFIG_NOSYSTEM: "1",
-    GIT_CONFIG_GLOBAL: os.devNull,
+    GIT_CONFIG_GLOBAL: gitNullDevice(),
     GIT_ATTR_NOSYSTEM: "1",
     GIT_TERMINAL_PROMPT: "0",
     GIT_PAGER: "cat",
@@ -34,7 +38,7 @@ async function rawGitResult(root: string, args: string[], driverOverrides: strin
     "--no-pager",
     "-c", "core.quotepath=false",
     "-c", "core.fsmonitor=false",
-    "-c", `core.hooksPath=${os.devNull}`,
+    "-c", `core.hooksPath=${gitNullDevice()}`,
     "-c", "diff.external=",
     "-c", "attr.tree=refs/proofdiff/no-attributes",
     ...driverOverrides,

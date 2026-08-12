@@ -2,6 +2,7 @@ import type { ChangedFile, DiffSelection, RepositoryInfo } from "./types.js";
 export declare class GitError extends Error {
     name: string;
 }
+export declare function gitNullDevice(platform?: NodeJS.Platform): string;
 export declare function findRepository(value: string): Promise<string>;
 export declare function selectDiff(root: string, options: {
     base?: string;

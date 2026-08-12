@@ -6,11 +6,14 @@ const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 export class GitError extends Error {
     name = "GitError";
 }
+export function gitNullDevice(platform = process.platform) {
+    return platform === "win32" ? "NUL" : os.devNull;
+}
 function gitEnvironment() {
     const env = {
         PATH: safeExecutablePath(),
         GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: os.devNull,
+        GIT_CONFIG_GLOBAL: gitNullDevice(),
         GIT_ATTR_NOSYSTEM: "1",
         GIT_TERMINAL_PROMPT: "0",
         GIT_PAGER: "cat",
@@ -29,7 +32,7 @@ async function rawGitResult(root, args, driverOverrides = []) {
         "--no-pager",
         "-c", "core.quotepath=false",
         "-c", "core.fsmonitor=false",
-        "-c", `core.hooksPath=${os.devNull}`,
+        "-c", `core.hooksPath=${gitNullDevice()}`,
         "-c", "diff.external=",
         "-c", "attr.tree=refs/proofdiff/no-attributes",
         ...driverOverrides,

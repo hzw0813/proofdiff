@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import { rm } from "node:fs/promises";
 import test from "node:test";
 import path from "node:path";
-import { changedFiles, findRepository, repositoryInfo, selectDiff } from "../src/git.js";
+import { changedFiles, findRepository, gitNullDevice, repositoryInfo, selectDiff } from "../src/git.js";
 import { pathExists } from "../src/util.js";
 import { git, initializeRepository, temporaryDirectory, writeFiles } from "./helpers.js";
+
+test("Git uses the native null device accepted by each platform", () => {
+  assert.equal(gitNullDevice("win32"), "NUL");
+  assert.equal(gitNullDevice("linux"), "/dev/null");
+});
 
 test("working-tree diff includes tracked and untracked files with line counts", async (context) => {
   const root = await initializeRepository({ "src/a.ts": "export const a = 1;\n" });
