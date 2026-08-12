@@ -18,7 +18,7 @@ async function analyzeFixture(relative: string) {
   git(root, "add", ".");
   git(root, "commit", "-qm", "baseline");
   await cp(path.join(fixture, "after"), root, { recursive: true, force: true });
-  git(root, "add", "-u");
+  git(root, "add", "--renormalize", ".");
   return { root, report: await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 }) };
 }
 
