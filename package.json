@@ -1,7 +1,7 @@
 {
   "name": "proofdiff",
   "version": "0.1.0",
-  "description": "Evidence-based review of code changes, locally and without an account.",
+  "description": "Deterministic evidence for code changes: what changed, what verification ran, and what remains unverified.",
   "type": "module",
   "bin": {
     "proofdiff": "dist/cli.js"
@@ -24,10 +24,16 @@
   },
   "keywords": [
     "code-review",
+    "developer-tools",
     "git",
     "testing",
     "static-analysis",
-    "ci"
+    "verification",
+    "test-impact-analysis",
+    "change-impact-analysis",
+    "continuous-integration",
+    "github-actions",
+    "ai-generated-code"
   ],
   "license": "MIT",
   "repository": {

@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: hzw0813/proofdiff@main
+      - uses: hzw0813/proofdiff@v0.1.0
         with:
           base: ${{ github.event.pull_request.base.sha }}
           fail-on: failed
@@ -27,6 +27,12 @@ jobs:
           path: proofdiff-report.html
 ```
 
-Until a version tag exists, `main` is the runnable repository reference. For a stable or security-sensitive integration, replace it with a reviewed full commit SHA. This default is static-only and safe for unreviewed fork code. Set `run-checks: true` only in a job isolated from secrets and after accepting the repository-code execution risk described in [SECURITY.md](../SECURITY.md). Avoid `pull_request_target` for untrusted code.
+Use the released `v0.1.0` tag for normal stable integration. For an immutable security-sensitive pin, use the reviewed release commit:
+
+```yaml
+- uses: hzw0813/proofdiff@d632a3d0f41e9f20d18bcb7c48150d02c4fed84e # v0.1.0
+```
+
+The default is static-only and does not execute repository code. Set `run-checks: true` only in a job isolated from secrets and after accepting the repository-code execution risk described in [SECURITY.md](../SECURITY.md). Avoid `pull_request_target` for untrusted code, and do not treat a passing report as proof of correctness.
 
 The action installs only ProofDiff's production parser dependency with lifecycle scripts disabled. It requires a checkout with full history for merge-base analysis.

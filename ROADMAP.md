@@ -4,8 +4,6 @@ ProofDiff prioritizes correctness, trustworthiness, and security over feature co
 
 ## Before 1.0
 
-- Validate package naming and publish the signed 0.1.x release after owner approval.
-- Exercise the GitHub Action in a public repository on Linux, macOS, and Windows.
 - Add runtime coverage ingestion as a distinct evidence type; never infer coverage from test names.
 - Improve TypeScript path-alias and Python package-root resolution without silently guessing.
 - Support check configuration with a reviewed, explicit allowlist format.

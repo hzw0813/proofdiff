@@ -130,8 +130,8 @@
       ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 136,
-      "output": "✔ service boots (0.274ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34.644375",
+      "durationMs": 146,
+      "output": "✔ service boots (0.28325ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 35.645125",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     }

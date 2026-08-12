@@ -43,6 +43,6 @@ No telemetry, analytics, update checks, remote APIs, or source-code uploads exis
 
 ## Vulnerability reporting
 
-Please use GitHub's private security advisory flow for the eventual public repository. Do not open a public issue for a suspected vulnerability. Until a repository security contact is published, report privately to the project owner through the repository host.
+Please use this repository's [private vulnerability reporting form](https://github.com/hzw0813/proofdiff/security/advisories/new) for suspected vulnerabilities. Do not open a public issue.
 
 Include affected versions, a minimal reproduction, impact, and any suggested mitigation. Avoid including real secrets or private source code.

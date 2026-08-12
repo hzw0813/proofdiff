@@ -108,3 +108,8 @@ const results = [];
 for (const scenario of scenarios) results.push(await generateScenario(scenario));
 await writeFile(path.join(examplesRoot, "demo-gallery.html"), gallery(results));
 process.stdout.write(`Generated ${results.length} truthful scenarios: ${results.map((result) => `${result.id}=${result.report.summary.overallStatus}`).join(", ")}.\n`);
+
+if (process.argv.includes("--launch-assets")) {
+  const assetPython = process.env.PROOFDIFF_ASSET_PYTHON ?? "python3";
+  execFileSync(assetPython, [path.join(projectRoot, "scripts", "generate-launch-assets.py")], { cwd: projectRoot, stdio: "inherit" });
+}

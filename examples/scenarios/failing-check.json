@@ -151,8 +151,8 @@
       "targetRunner": "node-test",
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 142,
-      "output": "✖ applies the configured twenty-percent tax (0.57275ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.978583\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.57275ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "durationMs": 150,
+      "output": "✖ applies the configured twenty-percent tax (0.581458ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 39.357458\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.581458ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
       "outputTruncated": false,
       "explanation": "The command exited with code 1."
     },
@@ -173,8 +173,8 @@
       ],
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 62,
-      "output": "✖ applies the configured twenty-percent tax (0.560583ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34.515083\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.560583ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "durationMs": 66,
+      "output": "✖ applies the configured twenty-percent tax (0.569542ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.490583\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.569542ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
       "outputTruncated": false,
       "explanation": "The command exited with code 1."
     }

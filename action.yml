@@ -1,5 +1,5 @@
 name: ProofDiff evidence report
-description: Analyze a Git change and report verification evidence without uploading source code.
+description: Produce deterministic evidence about a Git change without uploading source code.
 author: ProofDiff contributors
 branding:
   icon: check-circle

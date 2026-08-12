@@ -4,6 +4,16 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+### Changed
+
+- Reworked the repository front page around a verified zero-install quickstart, a real-product launch walkthrough, and the distinction between deterministic evidence and AI review.
+- Published the generated interactive demo gallery through GitHub Pages and added repository-ready social-preview artwork.
+- Updated GitHub Action guidance and hosted smoke coverage to use the released `v0.1.0` integration instead of `main`.
+
+## [0.1.0] - 2026-08-12
+
+Initial public release.
+
 ### Added
 
 - Local Git working-tree, staged, merge-base, and explicit-range analysis.
@@ -22,7 +32,3 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Unit, integration, CLI, security, fixture-repository, report, and end-to-end tests.
 - Troubleshooting guidance for selection, checks, Python fallback, CI history, timeouts, and sensitive reports.
 - Cross-platform test-file enumeration that does not depend on shell glob expansion in the Windows CI jobs.
-
-## [0.1.0] - 2026-08-12
-
-Initial release candidate. Not yet published.
