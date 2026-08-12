@@ -1,8 +1,8 @@
-# Release audit — 0.1.0 release candidate
+# Release audit — v0.1.0
 
 Audit date: 2026-08-12 (Asia/Taipei)
 
-This document records observed evidence, not a claim that unperformed external release steps passed.
+This document records observed evidence, including the published GitHub release, without claiming that unperformed npm publication steps passed.
 
 ## Verified locally
 
@@ -22,21 +22,29 @@ This document records observed evidence, not a claim that unperformed external r
 - Browser QA covered the gallery and report at 1280 px and 390 px. Both had viewport width equal to document scroll width; the gallery rendered all four scenarios, call-name search selected the correct file, changed-call evidence expanded correctly, and self-contained pages made no missing-resource request. A mobile min-content overflow and a favicon 404 found during earlier QA remain fixed.
 - Two independent `npm pack` runs from Git tree `1dc91b91a7e068423c97d8161adb4f65022f0bfc` produced byte-identical 54,675-byte tarballs with SHA-256 `2b21c3951e590f3127efceba208d51272a5e718e1d070f9d541a35b823020559`.
 - The GitHub Action smoke test copies a source checkout without `node_modules`, installs production dependencies with lifecycle scripts disabled, verifies dev dependencies are absent, runs the static default and trusted-check paths against a two-commit fixture, and validates HTML output. It exposed and fixed an npm 11 incompatibility in the former `npm ci --prefix` installation path.
-- GitHub Action, CI, release, Dependabot, and issue-template YAML parse successfully. Release automation checks tag/version agreement, tests, runs the Action smoke, packs once, checksums the artifact, creates or updates a GitHub Release with that exact artifact, and gates npm publication behind the protected `npm` environment.
+- GitHub Action, CI, release, Dependabot, and issue-template YAML parse successfully. Release automation checks tag/version agreement, tests, runs the Action smoke, packs once, checksums the artifact, creates or updates a GitHub Release with that exact artifact, and gates npm publication behind the protected `npm` environment. Release commands use the explicit GitHub repository coordinate so the artifact-only release job does not depend on a checked-out Git directory.
 - GitHub-hosted CI run [31573638505](https://github.com/hzw0813/proofdiff/actions/runs/31573638505) passed from commit `25e0069e87a4750852d296be46a9cb928571f622`. The full matrix ran `npm ci`, all 40 tests, and `npm pack --dry-run` on Ubuntu, macOS, and Windows with Node.js 22, 24, and 26. The source-tree Action smoke also passed.
 - Hosted Windows failures exposed and drove fixes for Git's null device, `.cmd` package-manager launching, descendant process termination after timeouts, and same-size/same-timestamp fixture revalidation. The final Windows jobs pass all tests and package checks on every supported Node.js line.
 - The published-repository Action smoke invoked `hzw0813/proofdiff@main`, created a deterministic working-tree change, generated a nonempty self-contained HTML report, verified the changed path, and uploaded the report. The downloaded artifact contains the expected `fixtures/demo/base/src/discount.js` assessment, restrictive Content Security Policy, static-only trust statement, and no observed runner or user path.
-- GitHub externally reports `hzw0813/proofdiff` as public with `main` as its default branch, the intended description, MIT license detection, active CI and Release workflows, and remote `main` at the audited commit. The repository has no tags or GitHub Releases.
+- GitHub externally reports `hzw0813/proofdiff` as public with `main` as its default branch, the intended description, MIT license detection, active CI and Release workflows, and the annotated `v0.1.0` tag peeled to release commit `d632a3d0f41e9f20d18bcb7c48150d02c4fed84e`.
 - README local links pass, and the hosted CI workflow target plus all three badge image URLs return HTTP 200. Package metadata resolves to `https://github.com/hzw0813/proofdiff`, its issues page, and its README.
-- The npm registry returned `E404` for the exact `proofdiff` package name again during the final external audit. Availability is not a reservation and must be rechecked immediately before publication.
+- The npm registry returned `E404` for the exact `proofdiff` package name again after GitHub release publication. This confirms only that no npm package was observed; availability is not a reservation.
+
+## Verified on GitHub for v0.1.0
+
+- Release workflow run [31574696070](https://github.com/hzw0813/proofdiff/actions/runs/31574696070) checked out the tag, verified tag/version agreement, passed all 40 tests and the production Action smoke, packed once, produced `SHA256SUMS`, and uploaded the `proofdiff-v0.1.0` workflow artifact. Its npm publication job was skipped because `publish_npm=false`.
+- The workflow's release job exposed a missing repository-context argument: it had downloaded artifacts without checking out Git, while `gh release` attempted repository discovery from the working directory. The release commands now pass `--repo "$GITHUB_REPOSITORY"` explicitly. The failed workflow is retained as evidence and is not described as successful.
+- The public [ProofDiff v0.1.0 GitHub Release](https://github.com/hzw0813/proofdiff/releases/tag/v0.1.0) was created from the exact downloaded workflow artifact after its checksum matched the reproducible local package. GitHub reports it as published, non-draft, and non-prerelease, with the intended annotated tag.
+- Anonymous downloads of `proofdiff-0.1.0.tgz` and `SHA256SUMS` succeeded. The public package is 54,675 bytes with SHA-256 `2b21c3951e590f3127efceba208d51272a5e718e1d070f9d541a35b823020559`; its bytes match the workflow artifact, its embedded metadata identifies `proofdiff` version `0.1.0`, and an isolated installation reports version `0.1.0`.
+- Release notes describe only implemented and verified capabilities, link the exact release commit, and state explicitly that ProofDiff has not been published to npm.
 
 ## Deliberately not claimed
 
-- The tag-gated Release workflow has not executed. Its active hosted definition and control flow were inspected, but packaging from a version tag, GitHub Release creation, and npm trusted publication/provenance remain unperformed external steps.
-- No version tag, GitHub Release, or npm package was created. Those are separate publication boundaries and require explicit authorization.
+- ProofDiff is not available from npm, and no npm package or provenance statement was published.
 - The npm package name is not reserved merely because the registry currently returns `E404`.
+- No adoption, usage, performance, or ecosystem claims were inferred from publication.
 
-These are the remaining publication gates. They do not justify weakening local evidence or fabricating a completed release.
+npm publication is the remaining external publication boundary. It requires separate authorization and a fresh registry and trusted-publishing audit.
 
 ## Reproduce the local audit
 
