@@ -3,7 +3,7 @@ ProofDiff  Evidence for this change
 acme-checkout  working tree vs HEAD  @ b39d3dbbd762
 
 PARTIAL  ·  highest risk HIGH  ·  2 files  ·  2 symbols
-1 verified  0 partial  1 unverified  0 unknown  0 failed
+1 related test-file pass  0 partial  1 unverified  0 unknown  0 failed
 
 UNVERIFIED services/email.py  HIGH 58
   modified, +7/-2  ·  send_receipt
@@ -11,16 +11,16 @@ UNVERIFIED services/email.py  HIGH 58
   Review: Executed checks provided no applicable successful evidence. No statically related test file was found.
   Evidence: none observed; status is not a safety claim.
 
-VERIFIED   src/discount.js  LOW 10
+RELATED TEST FILE PASSED src/discount.js  LOW 10
   modified, +3/-2  ·  discountFor
   Calls: Math.max:2, Number:2 (structural references; not runtime)
-  Evidence: 1 related test file explicitly executed — ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is execution evidence, not runtime line or branch coverage.
+  Evidence: 1 related test file explicitly executed — ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is test-file execution evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.
   Executed tests: test/checkout.test.js
 
 Checks
-  PASS      test: test  package.json script "test"  145ms
+  PASS      test: test  package.json script "test"  151ms
   PASS      targeted node-test: 1 related test file  ProofDiff targeted execution derived from package.json script "test"  63ms
 
 Trust boundary: Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox.
 
-Verified means a statically related test file was explicitly run and passed; it is not coverage or proof.
+Related test file passed means that file was supplied to a recognized runner and the invocation passed—not that changed symbols or lines ran.

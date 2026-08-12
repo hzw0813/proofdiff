@@ -15,8 +15,8 @@ test("CLI produces terminal, JSON, and HTML reports for a realistic change", asy
   const htmlPath = path.join(root, "proofdiff.html");
   const terminal = runCli(["--repo", root, "--run-checks", "--html", htmlPath, "--no-color"]);
   assert.equal(terminal.status, 0, terminal.stderr);
-  assert.match(terminal.stdout, /VERIFIED/);
-  assert.match(await readFile(htmlPath, "utf8"), /Partially verified|Verified/);
+  assert.match(terminal.stdout, /RELATED TEST FILE PASSED/);
+  assert.match(await readFile(htmlPath, "utf8"), /Partially verified|Related test file passed/);
   if (process.platform !== "win32") assert.equal((await stat(htmlPath)).mode & 0o777, 0o600);
   const json = runCli(["--repo", root, "--json", "--fail-on", "never"]);
   assert.equal(json.status, 0, json.stderr);

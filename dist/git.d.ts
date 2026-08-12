@@ -12,7 +12,8 @@ export declare function selectDiff(root: string, options: {
     selection: DiffSelection;
     args: string[];
 }>;
-export declare function changedFiles(root: string, diffArgs: string[], includeUntracked: boolean): Promise<ChangedFile[]>;
+export declare function changedFiles(root: string, diffArgs: string[], includeUntracked: boolean, knownUntracked?: string[]): Promise<ChangedFile[]>;
+export declare function listUntrackedFiles(root: string): Promise<string[]>;
 export declare function listRepositoryFiles(root: string, limit?: number): Promise<{
     files: string[];
     truncated: boolean;

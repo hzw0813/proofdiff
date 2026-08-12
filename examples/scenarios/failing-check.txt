@@ -3,7 +3,7 @@ ProofDiff  Evidence for this change
 billing-service  working tree vs HEAD  @ 927ff84f0aad
 
 FAILED  ·  highest risk CRITICAL  ·  1 file  ·  1 symbol
-0 verified  0 partial  0 unverified  0 unknown  1 failed
+0 related test-file passes  0 partial  0 unverified  0 unknown  1 failed
 
 FAILED     src/tax.js  CRITICAL 80
   modified, +1/-1  ·  taxFor
@@ -13,9 +13,9 @@ FAILED     src/tax.js  CRITICAL 80
   Targeted tests: test/tax.test.js (failed)
 
 Checks
-  FAILED    test: test  package.json script "test"  146ms
-  FAILED    targeted node-test: 1 related test file  ProofDiff targeted execution derived from package.json script "test"  64ms
+  FAILED    test: test  package.json script "test"  147ms
+  FAILED    targeted node-test: 1 related test file  ProofDiff targeted execution derived from package.json script "test"  65ms
 
 Trust boundary: Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox.
 
-Verified means a statically related test file was explicitly run and passed; it is not coverage or proof.
+Related test file passed means that file was supplied to a recognized runner and the invocation passed—not that changed symbols or lines ran.

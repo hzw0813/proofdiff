@@ -36,7 +36,29 @@ test("passing related test evidence produces a qualified verified status", async
   assert.equal(report.summary.overallStatus, "verified");
   assert.deepEqual(report.assessments[0]?.executedTests, ["test/math.test.js"]);
   assert.deepEqual(report.assessments[0]?.testExecutions.map((execution) => [execution.path, execution.status]), [["test/math.test.js", "passed"]]);
-  assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "executed-test")?.detail ?? "", /not runtime line or branch coverage/);
+  assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "executed-test")?.detail ?? "", /not changed-symbol, changed-line, branch, assertion, or behavioral coverage/);
+  assert.match(report.assessments[0]?.limitations.find((item) => item.includes("did not observe whether changed symbols")) ?? "", /did not observe whether changed symbols, lines, branches, or relevant assertions executed/);
+});
+
+test("a passing related test file does not claim that the changed symbol executed", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ name: "symbol-boundary", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
+    "src/math.js": "export function add(a, b) { return a + b; }\nexport function subtract(a, b) { return a - b; }\n",
+    "test/math.test.js": `import test from "node:test";\nimport assert from "node:assert/strict";\nimport { add } from "../src/math.js";\ntest("add", () => assert.equal(add(2, 3), 5));\n`,
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/math.js": "export function add(a, b) { return a + b; }\nexport function subtract(a, b) { return a + b; }\n" });
+
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const assessment = report.assessments[0];
+  assert.equal(assessment?.status, "verified");
+  assert.equal(report.summary.overallStatus, "verified");
+  assert.deepEqual(assessment?.changedSymbols.map((symbol) => symbol.name), ["subtract"]);
+  assert.deepEqual(assessment?.relatedTests, ["test/math.test.js"]);
+  assert.deepEqual(assessment?.executedTests, ["test/math.test.js"]);
+  assert.match(report.checks.find((check) => check.id.endsWith(":targeted"))?.output ?? "", /add/);
+  assert.match(assessment?.evidence.find((item) => item.kind === "executed-test")?.detail ?? "", /not changed-symbol/);
+  assert.match(assessment?.limitations.find((item) => item.includes("did not observe whether changed symbols")) ?? "", /did not observe whether changed symbols/);
 });
 
 test("failing verification cannot be mistaken for success", async (context) => {
@@ -86,4 +108,13 @@ test("a passing filtered test script cannot imply that an unexecuted related tes
   assert.deepEqual(report.assessments[0]?.executedTests, []);
   assert.deepEqual(report.assessments[0]?.testExecutions, []);
   assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "passing-check")?.detail ?? "", /did not observe/);
+});
+
+test("working-tree analysis warns without hiding Git-visible generated files", async (context) => {
+  const root = await initializeRepository({ "README.md": "# fixture\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "node_modules/example/index.js": "export const generated = true;\n" });
+  const report = await analyzeRepository({ repo: root });
+  assert.deepEqual(report.assessments.map((item) => item.file.path), ["node_modules/example/index.js"]);
+  assert.match(report.notes.join("\n"), /Git-visible untracked file.*node_modules\/.*did not hide/);
 });

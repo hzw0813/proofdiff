@@ -132,9 +132,9 @@ def terminal_excerpt(terminal: str) -> list[str]:
         stripped = line.strip()
         if (
             stripped.startswith("PARTIAL  ·")
-            or stripped.startswith("1 verified")
+            or stripped.startswith("1 related test-file pass")
             or stripped.startswith("UNVERIFIED services/email.py")
-            or stripped.startswith("VERIFIED   src/discount.js")
+            or stripped.startswith("RELATED TEST FILE PASSED src/discount.js")
             or stripped.startswith("Evidence: none observed")
             or stripped.startswith("Evidence: 1 related test file")
             or stripped.startswith("Executed tests:")
@@ -193,7 +193,7 @@ def frame_evidence(summary: dict, excerpt: list[str]) -> Image.Image:
         stripped = line.strip()
         if stripped.startswith("PARTIAL"):
             color = YELLOW
-        elif stripped.startswith("VERIFIED") or "1 related test file" in stripped or stripped.startswith("Executed tests"):
+        elif stripped.startswith("RELATED TEST FILE PASSED") or "1 related test file" in stripped or stripped.startswith("Executed tests"):
             color = GREEN
         elif stripped.startswith("UNVERIFIED") or "none observed" in stripped:
             color = PURPLE
@@ -203,7 +203,7 @@ def frame_evidence(summary: dict, excerpt: list[str]) -> Image.Image:
         for segment in segments:
             draw.text((78, y), segment, font=M16, fill=color)
             y += 24
-        y += 16 if stripped.startswith(("PARTIAL", "1 verified")) else 10
+        y += 16 if stripped.startswith(("PARTIAL", "1 related test-file pass")) else 10
     expected = summary["counts"]
     if expected["verified"] != 1 or expected["unverified"] != 1:
         raise RuntimeError("Launch asset expects the asserted mixed-evidence scenario")
@@ -216,7 +216,7 @@ def frame_report(gallery: Image.Image) -> Image.Image:
     brand(draw, "04 / 04 · REPORT")
     draw.multiline_text((54, 76), "Open the\nreport.", font=F54, fill=TEXT, spacing=-4)
     wrapped(draw, (57, 224), "A self-contained interactive HTML report keeps every evidence state inspectable.", width=300, chosen_font=F18)
-    tags = [("VERIFIED", GREEN), ("UNVERIFIED", PURPLE), ("FAILED", RED)]
+    tags = [("TEST FILE PASS", GREEN), ("UNVERIFIED", PURPLE), ("FAILED", RED)]
     y = 365
     for label, color in tags:
         draw.rounded_rectangle((54, y, 225, y + 42), radius=20, outline=LINE, fill=PANEL)

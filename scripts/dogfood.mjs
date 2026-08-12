@@ -47,7 +47,7 @@ try {
   if (report.summary.filesChanged !== 1 || report.summary.overallStatus !== "verified" || report.checks.some((check) => check.status !== "passed")) {
     throw new Error(`Dogfood invariant failed: ${report.summary.filesChanged} files, ${report.summary.overallStatus}, checks ${report.checks.map((check) => check.status).join(", ")}.`);
   }
-  process.stdout.write(`Dogfood passed: ${report.assessments[0].file.path} was ${report.summary.overallStatus} by ${report.checks.length} checks.\n`);
+  process.stdout.write(`Dogfood passed: ${report.assessments[0].file.path} had a related test-file pass; all ${report.checks.length} executed checks passed.\n`);
 } finally {
   await rm(target, { recursive: true, force: true });
 }

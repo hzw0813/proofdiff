@@ -33,6 +33,6 @@ Use the released `v0.1.0` tag for normal stable integration. For an immutable se
 - uses: hzw0813/proofdiff@d632a3d0f41e9f20d18bcb7c48150d02c4fed84e # v0.1.0
 ```
 
-The default is static-only and does not execute repository code. Set `run-checks: true` only in a job isolated from secrets and after accepting the repository-code execution risk described in [SECURITY.md](../SECURITY.md). Avoid `pull_request_target` for untrusted code, and do not treat a passing report as proof of correctness.
+The default is static-only and does not execute repository code. Set `run-checks: true` only in a job isolated from secrets and after accepting the repository-code execution risk described in [SECURITY.md](../SECURITY.md). Avoid `pull_request_target` for untrusted code. A **Related test file passed** result records a successful targeted test-file invocation; it does not show that changed symbols or lines ran and is not proof of correctness.
 
 The action installs only ProofDiff's production parser dependency with lifecycle scripts disabled. It requires a checkout with full history for merge-base analysis.

@@ -38,25 +38,25 @@ npx proofdiff --run-checks --html proofdiff-report.html
 
 ## Why ProofDiff?
 
-AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, static relationships, checks discovered, checks actually executed, their outcomes, and the gaps that remain. It never turns inference into coverage or claims that a change is safe.
+AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, static relationships, checks discovered, test files explicitly supplied to recognized runners, their outcomes, and the gaps that remain. It never turns a passing test file into changed-symbol coverage or claims that a change is safe.
 
 ```text
 PARTIAL  ·  highest risk HIGH  ·  2 files  ·  2 symbols
-1 verified  0 partial  1 unverified  0 unknown  0 failed
+1 related test-file pass  0 partial  1 unverified  0 unknown  0 failed
 
 UNVERIFIED services/email.py  HIGH 58
   Evidence: none observed; status is not a safety claim.
 
-VERIFIED   src/discount.js  LOW 10
+RELATED TEST FILE PASSED src/discount.js  LOW 10
   Evidence: 1 related test file explicitly executed
   Executed tests: test/checkout.test.js
 ```
 
 ## Read the evidence
 
-| Status | What ProofDiff observed |
+| Visible result (JSON status) | What ProofDiff observed |
 | --- | --- |
-| **Verified** | A statically related test file was passed directly to a recognized runner and succeeded. This is not runtime coverage or proof of correctness. |
+| **Related test file passed** (`verified`) | A statically related test file was passed directly to a recognized runner and the invocation succeeded. ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions ran. |
 | **Partially verified** | A relevant deterministic check passed, but no related test-file execution was observed. |
 | **Unverified** | Checks ran, but supplied no applicable successful evidence. |
 | **Unknown** | No applicable check ran, or analysis could not reach a conclusion. |
@@ -76,7 +76,7 @@ proofdiff --staged                # staged changes only
 proofdiff --base origin/main      # merge-base comparison
 proofdiff --range v1.0.0..HEAD    # explicit commit range
 proofdiff --json                  # stable machine-readable schema
-proofdiff --fail-on partial       # CI policy: require every file to be verified
+proofdiff --fail-on partial       # require a related test-file pass for every changed file
 ```
 
 TypeScript and JavaScript receive AST and local dependency-graph analysis. Python receives isolated standard-library AST analysis when Python is available. Other files retain honest file-level diff and risk analysis without structural claims.

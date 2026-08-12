@@ -226,13 +226,13 @@ function changeKind(status: string): ChangeKind {
   }
 }
 
-export async function changedFiles(root: string, diffArgs: string[], includeUntracked: boolean): Promise<ChangedFile[]> {
+export async function changedFiles(root: string, diffArgs: string[], includeUntracked: boolean, knownUntracked?: string[]): Promise<ChangedFile[]> {
   const safeDiffOptions = ["--no-ext-diff", "--no-textconv", "--ignore-submodules=all"];
   const status = parseNameStatus(await git(root, ["diff", ...safeDiffOptions, "--name-status", "-z", "--find-renames", ...diffArgs, "--"]));
   const stats = parseNumstat(await git(root, ["diff", ...safeDiffOptions, "--numstat", "-z", "--find-renames", ...diffArgs, "--"]));
 
   if (includeUntracked) {
-    const untracked = (await git(root, ["ls-files", "--others", "--exclude-standard", "-z"])).split("\0").filter(Boolean);
+    const untracked = knownUntracked ?? await listUntrackedFiles(root);
     for (const file of untracked) status.push({ status: "A", path: normalizeRepoPath(file) });
   }
 
@@ -264,6 +264,14 @@ export async function changedFiles(root: string, diffArgs: string[], includeUntr
     });
   }
   return files.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+export async function listUntrackedFiles(root: string): Promise<string[]> {
+  return (await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]))
+    .split("\0")
+    .filter(Boolean)
+    .map(normalizeRepoPath)
+    .sort();
 }
 
 export async function listRepositoryFiles(root: string, limit = 5_000): Promise<{ files: string[]; truncated: boolean }> {

@@ -10,6 +10,8 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Published the generated interactive demo gallery through GitHub Pages and added repository-ready social-preview artwork.
 - Updated GitHub Action guidance and hosted smoke coverage to use the released `v0.1.0` integration instead of `main`.
 - Added a first-visit demo landing story, generated from the real passing-but-partially-verified access-control scenario, before the detailed evidence gallery.
+- Scoped the human-facing `verified` label to **Related test file passed**, moved the changed-symbol/line coverage boundary beside prominent results, and preserved the existing JSON status and file-level evidence algorithm.
+- Added an evaluation case for a passing related test file that does not exercise the changed symbol, plus a non-invasive warning for Git-visible untracked generated directories.
 
 ## [0.1.0] - 2026-08-12
 

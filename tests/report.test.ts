@@ -21,16 +21,30 @@ test("HTML report is self-contained, interactive, and escapes repository data", 
   assert.match(html, /id="status-filter"/);
   assert.match(html, /Calls in changed lines/);
   assert.match(html, /Related-file presence alone cannot produce/);
+  assert.match(html, /Related test file passed/);
+  assert.match(html, /changed-symbol or changed-line execution/);
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.doesNotMatch(html, /https?:\/\//);
+});
+
+test("HTML report describes mixed overall evidence without denying a file-level test pass", () => {
+  const mixed = structuredClone(report);
+  mixed.summary.filesChanged = 2;
+  mixed.summary.overallStatus = "partially-verified";
+  mixed.summary.counts.verified = 1;
+  mixed.summary.counts.unknown = 1;
+  const html = renderHtmlReport(mixed);
+  assert.match(html, /Evidence strength differs across changed files/);
+  assert.doesNotMatch(html, /Some applicable evidence passed, but no statically related test-file execution was observed/);
 });
 
 test("terminal report defines evidence semantics", () => {
   const output = renderTerminalReport(report, { color: false, width: 90 });
   assert.match(output, /UNKNOWN/);
   assert.match(output, /Trust boundary/);
-  assert.match(output, /statically related test file was explicitly run and passed; it is not coverage or proof/);
+  assert.match(output, /Related test file passed means that file was supplied to a recognized runner/);
+  assert.match(output, /not that changed symbols or lines ran/);
 });
 
 test("terminal report strips untrusted control sequences", () => {

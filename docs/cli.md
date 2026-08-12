@@ -31,6 +31,6 @@ Policies:
 
 - `failed` (default): fail only on verification failure/error/timeout.
 - `unverified`: also fail when a file is unverified.
-- `partial`: require every changed file to be verified.
+- `partial`: require every changed file to reach JSON status `verified`, displayed as **Related test file passed**. This requires successful explicit execution of a statically related test file; it does not require or imply changed-code runtime coverage.
 - `high-risk`: fail when any file is high or critical risk.
 - `never`: report only.

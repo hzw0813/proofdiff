@@ -1,7 +1,7 @@
 import path from "node:path";
 import { plural, sanitizeControlCharacters } from "../util.js";
 const labels = {
-    verified: "VERIFIED",
+    verified: "RELATED TEST FILE PASSED",
     "partially-verified": "PARTIAL",
     unverified: "UNVERIFIED",
     unknown: "UNKNOWN",
@@ -49,7 +49,7 @@ export function renderTerminalReport(report, options = {}) {
     const status = statusColor(report.summary.overallStatus, colors)(labels[report.summary.overallStatus]);
     const risk = report.summary.highestRisk ? riskColor(report.summary.highestRisk, colors)(report.summary.highestRisk.toUpperCase()) : "NONE";
     output.push(`${colors.bold(status)}  ·  highest risk ${colors.bold(risk)}  ·  ${plural(report.summary.filesChanged, "file")}  ·  ${plural(report.summary.symbolsChanged, "symbol")}`);
-    output.push(`${report.summary.counts.verified} verified  ${report.summary.counts["partially-verified"]} partial  ${report.summary.counts.unverified} unverified  ${report.summary.counts.unknown} unknown  ${report.summary.counts["verification-failed"]} failed`);
+    output.push(`${report.summary.counts.verified} related test-file pass${report.summary.counts.verified === 1 ? "" : "es"}  ${report.summary.counts["partially-verified"]} partial  ${report.summary.counts.unverified} unverified  ${report.summary.counts.unknown} unknown  ${report.summary.counts["verification-failed"]} failed`);
     output.push("");
     if (report.assessments.length === 0) {
         output.push(colors.dim("No changed files to assess."));
@@ -57,7 +57,7 @@ export function renderTerminalReport(report, options = {}) {
     for (const assessment of report.assessments) {
         const badge = statusColor(assessment.status, colors)(labels[assessment.status].padEnd(10));
         const riskBadge = riskColor(assessment.risk, colors)(`${assessment.risk.toUpperCase()} ${assessment.riskScore}`);
-        output.push(`${badge} ${colors.bold(truncate(safe(assessment.file.path), width - 30))}  ${riskBadge}`);
+        output.push(`${badge} ${colors.bold(truncate(safe(assessment.file.path), width - 44))}  ${riskBadge}`);
         const change = `${assessment.file.change}, +${assessment.file.additions}/-${assessment.file.deletions}`;
         const symbols = assessment.changedSymbols.length > 0
             ? assessment.changedSymbols.slice(0, 5).map((symbol) => safe(symbol.name)).join(", ")
@@ -111,7 +111,7 @@ export function renderTerminalReport(report, options = {}) {
     for (const note of report.notes.slice(0, 5))
         output.push(`${colors.dim("Note:")} ${safe(note)}`);
     output.push("");
-    output.push(colors.dim("Verified means a statically related test file was explicitly run and passed; it is not coverage or proof."));
+    output.push(colors.dim("Related test file passed means that file was supplied to a recognized runner and the invocation passed—not that changed symbols or lines ran."));
     return output.join("\n");
 }
 //# sourceMappingURL=terminal.js.map

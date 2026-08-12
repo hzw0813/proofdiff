@@ -1,7 +1,7 @@
 import { discoverChecks, notRunResults, runChecks, targetedTestChecks } from "./checks.js";
 import { assessFile } from "./evidence.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
-import { changedFiles, findRepository, listRepositoryFiles, repositoryInfo, selectDiff } from "./git.js";
+import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { stableSort } from "./util.js";
 export const VERSION = "0.1.0";
 const statusRank = {
@@ -50,7 +50,8 @@ export async function analyzeRepository(options) {
     const root = await findRepository(options.repo);
     const { selection, args } = await selectDiff(root, options);
     const includeUntracked = selection.mode === "working-tree";
-    const files = await changedFiles(root, args, includeUntracked);
+    const untracked = includeUntracked ? await listUntrackedFiles(root) : [];
+    const files = await changedFiles(root, args, includeUntracked, untracked);
     const inventory = await listRepositoryFiles(root);
     const graph = await buildRepositoryGraph(root, inventory.files, files);
     const discovery = await discoverChecks(root);
@@ -70,6 +71,12 @@ export async function analyzeRepository(options) {
     const assessments = stableSort(files.map((file) => assessFile(file, graph, checks)), (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || a.file.path.localeCompare(b.file.path));
     const checksRun = checks.filter((check) => check.status !== "not-run").length;
     const notes = [...discovery.notes, ...graph.diagnostics];
+    const generatedUntracked = untracked.filter((file) => /^(?:node_modules|vendor|dist|build|coverage|\.venv|venv)\//.test(file));
+    if (generatedUntracked.length > 0) {
+        const directories = [...new Set(generatedUntracked.map((file) => file.split("/")[0]))].sort();
+        const directoryList = directories.map((directory) => `${directory}/`).join(", ");
+        notes.push(`Working-tree selection includes ${generatedUntracked.length} Git-visible untracked file${generatedUntracked.length === 1 ? "" : "s"} under ${directoryList}. ProofDiff did not hide them; review git status and .gitignore if they are unintended.`);
+    }
     if (inventory.truncated)
         notes.push("Repository source analysis was limited to the first 5,000 tracked/unignored files.");
     if (targeted.truncated)

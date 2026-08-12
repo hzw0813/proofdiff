@@ -37,7 +37,7 @@ function verificationFor(file, relatedTests, checks) {
             label: check.label,
             detail: check.kind === "test" && relatedTests.length > 0
                 ? check.targetFiles?.length
-                    ? `Passed with ${check.targetFiles.length} explicitly targeted test file${check.targetFiles.length === 1 ? "" : "s"}. This observes test-file execution, not changed-line coverage.`
+                    ? `Passed with ${check.targetFiles.length} explicitly targeted test file${check.targetFiles.length === 1 ? "" : "s"}. This observes a test-file invocation and successful runner exit, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.`
                     : `Repository test command passed, but ProofDiff did not observe which test files it executed.`
                 : "Command success is deterministic evidence, but is not by itself proof that changed behavior is correct.",
             confidence: "high",
@@ -56,7 +56,7 @@ function verificationFor(file, relatedTests, checks) {
         evidence.push({
             kind: "executed-test",
             label: `${executedTests.length} related test file${executedTests.length === 1 ? "" : "s"} explicitly executed`,
-            detail: "ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is execution evidence, not runtime line or branch coverage.",
+            detail: "ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is test-file execution evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
             confidence: "high",
         });
     }
@@ -190,6 +190,8 @@ export function assessFile(file, graph, checks) {
         limitations.push("No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically.");
     else if (verification.executedTests.length === 0)
         limitations.push("Related test files were found statically, but no recognized runner was observed executing them successfully.");
+    else
+        limitations.push("Related test files executed successfully, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
     const evidence = [...verification.evidence];
     if (changedCallSites.calls.length > 0) {
         const names = unique(changedCallSites.calls.map((site) => site.name)).slice(0, 8);

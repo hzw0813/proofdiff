@@ -40,7 +40,15 @@ ProofDiff deliberately recognizes a narrow set of conventional root-level test, 
 
 ## A passing test command is only “Partially verified”
 
-A repository-wide command can pass without proving which test file ran. ProofDiff only reports `Verified` when it can explicitly pass a statically related test file to a recognized runner and observe success. See [verification-model.md](verification-model.md) for supported runner shapes and limitations.
+A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when it can explicitly pass a statically related test file to a recognized runner and observe a successful invocation. See [verification-model.md](verification-model.md) for supported runner shapes and limitations.
+
+## A related test file passed, but the changed symbol may not have run
+
+This is expected under the current file-level evidence model. ProofDiff observes that a statically related test file was explicitly supplied to a recognized runner and that the invocation succeeded. It does not ingest runtime coverage, so it cannot tell whether a changed symbol, line, branch, or relevant assertion executed. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
+
+## Unexpected `node_modules` or generated files appear
+
+Working-tree analysis follows Git: it includes untracked, non-ignored files. ProofDiff does not silently hide `node_modules`, build output, vendored code, or other Git-visible changes. Confirm the selection with `git status --short --untracked-files=all`, then add an appropriate `.gitignore`, stage only the intended change and use `--staged`, or select a committed comparison with `--base`/`--range`. Reports add a warning when common generated directories contain Git-visible untracked files.
 
 ## Python analysis is degraded
 

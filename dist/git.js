@@ -219,12 +219,12 @@ function changeKind(status) {
         default: return "unknown";
     }
 }
-export async function changedFiles(root, diffArgs, includeUntracked) {
+export async function changedFiles(root, diffArgs, includeUntracked, knownUntracked) {
     const safeDiffOptions = ["--no-ext-diff", "--no-textconv", "--ignore-submodules=all"];
     const status = parseNameStatus(await git(root, ["diff", ...safeDiffOptions, "--name-status", "-z", "--find-renames", ...diffArgs, "--"]));
     const stats = parseNumstat(await git(root, ["diff", ...safeDiffOptions, "--numstat", "-z", "--find-renames", ...diffArgs, "--"]));
     if (includeUntracked) {
-        const untracked = (await git(root, ["ls-files", "--others", "--exclude-standard", "-z"])).split("\0").filter(Boolean);
+        const untracked = knownUntracked ?? await listUntrackedFiles(root);
         for (const file of untracked)
             status.push({ status: "A", path: normalizeRepoPath(file) });
     }
@@ -257,6 +257,13 @@ export async function changedFiles(root, diffArgs, includeUntracked) {
         });
     }
     return files.sort((a, b) => a.path.localeCompare(b.path));
+}
+export async function listUntrackedFiles(root) {
+    return (await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]))
+        .split("\0")
+        .filter(Boolean)
+        .map(normalizeRepoPath)
+        .sort();
 }
 export async function listRepositoryFiles(root, limit = 5_000) {
     const raw = await git(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
