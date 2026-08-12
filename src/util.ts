@@ -65,13 +65,16 @@ export function languageForPath(file: string): import("./types.js").LanguageId {
   return "unknown";
 }
 
-export function isTestFile(file: string): boolean {
+export function isTestLikePath(file: string): boolean {
   const normalized = `/${normalizeRepoPath(file).toLowerCase()}`;
   return (
-    /\/(?:tests?|__tests__)\//.test(normalized) ||
-    /(?:^|\/)(?:test_[^/]+|[^/]+_(?:test|spec)|[^/]+\.(?:test|spec))\.(?:[cm]?[jt]sx?|pyi?)$/.test(normalized)
+    /\/(?:tests?|__tests__|unittests?)\//.test(normalized) ||
+    /(?:^|\/)(?:test|test_[^/]+|test-[^/]+|[^/]+-(?:test|spec)|[^/]+_(?:test|spec)|[^/]+\.(?:test|spec))\.(?:[cm]?[jt]sx?|pyi?)$/.test(normalized)
   );
 }
+
+/** @deprecated Test-like path heuristics are not runnable-target identity. */
+export const isTestFile = isTestLikePath;
 
 export function unique<T>(items: Iterable<T>): T[] {
   return [...new Set(items)];

@@ -38,17 +38,17 @@ npx proofdiff --run-checks --html proofdiff-report.html
 
 ## Why ProofDiff?
 
-AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, static relationships, checks discovered, test files explicitly supplied to recognized runners, their outcomes, and the gaps that remain. It never turns a passing test file into changed-symbol coverage or claims that a change is safe.
+AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, statically related test-like paths, runner-qualified targets, per-target observations, checks, and the gaps that remain. It never treats directory placement or process exit alone as test execution, turns a passing target into changed-symbol coverage, or claims that a change is safe.
 
 ```text
 PARTIAL  ·  highest risk HIGH  ·  2 files  ·  2 symbols
-1 related test-file pass  0 partial  1 unverified  0 unknown  0 failed
+1 qualified target pass  0 partial  1 unverified  0 unknown  0 failed
 
 UNVERIFIED services/email.py  HIGH 58
   Evidence: none observed; status is not a safety claim.
 
 RELATED TEST FILE PASSED src/discount.js  LOW 10
-  Evidence: 1 related test file explicitly executed
+  Evidence: 1 qualified related target observed passing
   Executed tests: test/checkout.test.js
 ```
 
@@ -56,13 +56,13 @@ RELATED TEST FILE PASSED src/discount.js  LOW 10
 
 | Visible result (JSON status) | What ProofDiff observed |
 | --- | --- |
-| **Related test file passed** (`verified`) | A statically related test file was passed directly to a recognized runner and the invocation succeeded. ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions ran. |
-| **Partially verified** | A relevant deterministic check passed, but no related test-file execution was observed. |
+| **Related test file passed** (`verified`) | A statically related path was runner-qualified, explicitly supplied, and produced at least one non-skipped passing test for that exact target, with no relevant failure. ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions ran. |
+| **Partially verified** | A relevant deterministic command passed, but no qualified related target produced a non-skipped passing observation. Zero-test, filtered-to-zero, all-skipped, and unavailable target observations cannot strengthen the result. |
 | **Unverified** | Checks ran, but supplied no applicable successful evidence. |
 | **Unknown** | No applicable check ran, or analysis could not reach a conclusion. |
 | **Verification failed** | An applicable check failed, errored, or timed out. |
 
-Impact and test relationships are explicitly labeled static estimates.
+Impact and test-like relationships are explicitly labeled static estimates. Qualification reasons and per-target counts are inspectable in JSON and HTML details.
 
 ## Use it in GitHub Actions
 
@@ -76,7 +76,7 @@ proofdiff --staged                # staged changes only
 proofdiff --base origin/main      # merge-base comparison
 proofdiff --range v1.0.0..HEAD    # explicit commit range
 proofdiff --json                  # stable machine-readable schema
-proofdiff --fail-on partial       # require a related test-file pass for every changed file
+proofdiff --fail-on partial       # require a qualified per-target pass for every changed file
 ```
 
 TypeScript and JavaScript receive AST and local dependency-graph analysis. Python receives isolated standard-library AST analysis when Python is available. Other files retain honest file-level diff and risk analysis without structural claims.

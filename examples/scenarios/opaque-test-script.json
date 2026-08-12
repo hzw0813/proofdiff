@@ -89,8 +89,8 @@
         },
         {
           "kind": "related-test",
-          "label": "1 related test file",
-          "detail": "Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.",
+          "label": "1 statically related test-like path",
+          "detail": "Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.",
           "confidence": "medium"
         },
         {
@@ -107,7 +107,8 @@
         }
       ],
       "limitations": [
-        "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        "Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.",
+        "1 statically related test-like path was not qualified by a recognized runner convention or configuration."
       ]
     }
   ],
@@ -130,8 +131,8 @@
       ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 145,
-      "output": "✔ service boots (0.274ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.593333",
+      "durationMs": 143,
+      "output": "✔ service boots (0.274ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 36.58975",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     }

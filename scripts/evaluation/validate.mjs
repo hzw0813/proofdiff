@@ -8,6 +8,20 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const readJson = async (relative) => JSON.parse(await readFile(path.join(projectRoot, relative), "utf8"));
+function candidateOptions(argv) {
+  const options = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    const value = argv[index + 1];
+    if (argument !== "--candidate-external" && argument !== "--candidate-controlled") throw new Error(`Unknown argument: ${argument}`);
+    if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
+    options[argument === "--candidate-external" ? "external" : "controlled"] = value;
+    index += 1;
+  }
+  if ((options.external === undefined) !== (options.controlled === undefined)) throw new Error("Candidate validation requires both --candidate-external and --candidate-controlled");
+  return options;
+}
+const candidates = candidateOptions(process.argv.slice(2));
 const [manifest, resultsSchema, controlledSchema, results, controlled] = await Promise.all([
   readJson("evaluation/corpus.json"),
   readJson("evaluation/results.schema.json"),
@@ -165,3 +179,39 @@ const clear = results.cases.filter((item) => item.relationship.groundTruthStreng
 const found = clear.filter((item) => item.relationship.classification === "clearly-expected-found").length;
 const missed = clear.length - found;
 process.stdout.write(`Evaluation artifacts valid: ${results.cases.length} external cases (${found} clear found, ${missed} clear missed, ${results.cases.length - clear.length} ambiguous) and ${controlled.cases.length} controlled cases.\n`);
+
+if (candidates.external && candidates.controlled) {
+  const [candidateExternal, candidateControlled] = await Promise.all([
+    JSON.parse(await readFile(path.resolve(candidates.external), "utf8")),
+    JSON.parse(await readFile(path.resolve(candidates.controlled), "utf8")),
+  ]);
+  assert.deepEqual(validateAgainstSchema(candidateExternal, resultsSchema, resultsSchema), [], "candidate external results must conform to results.schema.json");
+  assert.deepEqual(validateAgainstSchema(candidateControlled, controlledSchema, controlledSchema), [], "candidate controlled results must conform to controlled-results.schema.json");
+  assert.equal(candidateExternal.proofdiff.commit, candidateControlled.proofdiff.commit);
+  assert.notEqual(candidateExternal.proofdiff.commit, manifest.proofdiffBaseline.commit);
+  assert.deepEqual(candidateExternal.cases.map((item) => item.id), manifest.cases.map((item) => item.id));
+  assert.ok(candidateExternal.cases.every((item) => item.evaluationMode === "static-only" && item.trust.repositoryCodeExecuted === false));
+  assert.ok(candidateExternal.cases.every((item) => item.assessment.status === "unknown"));
+  const expectedCandidateControls = [
+    "relative-targeted-pass",
+    "typescript-alias-unresolved",
+    "directory-support-file-targeted-pass",
+    "root-test-js-qualified-pass",
+    "explicit-custom-node-path",
+    "opaque-passing-command",
+    "targeted-verification-failure",
+    "node-zero-test-target",
+    "node-filtered-zero-target",
+    "node-all-skipped-target",
+    "unittest-positive-target",
+    "unittest-zero-target",
+    "mixed-batch-attribution",
+    "unsupported-ambiguous-file",
+  ];
+  assert.deepEqual(candidateControlled.cases.map((item) => item.id), expectedCandidateControls);
+  assert.ok(candidateControlled.cases.every((item) => item.verdict === "passed"));
+  const candidateSerialized = JSON.stringify({ candidateExternal, candidateControlled });
+  for (const prefix of [os.homedir(), "/Users/", "C:\\Users\\", `${projectRoot}${path.sep}`]) assert.equal(candidateSerialized.includes(prefix), false, `candidate evaluation contains a machine-specific path prefix: ${prefix}`);
+  assert.equal(/(?:ghp|github_pat|glpat|sk_live|sk_test|npm)_[A-Za-z0-9_-]{12,}/.test(candidateSerialized), false, "candidate evaluation contains a token-like secret");
+  process.stdout.write(`Candidate evaluation artifacts valid at ${candidateExternal.proofdiff.commit}: ${candidateExternal.cases.length} external and ${candidateControlled.cases.length} controlled cases.\n`);
+}

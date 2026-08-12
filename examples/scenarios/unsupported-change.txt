@@ -3,11 +3,11 @@ ProofDiff  Evidence for this change
 policy-engine  working tree vs HEAD  @ 87f1bc06c60f
 
 UNKNOWN  ·  highest risk HIGH  ·  1 file  ·  0 symbols
-0 related test-file passes  0 partial  0 unverified  1 unknown  0 failed
+0 qualified target passes  0 partial  0 unverified  1 unknown  0 failed
 
 UNKNOWN    policy/access.rego  HIGH 75
   modified, +4/-0  ·  no changed symbol identified
-  Review: No verification command was run for this change. No statically related test file was found.
+  Review: No verification command was run for this change. No statically related test-like path was found.
   Evidence: none observed; status is not a safety claim.
 
 Checks
@@ -16,4 +16,4 @@ Checks
 Trust boundary: No repository code was executed. Git inspection and language parsing were performed locally.
 Note: Check execution was requested, but no supported checks were discovered.
 
-Related test file passed means that file was supplied to a recognized runner and the invocation passed—not that changed symbols or lines ran.
+Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target—not changed-symbol or changed-line coverage.

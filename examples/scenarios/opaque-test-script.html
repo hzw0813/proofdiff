@@ -31,7 +31,7 @@
     <div class="meta"><span>access-control</span><span>working tree vs HEAD</span><span>2026-08-12T00:00:00.000Z</span><span>4f059fcf9ab5</span></div>
   </header>
   <section class="overview panel">
-    <div class="overall"><span class="status-icon partially-verified">◐</span><div><h2>Partially verified</h2><p>1 changed files · 1 changed symbols · highest risk medium</p><p>Some applicable evidence passed, but no statically related test-file execution was observed.</p></div></div>
+    <div class="overall"><span class="status-icon partially-verified">◐</span><div><h2>Partially verified</h2><p>1 changed files · 1 changed symbols · highest risk medium</p><p>Some applicable evidence passed, but no qualified related target produced a non-skipped passing test observation.</p></div></div>
     <div class="metrics"><button class="metric" data-filter-status="verified"><span class="dot verified"></span><strong>0</strong><small>Related test file passed</small></button><button class="metric" data-filter-status="partially-verified"><span class="dot partially-verified"></span><strong>1</strong><small>Partially verified</small></button><button class="metric" data-filter-status="unverified"><span class="dot unverified"></span><strong>0</strong><small>Unverified</small></button><button class="metric" data-filter-status="unknown"><span class="dot unknown"></span><strong>0</strong><small>Unknown</small></button><button class="metric" data-filter-status="verification-failed"><span class="dot verification-failed"></span><strong>0</strong><small>Verification failed</small></button></div>
   </section>
   <aside class="trust"><b>Repository code ran</b><p>Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox.</p></aside>
@@ -44,18 +44,18 @@
       <div class="file-badges"><span class="status partially-verified">Partially verified</span><span class="risk medium">medium risk · 37</span></div>
     </div>
     <div class="symbols"><span class="chip">function · canDelete</span></div>
-    <p class="file-scope">Some applicable evidence passed, but no statically related test-file execution was observed.</p>
+    <p class="file-scope">Some applicable evidence passed, but no qualified related target produced a non-skipped passing test observation.</p>
     <details>
       <summary>Inspect evidence and reasoning</summary>
       <div class="detail-grid">
-        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence passing-check"><span>test: test</span><p>Repository test command passed, but ProofDiff did not observe which test files it executed.</p><small>high confidence · passing check</small></li><li class="evidence related-test"><span>1 related test file</span><p>Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li></ul></div>
+        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence passing-check"><span>test: test</span><p>Repository test command passed, but ProofDiff did not observe which test files it executed.</p><small>high confidence · passing check</small></li><li class="evidence related-test"><span>1 statically related test-like path</span><p>Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li></ul></div>
         <div><h4>Why review this</h4><ul><li>Evidence exists but is not connected to a related passing test.</li><li>Security-sensitive path name warrants focused human review.</li></ul></div>
-        <div><h4>Targeted test outcomes</h4><p class="muted">None observed. Related-file presence alone cannot produce “Related test file passed.”</p></div><div><h4>Statically related tests <span class="count">1</span></h4><ul class="paths"><li>test/access.test.js</li></ul></div><div><h4>Calls in changed lines</h4><p class="muted">No parser-observed call site intersects the changed lines.</p></div><div><h4>Estimated impact <span class="count">1</span></h4><ul class="paths"><li>test/access.test.js</li></ul></div><div class="limitations"><h4>Limits</h4><ul><li>Related test files were found statically, but no recognized runner was observed executing them successfully.</li></ul></div>
+        <div><h4>Targeted test outcomes</h4><p class="muted">None observed. Related-file presence alone cannot produce “Related test file passed.”</p></div><div><h4>Statically related test-like paths <span class="count">1</span></h4><ul class="paths"><li>test/access.test.js</li></ul></div><div><h4>Calls in changed lines</h4><p class="muted">No parser-observed call site intersects the changed lines.</p></div><div><h4>Estimated impact <span class="count">1</span></h4><ul class="paths"><li>test/access.test.js</li></ul></div><div class="limitations"><h4>Limits</h4><ul><li>Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.</li><li>1 statically related test-like path was not qualified by a recognized runner convention or configuration.</li></ul></div>
       </div>
     </details>
   </article></div>
   </section>
-  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status passed">passed</span><strong>test: test</strong><span>145 ms</span></summary><div><p>The command exited successfully. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✔ service boots (0.274ms)
+  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status passed">passed</span><strong>test: test</strong><span>143 ms</span></summary><div><p>The command exited successfully. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✔ service boots (0.274ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 1
@@ -63,8 +63,8 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 37.593333</pre></div></details></div></section>
-  <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It records a successful targeted test-file invocation—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety. Inference and limitations are labeled separately.</p>
+ℹ duration_ms 36.58975</pre></div></details></div></section>
+  <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It requires a static relationship, runner qualification, explicit target supply, and at least one non-skipped passing test observed for that exact path—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety.</p>
   <footer>Generated locally by ProofDiff 0.1.0 · no telemetry · schema 1.0</footer>
 </main>
 <script>

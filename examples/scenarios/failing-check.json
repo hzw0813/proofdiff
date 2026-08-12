@@ -93,22 +93,15 @@
       "evidence": [
         {
           "kind": "failing-check",
-          "label": "test: test",
-          "detail": "The command exited with code 1.",
-          "confidence": "high",
-          "checkId": "js:test:test"
-        },
-        {
-          "kind": "failing-check",
-          "label": "targeted node-test: 1 related test file",
-          "detail": "The command exited with code 1. ProofDiff explicitly supplied 1 related test file to the recognized runner.",
+          "label": "targeted node-test: 1 qualified test target: test/tax.test.js",
+          "detail": "ProofDiff explicitly supplied this runner-qualified target. The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.",
           "confidence": "high",
           "checkId": "js:test:test:targeted"
         },
         {
           "kind": "related-test",
-          "label": "1 related test file",
-          "detail": "Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.",
+          "label": "1 statically related test-like path",
+          "detail": "Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.",
           "confidence": "medium"
         },
         {
@@ -131,7 +124,7 @@
         }
       ],
       "limitations": [
-        "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        "Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation."
       ]
     }
   ],
@@ -151,18 +144,19 @@
       "targetRunner": "node-test",
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 147,
-      "output": "✖ applies the configured twenty-percent tax (0.559084ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 38.782833\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.559084ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "durationMs": 148,
+      "output": "✖ applies the configured twenty-percent tax (0.590708ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 39.971292\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.590708ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
       "outputTruncated": false,
       "explanation": "The command exited with code 1."
     },
     {
       "id": "js:test:test:targeted",
-      "label": "targeted node-test: 1 related test file",
+      "label": "targeted node-test: 1 qualified test target",
       "kind": "test",
       "command": "node",
       "args": [
         "--test",
+        "--test-reporter=data:text/javascript,import%7BwriteSync%7Dfrom%22node%3Afs%22%3Bimport%7Bresolve%7Dfrom%22node%3Apath%22%3Bimport%7BReadable%7Dfrom%22node%3Astream%22%3Bimport%7BfileURLToPath%7Dfrom%22node%3Aurl%22%3Bimport%7Bspec%7Dfrom%22node%3Atest%2Freporters%22%3Bconst%20targets%3D%5B%22test%2Ftax.test.js%22%5D%3Bconst%20records%3Dnew%20Map(targets.map(runnerPath%3D%3E%5Bresolve(runnerPath)%2C%7BrunnerPath%2Cpassed%3A0%2Cfailed%3A0%2Cskipped%3A0%2Ctests%3A0%7D%5D))%3Bexport%20default%20async%20function*proofdiff(source)%7Basync%20function*inspect()%7Bfor%20await(const%20event%20of%20source)%7Bif(event.type%3D%3D%3D%22test%3Asummary%22%26%26event.data.file)%7Bconst%20raw%3Devent.data.file%3Bconst%20key%3Dresolve(raw.startsWith(%22file%3A%22)%3FfileURLToPath(raw)%3Araw)%3Bconst%20item%3Drecords.get(key)%3Bif(item)Object.assign(item%2C%7Bpassed%3Aevent.data.counts.passed%2Cfailed%3Aevent.data.counts.failed%2Cskipped%3Aevent.data.counts.skipped%2Ctests%3Aevent.data.counts.tests%7D)%7Dyield%20event%7D%7Dfor%20await(const%20output%20of%20Readable.from(inspect()).compose(spec()))yield%20output%3Btry%7BwriteSync(3%2CJSON.stringify(%7Bversion%3A1%2Crunner%3A%22node-test%22%2Cfiles%3A%5B...records.values()%5D%7D)%2B%22%5Cn%22)%7Dcatch%7B%7D%7D",
         "test/tax.test.js"
       ],
       "origin": "ProofDiff targeted execution derived from package.json script \"test\"",
@@ -171,12 +165,31 @@
       "targetFiles": [
         "test/tax.test.js"
       ],
+      "targetQualifications": [
+        {
+          "path": "test/tax.test.js",
+          "runnerPath": "test/tax.test.js",
+          "basis": "runner-default-pattern",
+          "confidence": "high",
+          "detail": "test/tax.test.js matches a documented default node --test discovery pattern.",
+          "limitation": "Default-pattern qualification establishes runner identity, not test execution or behavioral coverage."
+        }
+      ],
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 65,
-      "output": "✖ applies the configured twenty-percent tax (0.56275ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 36.107125\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.56275ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "durationMs": 68,
+      "output": "✖ applies the configured twenty-percent tax (0.560958ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.306292\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.560958ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
       "outputTruncated": false,
-      "explanation": "The command exited with code 1."
+      "explanation": "The command exited with code 1. Target observations: 0 passed, 1 failed, 0 skipped, 0 zero-test, 0 unavailable.",
+      "targetObservations": [
+        {
+          "path": "test/tax.test.js",
+          "runnerPath": "test/tax.test.js",
+          "outcome": "failed",
+          "testsObserved": 1,
+          "detail": "The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target."
+        }
+      ]
     }
   ],
   "discoveredChecks": [
@@ -196,11 +209,12 @@
     },
     {
       "id": "js:test:test:targeted",
-      "label": "targeted node-test: 1 related test file",
+      "label": "targeted node-test: 1 qualified test target",
       "kind": "test",
       "command": "node",
       "args": [
         "--test",
+        "--test-reporter=data:text/javascript,import%7BwriteSync%7Dfrom%22node%3Afs%22%3Bimport%7Bresolve%7Dfrom%22node%3Apath%22%3Bimport%7BReadable%7Dfrom%22node%3Astream%22%3Bimport%7BfileURLToPath%7Dfrom%22node%3Aurl%22%3Bimport%7Bspec%7Dfrom%22node%3Atest%2Freporters%22%3Bconst%20targets%3D%5B%22test%2Ftax.test.js%22%5D%3Bconst%20records%3Dnew%20Map(targets.map(runnerPath%3D%3E%5Bresolve(runnerPath)%2C%7BrunnerPath%2Cpassed%3A0%2Cfailed%3A0%2Cskipped%3A0%2Ctests%3A0%7D%5D))%3Bexport%20default%20async%20function*proofdiff(source)%7Basync%20function*inspect()%7Bfor%20await(const%20event%20of%20source)%7Bif(event.type%3D%3D%3D%22test%3Asummary%22%26%26event.data.file)%7Bconst%20raw%3Devent.data.file%3Bconst%20key%3Dresolve(raw.startsWith(%22file%3A%22)%3FfileURLToPath(raw)%3Araw)%3Bconst%20item%3Drecords.get(key)%3Bif(item)Object.assign(item%2C%7Bpassed%3Aevent.data.counts.passed%2Cfailed%3Aevent.data.counts.failed%2Cskipped%3Aevent.data.counts.skipped%2Ctests%3Aevent.data.counts.tests%7D)%7Dyield%20event%7D%7Dfor%20await(const%20output%20of%20Readable.from(inspect()).compose(spec()))yield%20output%3Btry%7BwriteSync(3%2CJSON.stringify(%7Bversion%3A1%2Crunner%3A%22node-test%22%2Cfiles%3A%5B...records.values()%5D%7D)%2B%22%5Cn%22)%7Dcatch%7B%7D%7D",
         "test/tax.test.js"
       ],
       "origin": "ProofDiff targeted execution derived from package.json script \"test\"",
@@ -208,6 +222,16 @@
       "targetRunner": "node-test",
       "targetFiles": [
         "test/tax.test.js"
+      ],
+      "targetQualifications": [
+        {
+          "path": "test/tax.test.js",
+          "runnerPath": "test/tax.test.js",
+          "basis": "runner-default-pattern",
+          "confidence": "high",
+          "detail": "test/tax.test.js matches a documented default node --test discovery pattern.",
+          "limitation": "Default-pattern qualification establishes runner identity, not test execution or behavioral coverage."
+        }
       ]
     }
   ],

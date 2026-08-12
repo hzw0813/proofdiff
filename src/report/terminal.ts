@@ -55,7 +55,7 @@ export function renderTerminalReport(report: AnalysisReport, options: TerminalRe
   const status = statusColor(report.summary.overallStatus, colors)(labels[report.summary.overallStatus]);
   const risk = report.summary.highestRisk ? riskColor(report.summary.highestRisk, colors)(report.summary.highestRisk.toUpperCase()) : "NONE";
   output.push(`${colors.bold(status)}  ·  highest risk ${colors.bold(risk)}  ·  ${plural(report.summary.filesChanged, "file")}  ·  ${plural(report.summary.symbolsChanged, "symbol")}`);
-  output.push(`${report.summary.counts.verified} related test-file pass${report.summary.counts.verified === 1 ? "" : "es"}  ${report.summary.counts["partially-verified"]} partial  ${report.summary.counts.unverified} unverified  ${report.summary.counts.unknown} unknown  ${report.summary.counts["verification-failed"]} failed`);
+  output.push(`${report.summary.counts.verified} qualified target pass${report.summary.counts.verified === 1 ? "" : "es"}  ${report.summary.counts["partially-verified"]} partial  ${report.summary.counts.unverified} unverified  ${report.summary.counts.unknown} unknown  ${report.summary.counts["verification-failed"]} failed`);
   output.push("");
 
   if (report.assessments.length === 0) {
@@ -93,7 +93,7 @@ export function renderTerminalReport(report: AnalysisReport, options: TerminalRe
       const targeted = assessment.testExecutions.slice(0, 4).map((execution) => `${execution.path} (${execution.status})`).join(", ");
       output.push(`  ${colors.red("Targeted tests:")} ${truncate(safe(targeted), width - 19)}${assessment.testExecutions.length > 4 ? ` (+${assessment.testExecutions.length - 4})` : ""}`);
     } else if (assessment.relatedTests.length > 0) {
-      output.push(`  ${colors.cyan("Related tests:")} ${truncate(safe(assessment.relatedTests.slice(0, 4).join(", ")), width - 18)}${assessment.relatedTests.length > 4 ? ` (+${assessment.relatedTests.length - 4})` : ""} ${colors.dim("(not observed executing)")}`);
+      output.push(`  ${colors.cyan("Test-like paths:")} ${truncate(safe(assessment.relatedTests.slice(0, 4).join(", ")), width - 20)}${assessment.relatedTests.length > 4 ? ` (+${assessment.relatedTests.length - 4})` : ""} ${colors.dim("(not observed passing)")}`);
     }
     output.push("");
   }
@@ -104,13 +104,18 @@ export function renderTerminalReport(report: AnalysisReport, options: TerminalRe
   } else {
     for (const check of report.checks) {
       const marker = check.status === "passed" ? colors.green("PASS") : check.status === "not-run" ? colors.gray("NOT RUN") : colors.red(check.status.toUpperCase());
-      output.push(`  ${marker.padEnd(options.color ? 18 : 9)} ${safe(check.label)}  ${colors.dim(safe(check.origin))}${check.durationMs ? `  ${check.durationMs}ms` : ""}`);
+      const observations = check.targetObservations ?? [];
+      const passed = observations.filter((item) => item.outcome === "passed").length;
+      const failed = observations.filter((item) => item.outcome === "failed").length;
+      const inconclusive = observations.length - passed - failed;
+      const observed = observations.length > 0 ? `  ${colors.dim(`targets +${passed}/-${failed}/?${inconclusive}`)}` : "";
+      output.push(`  ${marker.padEnd(options.color ? 18 : 9)} ${safe(check.label)}  ${colors.dim(safe(check.origin))}${check.durationMs ? `  ${check.durationMs}ms` : ""}${observed}`);
     }
   }
   output.push("");
   output.push(`${colors.bold("Trust boundary:")} ${safe(report.trust.statement)}`);
   for (const note of report.notes.slice(0, 5)) output.push(`${colors.dim("Note:")} ${safe(note)}`);
   output.push("");
-  output.push(colors.dim("Related test file passed means that file was supplied to a recognized runner and the invocation passed—not that changed symbols or lines ran."));
+  output.push(colors.dim("Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target—not changed-symbol or changed-line coverage."));
   return output.join("\n");
 }

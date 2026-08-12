@@ -66,6 +66,23 @@ export interface SourceAnalysis {
 export type CheckKind = "test" | "typecheck" | "lint" | "other";
 export type CheckRunStatus = "passed" | "failed" | "error" | "timed-out" | "not-run";
 
+export interface TestTargetQualification {
+  path: string;
+  runnerPath: string;
+  basis: "runner-default-pattern" | "runner-config-pattern" | "runner-explicit-path" | "compiled-source-map";
+  confidence: Confidence;
+  detail: string;
+  limitation: string;
+}
+
+export interface TestTargetObservation {
+  path: string;
+  runnerPath: string;
+  outcome: "passed" | "failed" | "zero-tests" | "skipped" | "not-observed";
+  testsObserved: number;
+  detail: string;
+}
+
 export interface CheckDefinition {
   id: string;
   label: string;
@@ -75,9 +92,11 @@ export interface CheckDefinition {
   origin: string;
   executesRepositoryCode: boolean;
   targetRunner?: "node-test" | "pytest" | "unittest";
+  targetRunnerArgs?: string[];
   targetPattern?: string;
   targetPatterns?: string[];
   targetFiles?: string[];
+  targetQualifications?: TestTargetQualification[];
 }
 
 export interface CheckResult extends CheckDefinition {
@@ -87,6 +106,7 @@ export interface CheckResult extends CheckDefinition {
   output: string;
   outputTruncated: boolean;
   explanation: string;
+  targetObservations?: TestTargetObservation[];
 }
 
 export interface EvidenceItem {

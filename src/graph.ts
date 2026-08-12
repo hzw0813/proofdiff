@@ -1,12 +1,14 @@
 import path from "node:path";
 import { analyzeSource } from "./adapters/index.js";
 import type { ChangedFile, SourceAnalysis, SymbolInfo } from "./types.js";
-import { isTestFile, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
+import { isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
 
 export interface RepositoryGraph {
   analyses: Map<string, SourceAnalysis>;
   dependencies: Map<string, Set<string>>;
   dependents: Map<string, Set<string>>;
+  testLikeFiles: Set<string>;
+  /** @deprecated Use testLikeFiles; this alias is retained for evaluation compatibility. */
   testFiles: Set<string>;
   diagnostics: string[];
 }
@@ -78,7 +80,8 @@ export async function buildRepositoryGraph(root: string, repositoryFiles: string
     }
   }
 
-  return { analyses, dependencies, dependents, testFiles: new Set(sourceFiles.filter(isTestFile)), diagnostics };
+  const testLikeFiles = new Set(sourceFiles.filter(isTestLikePath));
+  return { analyses, dependencies, dependents, testLikeFiles, testFiles: testLikeFiles, diagnostics };
 }
 
 export function impactedFiles(graph: RepositoryGraph, file: string, limit = 250): { files: string[]; truncated: boolean } {

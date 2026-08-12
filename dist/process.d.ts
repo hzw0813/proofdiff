@@ -5,6 +5,8 @@ export interface ProcessResult {
     timedOut: boolean;
     durationMs: number;
     truncated: boolean;
+    observation?: string;
+    observationTruncated?: boolean;
     error?: string;
 }
 export interface ProcessOptions {
@@ -13,6 +15,8 @@ export interface ProcessOptions {
     maxOutputBytes?: number;
     env?: NodeJS.ProcessEnv;
     stdin?: string;
+    observe?: boolean;
+    maxObservationBytes?: number;
 }
 export declare function runProcess(command: string, args: string[], options: ProcessOptions): Promise<ProcessResult>;
 export declare function safeExecutablePath(): string;

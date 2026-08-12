@@ -118,7 +118,7 @@ function pathGroup(file) {
 }
 
 function hasTestFilename(file) {
-  return /(?:^|\/)(?:test_[^/]+|[^/]+_(?:test|spec)|[^/]+\.(?:test|spec))\.(?:[cm]?[jt]sx?|pyi?)$/i.test(file);
+  return /(?:^|\/)(?:test|test_[^/]+|test-[^/]+|[^/]+-(?:test|spec)|[^/]+_(?:test|spec)|[^/]+\.(?:test|spec))\.(?:[cm]?[jt]sx?|pyi?)$/i.test(file);
 }
 
 function assertManifest(manifest) {
@@ -150,7 +150,7 @@ if (parsed === "help") {
 
 const cacheRoot = safeScratchRoot(parsed.cache);
 const proofdiffRoot = path.resolve(parsed.proofdiffRoot);
-const outputPath = path.resolve(parsed.output ?? path.join(projectRoot, "evaluation", "results.json"));
+const outputPath = path.resolve(parsed.output ?? path.join(projectRoot, "evaluation", "results.candidate.json"));
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 assertManifest(manifest);
 await mkdir(cacheRoot, { recursive: true });

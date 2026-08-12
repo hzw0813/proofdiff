@@ -86,7 +86,7 @@
       "riskScore": 58,
       "reasons": [
         "Executed checks provided no applicable successful evidence.",
-        "No statically related test file was found."
+        "No statically related test-like path was found."
       ],
       "evidence": [
         {
@@ -110,7 +110,7 @@
       ],
       "limitations": [
         "Deleted symbol names were inferred from removed declaration lines; ranges and full structure are unavailable.",
-        "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+        "No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically."
       ]
     },
     {
@@ -189,22 +189,15 @@
           "checkId": "js:test:test"
         },
         {
-          "kind": "passing-check",
-          "label": "targeted node-test: 1 related test file",
-          "detail": "Passed with 1 explicitly targeted test file. This observes a test-file invocation and successful runner exit, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
-          "confidence": "high",
-          "checkId": "js:test:test:targeted"
-        },
-        {
           "kind": "related-test",
-          "label": "1 related test file",
-          "detail": "Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.",
+          "label": "1 statically related test-like path",
+          "detail": "Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.",
           "confidence": "medium"
         },
         {
           "kind": "executed-test",
-          "label": "1 related test file explicitly executed",
-          "detail": "ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is test-file execution evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
+          "label": "1 qualified related target observed passing",
+          "detail": "ProofDiff explicitly supplied each qualified target and observed at least one non-skipped passing test for that exact path. This is file-scoped test evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
           "confidence": "high"
         },
         {
@@ -227,7 +220,7 @@
         }
       ],
       "limitations": [
-        "Related test files executed successfully, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed."
+        "Qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed."
       ]
     }
   ],
@@ -248,17 +241,18 @@
       "status": "passed",
       "exitCode": 0,
       "durationMs": 151,
-      "output": "✔ gold customers receive the documented discount (0.3035ms)\n✔ unknown tiers pay the full subtotal (0.050291ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 39.990375",
+      "output": "✔ gold customers receive the documented discount (0.309334ms)\n✔ unknown tiers pay the full subtotal (0.049208ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 39.691708",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     },
     {
       "id": "js:test:test:targeted",
-      "label": "targeted node-test: 1 related test file",
+      "label": "targeted node-test: 1 qualified test target",
       "kind": "test",
       "command": "node",
       "args": [
         "--test",
+        "--test-reporter=data:text/javascript,import%7BwriteSync%7Dfrom%22node%3Afs%22%3Bimport%7Bresolve%7Dfrom%22node%3Apath%22%3Bimport%7BReadable%7Dfrom%22node%3Astream%22%3Bimport%7BfileURLToPath%7Dfrom%22node%3Aurl%22%3Bimport%7Bspec%7Dfrom%22node%3Atest%2Freporters%22%3Bconst%20targets%3D%5B%22test%2Fcheckout.test.js%22%5D%3Bconst%20records%3Dnew%20Map(targets.map(runnerPath%3D%3E%5Bresolve(runnerPath)%2C%7BrunnerPath%2Cpassed%3A0%2Cfailed%3A0%2Cskipped%3A0%2Ctests%3A0%7D%5D))%3Bexport%20default%20async%20function*proofdiff(source)%7Basync%20function*inspect()%7Bfor%20await(const%20event%20of%20source)%7Bif(event.type%3D%3D%3D%22test%3Asummary%22%26%26event.data.file)%7Bconst%20raw%3Devent.data.file%3Bconst%20key%3Dresolve(raw.startsWith(%22file%3A%22)%3FfileURLToPath(raw)%3Araw)%3Bconst%20item%3Drecords.get(key)%3Bif(item)Object.assign(item%2C%7Bpassed%3Aevent.data.counts.passed%2Cfailed%3Aevent.data.counts.failed%2Cskipped%3Aevent.data.counts.skipped%2Ctests%3Aevent.data.counts.tests%7D)%7Dyield%20event%7D%7Dfor%20await(const%20output%20of%20Readable.from(inspect()).compose(spec()))yield%20output%3Btry%7BwriteSync(3%2CJSON.stringify(%7Bversion%3A1%2Crunner%3A%22node-test%22%2Cfiles%3A%5B...records.values()%5D%7D)%2B%22%5Cn%22)%7Dcatch%7B%7D%7D",
         "test/checkout.test.js"
       ],
       "origin": "ProofDiff targeted execution derived from package.json script \"test\"",
@@ -267,12 +261,31 @@
       "targetFiles": [
         "test/checkout.test.js"
       ],
+      "targetQualifications": [
+        {
+          "path": "test/checkout.test.js",
+          "runnerPath": "test/checkout.test.js",
+          "basis": "runner-default-pattern",
+          "confidence": "high",
+          "detail": "test/checkout.test.js matches a documented default node --test discovery pattern.",
+          "limitation": "Default-pattern qualification establishes runner identity, not test execution or behavioral coverage."
+        }
+      ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 63,
-      "output": "✔ gold customers receive the documented discount (0.301625ms)\n✔ unknown tiers pay the full subtotal (0.051041ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 35.775917",
+      "durationMs": 69,
+      "output": "✔ gold customers receive the documented discount (0.321875ms)\n✔ unknown tiers pay the full subtotal (0.0555ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 38.979",
       "outputTruncated": false,
-      "explanation": "The command exited successfully."
+      "explanation": "The command exited successfully. Target observations: 1 passed, 0 failed, 0 skipped, 0 zero-test, 0 unavailable.",
+      "targetObservations": [
+        {
+          "path": "test/checkout.test.js",
+          "runnerPath": "test/checkout.test.js",
+          "outcome": "passed",
+          "testsObserved": 2,
+          "detail": "The runner observed 2 passed, 0 failed, and 0 skipped tests for this exact target."
+        }
+      ]
     }
   ],
   "discoveredChecks": [
@@ -292,11 +305,12 @@
     },
     {
       "id": "js:test:test:targeted",
-      "label": "targeted node-test: 1 related test file",
+      "label": "targeted node-test: 1 qualified test target",
       "kind": "test",
       "command": "node",
       "args": [
         "--test",
+        "--test-reporter=data:text/javascript,import%7BwriteSync%7Dfrom%22node%3Afs%22%3Bimport%7Bresolve%7Dfrom%22node%3Apath%22%3Bimport%7BReadable%7Dfrom%22node%3Astream%22%3Bimport%7BfileURLToPath%7Dfrom%22node%3Aurl%22%3Bimport%7Bspec%7Dfrom%22node%3Atest%2Freporters%22%3Bconst%20targets%3D%5B%22test%2Fcheckout.test.js%22%5D%3Bconst%20records%3Dnew%20Map(targets.map(runnerPath%3D%3E%5Bresolve(runnerPath)%2C%7BrunnerPath%2Cpassed%3A0%2Cfailed%3A0%2Cskipped%3A0%2Ctests%3A0%7D%5D))%3Bexport%20default%20async%20function*proofdiff(source)%7Basync%20function*inspect()%7Bfor%20await(const%20event%20of%20source)%7Bif(event.type%3D%3D%3D%22test%3Asummary%22%26%26event.data.file)%7Bconst%20raw%3Devent.data.file%3Bconst%20key%3Dresolve(raw.startsWith(%22file%3A%22)%3FfileURLToPath(raw)%3Araw)%3Bconst%20item%3Drecords.get(key)%3Bif(item)Object.assign(item%2C%7Bpassed%3Aevent.data.counts.passed%2Cfailed%3Aevent.data.counts.failed%2Cskipped%3Aevent.data.counts.skipped%2Ctests%3Aevent.data.counts.tests%7D)%7Dyield%20event%7D%7Dfor%20await(const%20output%20of%20Readable.from(inspect()).compose(spec()))yield%20output%3Btry%7BwriteSync(3%2CJSON.stringify(%7Bversion%3A1%2Crunner%3A%22node-test%22%2Cfiles%3A%5B...records.values()%5D%7D)%2B%22%5Cn%22)%7Dcatch%7B%7D%7D",
         "test/checkout.test.js"
       ],
       "origin": "ProofDiff targeted execution derived from package.json script \"test\"",
@@ -304,6 +318,16 @@
       "targetRunner": "node-test",
       "targetFiles": [
         "test/checkout.test.js"
+      ],
+      "targetQualifications": [
+        {
+          "path": "test/checkout.test.js",
+          "runnerPath": "test/checkout.test.js",
+          "basis": "runner-default-pattern",
+          "confidence": "high",
+          "detail": "test/checkout.test.js matches a documented default node --test discovery pattern.",
+          "limitation": "Default-pattern qualification establishes runner identity, not test execution or behavioral coverage."
+        }
       ]
     }
   ],

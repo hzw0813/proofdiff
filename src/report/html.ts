@@ -10,14 +10,23 @@ const statusLabels: Record<VerificationStatus, string> = {
 };
 
 const statusScope: Record<VerificationStatus, string> = {
-  verified: "Observed: a statically related test file was explicitly supplied to a recognized runner and the invocation passed. Not observed: changed-symbol or changed-line execution.",
-  "partially-verified": "Some applicable evidence passed, but no statically related test-file execution was observed.",
+  verified: "Observed: a statically related, runner-qualified target was explicitly supplied and produced at least one non-skipped passing test for that exact path. Not observed: changed-symbol or changed-line execution.",
+  "partially-verified": "Some applicable evidence passed, but no qualified related target produced a non-skipped passing test observation.",
   unverified: "Checks ran, but supplied no applicable successful evidence for this file.",
   unknown: "No applicable verification command ran for this file.",
   "verification-failed": "An applicable verification command failed, errored, or timed out.",
 };
 
 function e(value: unknown): string { return escapeHtml(String(value)); }
+
+function displayedCommand(report: AnalysisReport["checks"][number]): string {
+  const args = report.args.map((argument, index) => {
+    if (argument.startsWith("--test-reporter=data:")) return "--test-reporter=<ProofDiff observer>";
+    if (report.targetRunner && report.args[index - 1] === "-c") return `<ProofDiff ${report.targetRunner} observer>`;
+    return argument;
+  });
+  return [report.command, ...args].join(" ");
+}
 
 function icon(status: VerificationStatus): string {
   if (status === "verified") return "✓";
@@ -41,8 +50,8 @@ function assessmentCard(item: FileAssessment): string {
     ? `<div><h4>Targeted test outcomes <span class="count">${item.testExecutions.length}</span></h4><ul class="paths execution-paths">${item.testExecutions.map((execution) => `<li class="${e(execution.status)}"><b>${e(execution.status)}</b> ${e(execution.path)}</li>`).join("")}</ul></div>`
     : `<div><h4>Targeted test outcomes</h4><p class="muted">None observed. Related-file presence alone cannot produce “Related test file passed.”</p></div>`;
   const related = item.relatedTests.length
-    ? `<div><h4>Statically related tests <span class="count">${item.relatedTests.length}</span></h4><ul class="paths">${item.relatedTests.map((value) => `<li>${e(value)}</li>`).join("")}</ul></div>`
-    : `<div><h4>Statically related tests</h4><p class="muted">None found through resolved static imports.</p></div>`;
+    ? `<div><h4>Statically related test-like paths <span class="count">${item.relatedTests.length}</span></h4><ul class="paths">${item.relatedTests.map((value) => `<li>${e(value)}</li>`).join("")}</ul></div>`
+    : `<div><h4>Statically related test-like paths</h4><p class="muted">None found through resolved static imports or runner qualification.</p></div>`;
   const impacted = item.impactedFiles.length
     ? `<div><h4>Estimated impact <span class="count">${item.impactedFiles.length}</span></h4><ul class="paths">${item.impactedFiles.slice(0, 20).map((value) => `<li>${e(value)}</li>`).join("")}${item.impactedFiles.length > 20 ? `<li>+ ${item.impactedFiles.length - 20} more</li>` : ""}</ul></div>`
     : `<div><h4>Estimated impact</h4><p class="muted">No dependent files resolved.</p></div>`;
@@ -73,7 +82,15 @@ export function renderHtmlReport(report: AnalysisReport): string {
   const countTiles = (["verified", "partially-verified", "unverified", "unknown", "verification-failed"] as const)
     .map((status) => `<button class="metric" data-filter-status="${status}"><span class="dot ${status}"></span><strong>${report.summary.counts[status]}</strong><small>${e(statusLabels[status])}</small></button>`).join("");
   const checkRows = report.checks.length
-    ? report.checks.map((check) => `<details class="check"><summary><span class="check-status ${e(check.status)}">${e(check.status)}</span><strong>${e(check.label)}</strong><span>${check.durationMs ? `${check.durationMs} ms` : e(check.origin)}</span></summary><div><p>${e(check.explanation)} ${e(check.origin)}.</p><code>${e([check.command, ...check.args].join(" "))}</code>${check.output ? `<pre>${e(check.output)}${check.outputTruncated ? "\n[output truncated]" : ""}</pre>` : ""}</div></details>`).join("")
+    ? report.checks.map((check) => {
+      const qualifications = check.targetQualifications?.length
+        ? `<h4>Target qualifications</h4><ul>${check.targetQualifications.map((item) => `<li><code>${e(item.path)}</code> → <code>${e(item.runnerPath)}</code> · ${e(item.basis)} (${e(item.confidence)})<br>${e(item.detail)} <span class="muted">${e(item.limitation)}</span></li>`).join("")}</ul>`
+        : "";
+      const observations = check.targetObservations?.length
+        ? `<h4>Target observations</h4><ul>${check.targetObservations.map((item) => `<li><b>${e(item.outcome)}</b> <code>${e(item.path)}</code> · ${item.testsObserved} non-skipped observed<br>${e(item.detail)}</li>`).join("")}</ul>`
+        : "";
+      return `<details class="check"><summary><span class="check-status ${e(check.status)}">${e(check.status)}</span><strong>${e(check.label)}</strong><span>${check.durationMs ? `${check.durationMs} ms` : e(check.origin)}</span></summary><div><p>${e(check.explanation)} ${e(check.origin)}.</p><code>${e(displayedCommand(check))}</code>${qualifications}${observations}${check.output ? `<pre>${e(check.output)}${check.outputTruncated ? "\n[output truncated]" : ""}</pre>` : ""}</div></details>`;
+    }).join("")
     : `<p class="empty-state">No supported checks were discovered.</p>`;
   const noteMarkup = report.notes.length ? `<section class="notes panel"><h2>Analysis notes</h2><ul>${report.notes.map((note) => `<li>${e(note)}</li>`).join("")}</ul></section>` : "";
   const cards = report.assessments.length ? report.assessments.map(assessmentCard).join("") : `<div class="empty-state panel">No changed files matched ${e(report.selection.description)}.</div>`;
@@ -124,7 +141,7 @@ export function renderHtmlReport(report: AnalysisReport): string {
     <div class="file-list" id="file-list">${cards}</div>
   </section>
   <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel">${checkRows}</div></section>
-${noteMarkup ? `  ${noteMarkup}\n` : ""}  <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It records a successful targeted test-file invocation—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety. Inference and limitations are labeled separately.</p>
+${noteMarkup ? `  ${noteMarkup}\n` : ""}  <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It requires a static relationship, runner qualification, explicit target supply, and at least one non-skipped passing test observed for that exact path—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety.</p>
   <footer>Generated locally by ProofDiff ${e(report.proofdiffVersion)} · no telemetry · schema ${e(report.schemaVersion)}</footer>
 </main>
 <script>

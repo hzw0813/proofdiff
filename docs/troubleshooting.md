@@ -40,11 +40,19 @@ ProofDiff deliberately recognizes a narrow set of conventional root-level test, 
 
 ## A passing test command is only “Partially verified”
 
-A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when it can explicitly pass a statically related test file to a recognized runner and observe a successful invocation. See [verification-model.md](verification-model.md) for supported runner shapes and limitations.
+A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when the exact statically related path is runner-qualified, explicitly supplied, and produces at least one non-skipped passing test observation with no relevant failure. See [verification-model.md](verification-model.md) for supported runner shapes and limitations.
+
+## A helper under `tests/` is related but not executed
+
+This is intentional. Directory placement is useful for static “test-like” discovery but does not establish runnable target identity. Node's default runner discovers JavaScript under `test/` (singular), not every arbitrary helper under `tests/`; pytest and unittest use their filename configuration/conventions. The report keeps the helper visible while explaining why it was not qualified.
+
+## A targeted check passed but the result is still partial or unverified
+
+Inspect `targetObservations` in JSON or expand the check in the HTML report. A runner process can succeed after collecting zero tests, filtering every test, or skipping every test. Missing, malformed, truncated, or unmatched observer records are also rejected. None of those outcomes produces `executedTests`. If another applicable opaque command passed the file is partial; otherwise it remains unverified.
 
 ## A related test file passed, but the changed symbol may not have run
 
-This is expected under the current file-level evidence model. ProofDiff observes that a statically related test file was explicitly supplied to a recognized runner and that the invocation succeeded. It does not ingest runtime coverage, so it cannot tell whether a changed symbol, line, branch, or relevant assertion executed. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
+This is expected under the current file-level evidence model. ProofDiff observes a runner-qualified exact target and at least one non-skipped passing test for that file. It does not ingest runtime coverage, so it cannot tell whether a changed symbol, line, branch, or relevant assertion executed. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
 
 ## Unexpected `node_modules` or generated files appear
 
