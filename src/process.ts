@@ -86,9 +86,16 @@ export async function runProcess(command: string, args: string[], options: Proce
       finish(null, error);
     };
 
+    const scheduleForcedFinish = (error?: string): void => {
+      if (settled) return;
+      if (terminationFallback !== undefined) clearTimeout(terminationFallback);
+      terminationFallback = setTimeout(() => forceTimedOutFinish(error), 1_000);
+    };
+
     timer = setTimeout(() => {
       timedOut = true;
       if (child.pid !== undefined && process.platform === "win32") {
+        let terminationError: string | undefined;
         const terminator = spawn("taskkill.exe", ["/pid", String(child.pid), "/T", "/F"], {
           env: options.env ?? process.env,
           shell: false,
@@ -96,17 +103,24 @@ export async function runProcess(command: string, args: string[], options: Proce
           windowsHide: true,
         });
         terminator.once("error", (error) => {
+          terminationError = `Could not terminate the timed-out process tree: ${error.message}`;
           child.kill();
-          forceTimedOutFinish(`Could not terminate the timed-out process tree: ${error.message}`);
+          scheduleForcedFinish(terminationError);
         });
-        terminator.once("close", () => {
+        terminator.once("close", (code) => {
+          if (code !== 0 && terminationError === undefined) {
+            terminationError = code === null
+              ? "Could not terminate the timed-out process tree: taskkill did not report success."
+              : `Could not terminate the timed-out process tree: taskkill exited with code ${String(code)}.`;
+          }
           child.kill();
-          forceTimedOutFinish();
+          scheduleForcedFinish(terminationError);
         });
         terminationFallback = setTimeout(() => {
+          terminationError = "Timed-out process-tree termination did not complete promptly.";
           terminator.kill();
           child.kill();
-          forceTimedOutFinish("Timed-out process-tree termination did not complete promptly.");
+          scheduleForcedFinish(terminationError);
         }, 2_000);
       } else if (child.pid !== undefined) {
         try { process.kill(-child.pid, "SIGTERM"); } catch { child.kill("SIGTERM"); }
