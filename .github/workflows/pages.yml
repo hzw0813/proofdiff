@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Prepare the truthful demo gallery
         shell: bash
         run: |
@@ -30,7 +30,7 @@ jobs:
           cp -R examples/. _site/
           cp examples/demo-gallery.html _site/index.html
           touch _site/.nojekyll
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
@@ -43,4 +43,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
