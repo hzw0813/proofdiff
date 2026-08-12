@@ -31,7 +31,7 @@ User-controlled revisions cannot begin with `-` or contain control/whitespace ch
 - supplies a minimal environment without inherited tokens or credentials;
 - replaces `HOME`/`USERPROFILE` with the temporary directory;
 - caps captured output and removes common secret patterns;
-- enforces a timeout and terminates the process group where supported.
+- enforces a timeout and terminates the descendant process tree with operating-system-native mechanisms.
 
 These measures are defense in depth, **not a sandbox**. A command can still read accessible files, use the network, spawn processes, exploit installed tools, or persist outside the repository. Use a disposable VM/container with network and secrets removed when executing checks from untrusted contributions. On pull requests from forks, keep `run-checks: false` unless the code has been reviewed.
 

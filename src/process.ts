@@ -76,7 +76,15 @@ export async function runProcess(command: string, args: string[], options: Proce
 
     const timer = setTimeout(() => {
       timedOut = true;
-      if (child.pid !== undefined && process.platform !== "win32") {
+      if (child.pid !== undefined && process.platform === "win32") {
+        const terminator = spawn("taskkill.exe", ["/pid", String(child.pid), "/T", "/F"], {
+          env: options.env ?? process.env,
+          shell: false,
+          stdio: "ignore",
+          windowsHide: true,
+        });
+        terminator.on("error", () => child.kill());
+      } else if (child.pid !== undefined) {
         try { process.kill(-child.pid, "SIGTERM"); } catch { child.kill("SIGTERM"); }
         setTimeout(() => {
           if (!settled) {
