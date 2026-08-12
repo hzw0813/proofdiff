@@ -10,6 +10,9 @@ function checkApplies(check, file, relatedTests) {
         return file.language === "python";
     return true;
 }
+function isRecognizedNoTestsExit(check) {
+    return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");
+}
 function verificationFor(file, relatedTests, checks) {
     const evidence = [];
     const executed = checks.filter((check) => check.status !== "not-run");
@@ -18,10 +21,18 @@ function verificationFor(file, relatedTests, checks) {
         .filter((observation) => relatedTests.includes(observation.path))
         .map((observation) => ({ check, observation })));
     const targetedFailures = observations.filter(({ observation }) => observation.outcome === "failed");
+    const localizedTargetedProcessFailures = applicable.filter((check) => check.targetQualifications !== undefined
+        && check.status === "failed"
+        && !isRecognizedNoTestsExit(check)
+        && check.targetObservations?.some((observation) => observation.outcome === "failed"));
+    const unlocalizedTargetedFailures = applicable.filter((check) => check.targetQualifications !== undefined
+        && check.status === "failed"
+        && !isRecognizedNoTestsExit(check)
+        && !check.targetObservations?.some((observation) => observation.outcome === "failed"));
     const opaqueFailures = applicable.filter((check) => check.targetQualifications === undefined
         && ["failed", "error", "timed-out"].includes(check.status)
-        && !(check.kind === "test" && check.targetRunner !== undefined && observations.length > 0)
-        && !(check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest")));
+        && !(check.kind === "test" && check.targetRunner !== undefined && localizedTargetedProcessFailures.some((targeted) => targeted.id === `${check.id}:targeted`))
+        && !isRecognizedNoTestsExit(check));
     const operationalFailures = applicable.filter((check) => check.targetQualifications !== undefined && ["error", "timed-out"].includes(check.status));
     const passing = applicable.filter((check) => check.status === "passed" && check.targetQualifications === undefined);
     const testExecutions = observations
@@ -33,6 +44,15 @@ function verificationFor(file, relatedTests, checks) {
             kind: "failing-check",
             label: check.label,
             detail: check.explanation,
+            confidence: "high",
+            checkId: check.id,
+        });
+    }
+    for (const check of unlocalizedTargetedFailures) {
+        evidence.push({
+            kind: "failing-check",
+            label: check.label,
+            detail: `${check.explanation} The targeted runner failed, but its observer did not reliably attribute that failure to an exact target, so ProofDiff failed closed.`,
             confidence: "high",
             checkId: check.id,
         });
@@ -70,7 +90,7 @@ function verificationFor(file, relatedTests, checks) {
     for (const { check, observation } of observations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
         evidence.push({ kind: "limitation", label: `${observation.path}: ${observation.outcome}`, detail: observation.detail, confidence: "high", checkId: check.id });
     }
-    if (targetedFailures.length > 0 || opaqueFailures.length > 0 || operationalFailures.length > 0)
+    if (targetedFailures.length > 0 || unlocalizedTargetedFailures.length > 0 || opaqueFailures.length > 0 || operationalFailures.length > 0)
         return { status: "verification-failed", evidence, executedTests, testExecutions };
     if (applicable.length === 0) {
         if (executed.length > 0) {

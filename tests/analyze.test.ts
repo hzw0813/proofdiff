@@ -198,9 +198,12 @@ test("Node zero-test, name-filtered, and all-skipped targets never produce execu
     await writeFiles(root, { "src/value.js": "export const value = 2;\n" });
     const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
     const assessment = report.assessments[0];
+    const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
     assert.deepEqual(assessment?.executedTests, [], fixture.outcome);
     assert.equal(assessment?.status, "partially-verified", fixture.outcome);
-    assert.equal(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.[0]?.outcome, fixture.outcome);
+    assert.equal(targeted?.status, "passed", fixture.outcome);
+    assert.equal(targeted?.targetObservations?.[0]?.outcome, fixture.outcome);
+    assert.ok(!assessment?.evidence.some((item) => item.kind === "failing-check"), fixture.outcome);
   }
 });
 
@@ -215,6 +218,7 @@ test("a zero-test unittest target is unverified instead of verification-failed",
   assert.deepEqual(report.assessments[0]?.executedTests, []);
   assert.equal(report.assessments[0]?.status, report.checks[0]?.status === "passed" ? "partially-verified" : "unverified");
   assert.equal(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.[0]?.outcome, "zero-tests");
+  assert.ok(!report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));
 });
 
 test("the fixed pytest observer attributes a configured custom target", async (context) => {
@@ -239,6 +243,58 @@ test("the fixed pytest observer attributes a configured custom target", async (c
   const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
   assert.equal(targeted?.targetQualifications?.[0]?.basis, "runner-config-pattern");
   assert.deepEqual(targeted?.targetObservations?.map((item) => [item.path, item.outcome, item.testsObserved]), [["quality/check_value.py", "passed", 1]]);
+});
+
+test("a pytest collection failure without an attributable test failure fails closed", async (context) => {
+  const root = await initializeRepository({
+    "pyproject.toml": "[tool.pytest]\n",
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "from value import value\n",
+    "pytest.py": "def main(args=None, plugins=None):\n    return 2\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+  assert.equal(targeted?.status, "failed");
+  assert.equal(targeted?.exitCode, 2);
+  assert.equal(targeted?.targetObservations?.[0]?.outcome, "zero-tests");
+  assert.equal(report.assessments[0]?.status, "verification-failed");
+  assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "failing-check" && item.checkId === targeted.id)?.detail ?? "", /did not reliably attribute.*failed closed/);
+});
+
+test("pytest exit 5 remains a non-failing no-collection outcome", async (context) => {
+  const root = await initializeRepository({
+    "pyproject.toml": "[tool.pytest]\n",
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "from value import value\n",
+    "pytest.py": "def main(args=None, plugins=None):\n    return 5\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+  assert.equal(targeted?.status, "failed");
+  assert.equal(targeted?.exitCode, 5);
+  assert.equal(targeted?.targetObservations?.[0]?.outcome, "zero-tests");
+  assert.equal(report.assessments[0]?.status, "partially-verified");
+  assert.ok(!report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));
+});
+
+test("a unittest loader failure without an attributable test failure fails closed", async (context) => {
+  const root = await initializeRepository({
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "import unittest\nimport missing_dependency\nfrom value import value\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+  assert.equal(targeted?.status, "failed");
+  assert.equal(targeted?.exitCode, 1);
+  assert.equal(targeted?.targetObservations?.[0]?.outcome, "zero-tests");
+  assert.equal(report.assessments[0]?.status, "verification-failed");
+  assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "failing-check" && item.checkId === targeted.id)?.detail ?? "", /did not reliably attribute.*failed closed/);
 });
 
 test("unittest subtest failures remain exact target failures", async (context) => {
@@ -273,8 +329,10 @@ test("mixed targeted batches attribute pass, zero, and failure to exact paths", 
   const byPath = new Map(report.assessments.map((item) => [item.file.path, item]));
   assert.equal(byPath.get("src/pass.js")?.status, "verified");
   assert.deepEqual(byPath.get("src/pass.js")?.executedTests, ["test/pass.test.js"]);
+  assert.ok(!byPath.get("src/pass.js")?.evidence.some((item) => item.kind === "failing-check"));
   assert.equal(byPath.get("src/empty.js")?.status, "unverified");
   assert.deepEqual(byPath.get("src/empty.js")?.executedTests, []);
+  assert.ok(!byPath.get("src/empty.js")?.evidence.some((item) => item.kind === "failing-check"));
   assert.equal(byPath.get("src/fail.js")?.status, "verification-failed");
   assert.deepEqual(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.map((item) => [item.path, item.outcome]), [
     ["test/empty.test.js", "zero-tests"],
