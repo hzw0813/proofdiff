@@ -193,9 +193,9 @@ test("observer parsing rejects truncation, malformed data, and unmatched targets
   const check = (await targetedTestChecks(root, [{ id: "node", label: "node", kind: "test", command: "node", args: ["--test"], origin: "fixture", executesRepositoryCode: true, targetRunner: "node-test" }], ["test/value.test.js"])).checks[0]!;
   assert.equal(parseTargetObservations(root, check, "{", false)[0]?.outcome, "not-observed");
   assert.match(parseTargetObservations(root, check, "", true)[0]?.detail ?? "", /truncated/);
-  const unmatched = JSON.stringify({ version: 1, runner: "node-test", files: [{ runnerPath: "test/other.test.js", passed: 1, failed: 0, skipped: 0, tests: 1 }] });
+  const unmatched = JSON.stringify({ version: 1, runner: "node-test", unattributedFailures: 0, files: [{ runnerPath: "test/other.test.js", observed: true, passed: 1, failed: 0, skipped: 0, tests: 1 }] });
   assert.match(parseTargetObservations(root, check, unmatched)[0]?.detail ?? "", /unmatched/);
-  const valid = JSON.stringify({ version: 1, runner: "node-test", files: [{ runnerPath: "test/value.test.js", passed: 1, failed: 0, skipped: 0, tests: 1 }] });
+  const valid = JSON.stringify({ version: 1, runner: "node-test", unattributedFailures: 0, files: [{ runnerPath: "test/value.test.js", observed: true, passed: 1, failed: 0, skipped: 0, tests: 1 }] });
   assert.deepEqual(parseTargetObservations(root, check, valid).map((item) => [item.outcome, item.testsObserved]), [["passed", 1]]);
 });
 

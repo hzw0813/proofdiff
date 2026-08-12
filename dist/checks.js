@@ -4,19 +4,21 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { constrainedCheckEnvironment, runProcess } from "./process.js";
 import { pathExists, readUtf8File, sanitizeControlCharacters, unique } from "./util.js";
 function nodeTestReporter(targets) {
-    const source = String.raw `import{writeSync}from"node:fs";import{resolve}from"node:path";import{Readable}from"node:stream";import{fileURLToPath}from"node:url";import{spec}from"node:test/reporters";const targets=${JSON.stringify(targets)};const records=new Map(targets.map(runnerPath=>[resolve(runnerPath),{runnerPath,passed:0,failed:0,skipped:0,tests:0}]));export default async function*proofdiff(source){async function*inspect(){for await(const event of source){if(event.type==="test:summary"&&event.data.file){const raw=event.data.file;const key=resolve(raw.startsWith("file:")?fileURLToPath(raw):raw);const item=records.get(key);if(item)Object.assign(item,{passed:event.data.counts.passed,failed:event.data.counts.failed,skipped:event.data.counts.skipped,tests:event.data.counts.tests})}yield event}}for await(const output of Readable.from(inspect()).compose(spec()))yield output;try{writeSync(3,JSON.stringify({version:1,runner:"node-test",files:[...records.values()]})+"\n")}catch{}}`;
+    const source = String.raw `import{writeSync}from"node:fs";import{resolve}from"node:path";import{Readable}from"node:stream";import{fileURLToPath}from"node:url";import{spec}from"node:test/reporters";const targets=${JSON.stringify(targets)};const records=new Map(targets.map(runnerPath=>[resolve(runnerPath),{runnerPath,observed:false,passed:0,failed:0,skipped:0,tests:0}]));export default async function*proofdiff(source){async function*inspect(){for await(const event of source){if(event.type==="test:summary"&&event.data.file){const raw=event.data.file;const key=resolve(raw.startsWith("file:")?fileURLToPath(raw):raw);const item=records.get(key);if(item)Object.assign(item,{observed:true,passed:event.data.counts.passed,failed:event.data.counts.failed,skipped:event.data.counts.skipped,tests:event.data.counts.tests})}else if(event.type==="test:complete"&&event.data.file){const raw=event.data.file;const key=resolve(raw.startsWith("file:")?fileURLToPath(raw):raw);const item=records.get(key);if(item&&typeof event.data.name==="string"&&resolve(event.data.name)===key){item.observed=true;if(event.data.details?.passed===false&&item.failed===0)item.failed=1}}yield event}}for await(const output of Readable.from(inspect()).compose(spec()))yield output;try{writeSync(3,JSON.stringify({version:1,runner:"node-test",unattributedFailures:0,files:[...records.values()]})+"\n")}catch{}}`;
     return `data:text/javascript,${encodeURIComponent(source)}`;
 }
 const PYTEST_OBSERVER = String.raw `
 import json, os, sys
 targets = sys.argv[1:]
-counts = {os.path.normcase(os.path.abspath(item)): {"runnerPath": item, "passed": 0, "failed": 0, "skipped": 0, "tests": 0} for item in targets}
+counts = {os.path.normcase(os.path.abspath(item)): {"runnerPath": item, "observed": False, "passed": 0, "failed": 0, "skipped": 0, "tests": 0} for item in targets}
+state = {"unattributedFailures": 0}
+def target_for(raw):
+    return counts.get(os.path.normcase(os.path.abspath(str(raw).split("::", 1)[0])))
 class Observer:
     def pytest_runtest_logreport(self, report):
-        raw = str(getattr(report, "nodeid", "")).split("::", 1)[0]
-        key = os.path.normcase(os.path.abspath(raw))
-        item = counts.get(key)
+        item = target_for(getattr(report, "nodeid", ""))
         if item is None: return
+        item["observed"] = True
         if report.when == "call":
             if report.skipped: item["skipped"] += 1
             elif report.failed: item["failed"] += 1; item["tests"] += 1
@@ -25,12 +27,28 @@ class Observer:
             item["skipped"] += 1
         elif report.failed:
             item["failed"] += 1
+    def pytest_collectreport(self, report):
+        item = target_for(getattr(report, "nodeid", ""))
+        if item is not None:
+            item["observed"] = True
+            if report.failed: item["failed"] += 1
+        elif report.failed:
+            state["unattributedFailures"] += 1
+    def pytest_internalerror(self, *args, **kwargs):
+        state["unattributedFailures"] += 1
 def emit():
-    payload = {"version": 1, "runner": "pytest", "files": list(counts.values())}
+    payload = {"version": 1, "runner": "pytest", "unattributedFailures": state["unattributedFailures"], "files": list(counts.values())}
     os.write(3, (json.dumps(payload, separators=(",", ":")) + "\n").encode())
 try:
     import pytest
     code = int(pytest.main(["-q", "--", *targets], plugins=[Observer()]))
+    if code == 5:
+        for item in counts.values(): item["observed"] = True
+    elif code in (2, 3, 4):
+        state["unattributedFailures"] += 1
+except BaseException:
+    state["unattributedFailures"] += 1
+    raise
 finally:
     emit()
 raise SystemExit(code)
@@ -38,37 +56,47 @@ raise SystemExit(code)
 const UNITTEST_OBSERVER = String.raw `
 import json, os, sys, unittest
 targets = sys.argv[1:]
-counts = {os.path.normcase(os.path.abspath(item)): {"runnerPath": item, "passed": 0, "failed": 0, "skipped": 0, "tests": 0} for item in targets}
+counts = {os.path.normcase(os.path.abspath(item)): {"runnerPath": item, "observed": False, "passed": 0, "failed": 0, "skipped": 0, "tests": 0} for item in targets}
+state = {"unattributedFailures": 0}
 def target_for(test):
     module = sys.modules.get(getattr(test.__class__, "__module__", ""))
     filename = getattr(module, "__file__", None)
     return counts.get(os.path.normcase(os.path.abspath(filename))) if filename else None
+def observed(test, failed=False):
+    item = target_for(test)
+    if item is not None:
+        item["observed"] = True
+        return item
+    if failed: state["unattributedFailures"] += 1
+    return None
 class Result(unittest.TextTestResult):
     def addSuccess(self, test):
-        super().addSuccess(test); item = target_for(test)
+        super().addSuccess(test); item = observed(test)
         if item is not None: item["passed"] += 1; item["tests"] += 1
     def addFailure(self, test, err):
-        super().addFailure(test, err); item = target_for(test)
+        super().addFailure(test, err); item = observed(test, True)
         if item is not None: item["failed"] += 1; item["tests"] += 1
     def addError(self, test, err):
-        super().addError(test, err); item = target_for(test)
+        super().addError(test, err); item = observed(test, True)
         if item is not None: item["failed"] += 1
     def addSkip(self, test, reason):
-        super().addSkip(test, reason); item = target_for(test)
+        super().addSkip(test, reason); item = observed(test)
         if item is not None: item["skipped"] += 1
     def addExpectedFailure(self, test, err):
-        super().addExpectedFailure(test, err); item = target_for(test)
+        super().addExpectedFailure(test, err); item = observed(test)
         if item is not None: item["skipped"] += 1
     def addUnexpectedSuccess(self, test):
-        super().addUnexpectedSuccess(test); item = target_for(test)
+        super().addUnexpectedSuccess(test); item = observed(test, True)
         if item is not None: item["failed"] += 1; item["tests"] += 1
     def addSubTest(self, test, subtest, err):
-        super().addSubTest(test, subtest, err); item = target_for(test)
+        super().addSubTest(test, subtest, err); item = observed(test, err is not None)
         if item is not None and err is not None: item["failed"] += 1; item["tests"] += 1
 class Runner(unittest.TextTestRunner):
     resultclass = Result
 program = unittest.main(module=None, argv=["unittest", *targets], exit=False, testRunner=Runner)
-payload = {"version": 1, "runner": "unittest", "files": list(counts.values())}
+if state["unattributedFailures"] == 0:
+    for item in counts.values(): item["observed"] = True
+payload = {"version": 1, "runner": "unittest", "unattributedFailures": state["unattributedFailures"], "files": list(counts.values())}
 os.write(3, (json.dumps(payload, separators=(",", ":")) + "\n").encode())
 raise SystemExit(0 if program.result.wasSuccessful() else 1)
 `;
@@ -444,7 +472,11 @@ export function parseTargetObservations(root, check, raw, truncated = false) {
     catch {
         return notObserved(qualifications, "The runner observation was malformed and was rejected.");
     }
-    if (payload.version !== 1 || payload.runner !== check.targetRunner || !Array.isArray(payload.files)) {
+    if (payload.version !== 1
+        || payload.runner !== check.targetRunner
+        || !Number.isSafeInteger(payload.unattributedFailures)
+        || payload.unattributedFailures < 0
+        || !Array.isArray(payload.files)) {
         return notObserved(qualifications, "The runner observation schema or runner identity did not match the targeted check.");
     }
     const expected = new Map(qualifications.map((qualification) => [path.resolve(root, qualification.runnerPath), qualification]));
@@ -452,15 +484,23 @@ export function parseTargetObservations(root, check, raw, truncated = false) {
     for (const record of payload.files) {
         const numeric = [record.passed, record.failed, record.skipped, record.tests];
         const absolute = observedAbsolutePath(root, record);
-        if (absolute === null || !expected.has(absolute) || numeric.some((value) => !Number.isSafeInteger(value) || value < 0) || records.has(absolute)) {
+        if (absolute === null || !expected.has(absolute) || typeof record.observed !== "boolean" || numeric.some((value) => !Number.isSafeInteger(value) || value < 0) || records.has(absolute)) {
             return notObserved(qualifications, "The runner observation contained an invalid, duplicate, or unmatched target and was rejected.");
         }
         records.set(absolute, record);
     }
     if (records.size !== expected.size)
         return notObserved(qualifications, "The runner observation omitted one or more qualified targets and was rejected.");
+    const unavailableRecords = [...records.values()].filter((record) => !record.observed);
+    const processFailureHasNoUnavailableTarget = payload.unattributedFailures > 0 && unavailableRecords.length === 0;
     return qualifications.map((qualification) => {
         const record = records.get(path.resolve(root, qualification.runnerPath));
+        if (!record.observed || (processFailureHasNoUnavailableTarget && record.failed === 0)) {
+            const detail = !record.observed
+                ? "The runner did not produce a trustworthy lifecycle observation for this exact target."
+                : "The runner reported an unattributed process-level failure that could not be excluded from this target.";
+            return { path: qualification.path, runnerPath: qualification.runnerPath, outcome: "not-observed", testsObserved: 0, detail };
+        }
         const outcome = record.failed > 0 ? "failed" : record.passed > 0 ? "passed" : record.skipped > 0 ? "skipped" : "zero-tests";
         const detail = outcome === "zero-tests"
             ? "The runner observed zero tests for this exact target."

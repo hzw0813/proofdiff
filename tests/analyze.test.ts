@@ -258,7 +258,7 @@ test("a pytest collection failure without an attributable test failure fails clo
   const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
   assert.equal(targeted?.status, "failed");
   assert.equal(targeted?.exitCode, 2);
-  assert.equal(targeted?.targetObservations?.[0]?.outcome, "zero-tests");
+  assert.equal(targeted?.targetObservations?.[0]?.outcome, "not-observed");
   assert.equal(report.assessments[0]?.status, "verification-failed");
   assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "failing-check" && item.checkId === targeted.id)?.detail ?? "", /did not reliably attribute.*failed closed/);
 });
@@ -292,7 +292,7 @@ test("a unittest loader failure without an attributable test failure fails close
   const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
   assert.equal(targeted?.status, "failed");
   assert.equal(targeted?.exitCode, 1);
-  assert.equal(targeted?.targetObservations?.[0]?.outcome, "zero-tests");
+  assert.equal(targeted?.targetObservations?.[0]?.outcome, "not-observed");
   assert.equal(report.assessments[0]?.status, "verification-failed");
   assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "failing-check" && item.checkId === targeted.id)?.detail ?? "", /did not reliably attribute.*failed closed/);
 });
@@ -307,6 +307,47 @@ test("unittest subtest failures remain exact target failures", async (context) =
   const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
   assert.equal(report.assessments[0]?.status, "verification-failed");
   assert.equal(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.[0]?.outcome, "failed");
+});
+
+test("a partially localized targeted batch fails closed for an ambiguous related target", async (context) => {
+  const root = await initializeRepository({
+    "pyproject.toml": "[tool.pytest]\n",
+    "value.py": "def value():\n    return 1\n",
+    "other.py": "def other():\n    return 1\n",
+    "tests/test_pass.py": "from value import value\ndef test_pass():\n    assert value() == 2\n",
+    "tests/test_import.py": "import missing_dependency\nfrom value import value\n",
+    "tests/test_fail.py": "from other import other\ndef test_fail():\n    assert other() == 1\n",
+    "pytest.py": [
+      "import runpy",
+      "from types import SimpleNamespace",
+      "def main(args=None, plugins=None):",
+      "    observer = plugins[0]",
+      "    for target in args:",
+      "        if target.endswith('test_pass.py'):",
+      "            observer.pytest_runtest_logreport(SimpleNamespace(nodeid=target + '::test_pass', when='call', passed=True, failed=False, skipped=False))",
+      "        elif target.endswith('test_fail.py'):",
+      "            observer.pytest_runtest_logreport(SimpleNamespace(nodeid=target + '::test_fail', when='call', passed=False, failed=True, skipped=False))",
+      "    runpy.run_path(next(target for target in args if target.endswith('test_import.py')))",
+      "",
+    ].join("\n"),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "value.py": "def value():\n    return 2\n",
+    "other.py": "def other():\n    return 2\n",
+  });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+  const assessment = report.assessments.find((item) => item.file.path === "value.py");
+  assert.equal(targeted?.status, "failed");
+  assert.match(targeted?.output ?? "", /missing_dependency|ModuleNotFoundError/);
+  assert.deepEqual(targeted?.targetObservations?.map((item) => [item.path, item.outcome]), [
+    ["tests/test_fail.py", "failed"],
+    ["tests/test_import.py", "not-observed"],
+    ["tests/test_pass.py", "passed"],
+  ]);
+  assert.equal(assessment?.status, "verification-failed");
+  assert.ok(assessment?.evidence.some((item) => item.kind === "failing-check" && item.checkId === targeted.id));
 });
 
 test("mixed targeted batches attribute pass, zero, and failure to exact paths", async (context) => {

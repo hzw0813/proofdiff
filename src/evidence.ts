@@ -23,14 +23,17 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
     .filter((observation) => relatedTests.includes(observation.path))
     .map((observation) => ({ check, observation })));
   const targetedFailures = observations.filter(({ observation }) => observation.outcome === "failed");
+  const hasExactTargetFailure = (check: CheckResult): boolean => check.targetObservations?.some((observation) => observation.outcome === "failed") === true;
+  const hasUnavailableRelatedTarget = (check: CheckResult): boolean => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed") === true;
   const localizedTargetedProcessFailures = applicable.filter((check) => check.targetQualifications !== undefined
     && check.status === "failed"
     && !isRecognizedNoTestsExit(check)
-    && check.targetObservations?.some((observation) => observation.outcome === "failed"));
+    && hasExactTargetFailure(check)
+    && !hasUnavailableRelatedTarget(check));
   const unlocalizedTargetedFailures = applicable.filter((check) => check.targetQualifications !== undefined
     && check.status === "failed"
     && !isRecognizedNoTestsExit(check)
-    && !check.targetObservations?.some((observation) => observation.outcome === "failed"));
+    && (!hasExactTargetFailure(check) || hasUnavailableRelatedTarget(check)));
   const opaqueFailures = applicable.filter((check) => check.targetQualifications === undefined
     && ["failed", "error", "timed-out"].includes(check.status)
     && !(check.kind === "test" && check.targetRunner !== undefined && localizedTargetedProcessFailures.some((targeted) => targeted.id === `${check.id}:targeted`))
@@ -55,7 +58,7 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
     evidence.push({
       kind: "failing-check",
       label: check.label,
-      detail: `${check.explanation} The targeted runner failed, but its observer did not reliably attribute that failure to an exact target, so ProofDiff failed closed.`,
+      detail: `${check.explanation} The targeted runner failed, but its observer did not reliably attribute the complete process failure without leaving a related qualified target unavailable, so ProofDiff failed closed.`,
       confidence: "high",
       checkId: check.id,
     });
