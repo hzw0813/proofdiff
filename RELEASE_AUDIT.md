@@ -2,7 +2,7 @@
 
 Audit date: 2026-08-12 (Asia/Taipei)
 
-This document records observed evidence, including the published GitHub release, without claiming that unperformed npm publication steps passed.
+This document records observed evidence for the published GitHub and npm releases.
 
 ## Verified locally
 
@@ -37,15 +37,23 @@ This document records observed evidence, including the published GitHub release,
 - Repaired Release workflow run [31575475433](https://github.com/hzw0813/proofdiff/actions/runs/31575475433) ran from `main` with the explicit existing `v0.1.0` tag and `publish_npm=false`. It validated that the annotated tag resolved to the checked-out package version, passed tests and the Action smoke, reproduced the package and checksum, and successfully updated the public GitHub Release. Its npm job was skipped.
 - The public [ProofDiff v0.1.0 GitHub Release](https://github.com/hzw0813/proofdiff/releases/tag/v0.1.0) was created from the exact downloaded workflow artifact after its checksum matched the reproducible local package. GitHub reports it as published, non-draft, and non-prerelease, with the intended annotated tag.
 - Anonymous downloads of `proofdiff-0.1.0.tgz` and `SHA256SUMS` succeeded. The public package is 54,675 bytes with SHA-256 `2b21c3951e590f3127efceba208d51272a5e718e1d070f9d541a35b823020559`; its bytes match the workflow artifact, its embedded metadata identifies `proofdiff` version `0.1.0`, and an isolated installation reports version `0.1.0`.
-- Release notes describe only implemented and verified capabilities, link the exact release commit, and state explicitly that ProofDiff has not been published to npm.
+- Release notes describe only implemented and verified capabilities, link the exact release commit, and link the published npm package.
+
+## Verified on npm for v0.1.0
+
+- Release workflow run [31578507988](https://github.com/hzw0813/proofdiff/actions/runs/31578507988) checked out and validated the immutable `v0.1.0` tag, passed all 40 tests and the production Action smoke, reproduced the audited tarball and checksum, and published that exact artifact to npm.
+- The public [proofdiff@0.1.0 package](https://www.npmjs.com/package/proofdiff/v/0.1.0) reports the expected name, version, description, MIT license, Node.js 22+ requirement, executable, dependency, and `hzw0813/proofdiff` repository metadata.
+- The registry tarball has 67 files, a 233,807-byte unpacked size, SHA-1 `baf67396770eab13da26d14610ded2e1be31bb31`, and SHA-512 integrity `sha512-2mBraOYNhfaTn+wWHwUT2m1ox0bWfTgy1AyjHbq1ayyh9gVT0c4A33fYPfTrzRIwJHZVdjVcJF91QaPDbcEeDQ==`. Its downloaded bytes match the GitHub Release asset and retain SHA-256 `2b21c3951e590f3127efceba208d51272a5e718e1d070f9d541a35b823020559`.
+- npm exposes a SLSA v1 provenance attestation linking the package to the public repository, Release workflow file, hosted run, and Sigstore transparency log. The provenance identifies `cedc454ad2090339fb4d3ca0ea9adccefcb9fbf0` as the workflow-dispatch source commit; the workflow separately checks out and verifies the package source at tagged commit `d632a3d0f41e9f20d18bcb7c48150d02c4fed84e`.
+- A clean registry installation added only ProofDiff and its runtime dependency tree, `proofdiff --version` returned `0.1.0`, and `npm audit signatures` verified registry signatures and attestations. The installed CLI analyzed a separate changed JavaScript repository, executed both discovered tests, associated the changed function with its related test, and reported a low-risk verified result.
+- npm trusted publishing is restricted to `hzw0813/proofdiff`, workflow `release.yml`, environment `npm`, and `npm publish` permission. The package requires 2FA and disallows bypass-2FA tokens. The one-day token required to create the previously nonexistent package was deleted from npm after use, its GitHub Actions secret was deleted, and the final workflow contains no token reference.
 
 ## Deliberately not claimed
 
-- ProofDiff is not available from npm, and no npm package or provenance statement was published.
-- The npm package name is not reserved merely because the registry currently returns `E404`.
-- No adoption, usage, performance, or ecosystem claims were inferred from publication.
+- Publication does not establish adoption, usage, performance, or ecosystem standing.
+- Provenance identifies the build workflow and source context; it is not a claim that every possible supply-chain risk is eliminated.
 
-npm publication is the remaining external publication boundary. It requires separate authorization and a fresh registry and trusted-publishing audit.
+npm publication is complete. Future registry publication remains restricted to the repository Release workflow and npm trusted publishing.
 
 ## Reproduce the local audit
 

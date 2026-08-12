@@ -28,18 +28,19 @@ The real-product [demo gallery](examples/demo-gallery.html) covers mixed evidenc
 
 Prerequisites: Git, Node.js 22+, and npm. Python is optional and improves Python AST analysis.
 
+Install the published package:
+
+```bash
+npm install --global proofdiff
+proofdiff --html proofdiff-report.html
+```
+
 From a fresh clone:
 
 ```bash
 npm ci
 npm run build
 node dist/cli.js --repo /path/to/your/repository --html proofdiff-report.html
-```
-
-Once installed as a package, the one-command experience is:
-
-```bash
-proofdiff --html proofdiff-report.html
 ```
 
 By default ProofDiff performs static analysis only. To explicitly trust the repository and run its discovered test, typecheck, and lint commands:

@@ -94,10 +94,8 @@ jobs:
       - name: Verify and publish exact artifact
         shell: bash
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          test -n "$NODE_AUTH_TOKEN"
           PACKAGE_ARCHIVE="proofdiff-${RELEASE_TAG#v}.tgz"
           test -f "$PACKAGE_ARCHIVE"
           sha256sum --check SHA256SUMS
