@@ -7,7 +7,9 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const manifest = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
 const command = manifest.scripts?.test;
 assert.equal(typeof command, "string", "package.json is missing its test script");
-const explicit = command.match(/(?:^|&& )node --test (.+)$/)?.[1]?.trim().split(/\s+/).sort();
+const invocation = command.match(/(?:^|&& )node --test (.+)$/)?.[1]?.trim().split(/\s+/);
+assert.ok(invocation?.includes("--test-concurrency=1"), "The test suite must run serially because its integration tests launch competing Git, Python, and Node subprocesses");
+const explicit = invocation?.filter((argument) => !argument.startsWith("--")).sort();
 assert.ok(explicit?.length, "The test script must end with an explicit cross-platform node --test file list");
 
 const compiled = (await readdir(path.join(projectRoot, "dist-test", "tests")))
