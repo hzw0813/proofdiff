@@ -90,6 +90,36 @@ const controls = [
     }
   },
   {
+    id: "typescript-paths-unsupported-probing-unresolved",
+    purpose: "NodeNext ESM extensionless lookup and an incorrect .mjs-to-.ts substitution cannot create static relationships.",
+    files: {
+      "package.json": JSON.stringify({ name: "paths-negative-control", private: true, type: "module" }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: {
+        module: "NodeNext",
+        moduleResolution: "NodeNext",
+        paths: {
+          "@app/extensionless": ["./src/extensionless"],
+          "@app/wrong-mjs": ["./src/wrong-mjs.mjs"]
+        }
+      } }, null, 2),
+      "src/extensionless.ts": "export const extensionless = true;\n",
+      "src/wrong-mjs.ts": "export const wrongMjs = true;\n",
+      "test/paths.test.ts": "import { extensionless } from '@app/extensionless'; import { wrongMjs } from '@app/wrong-mjs'; export const observed = extensionless && wrongMjs;\n"
+    },
+    changes: {
+      "src/extensionless.ts": "export const extensionless = true;\n// controlled NodeNext mutation\n",
+      "src/wrong-mjs.ts": "export const wrongMjs = true;\n// controlled MJS mutation\n"
+    },
+    runChecks: false,
+    verify(report) {
+      return report.assessments.length === 2
+        && report.assessments.every((assessment) => assessment.status === "unknown")
+        && report.assessments.every((assessment) => !assessment.relatedTests.includes("test/paths.test.ts"))
+        && report.assessments.every((assessment) => assessment.executedTests.length === 0)
+        && report.trust.repositoryCodeExecuted === false;
+    }
+  },
+  {
     id: "package-self-export-static-found",
     purpose: "An exact package self-export with an explicit source condition creates only a static relationship.",
     files: {
