@@ -6,6 +6,8 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Changed
 
+- Added bounded, data-only resolution for exact/single-wildcard TypeScript `paths` mappings and exact repository-local package self-exports. Successful non-relative edges retain inspectable graph evidence; malformed, cyclic, ambiguous, excessive, external, nested-boundary, and unsupported cases remain unresolved.
+- Preserved the static/runtime boundary: alias and export relationships cannot qualify runner targets or create execution evidence, and JSON `schemaVersion: "1.0"` is unchanged.
 - Separated broad static test-like relationships from runner-qualified target identity. Node default/explicit patterns, bounded pytest configuration (including pytest 9 `[tool.pytest]`), and unittest discovery now retain inspectable qualification records.
 - Added separately bounded Node `TestsStream`, pytest plugin, and unittest `TestResult` observers. `verified` now requires an exact positive non-skipped per-target observation; zero-test, filtered, skipped, malformed, missing, truncated, and cross-target records cannot strengthen evidence.
 - Added exact batched-target attribution so one target's pass or failure is not lent to another target, while preserving status names, fail policies, CLI flags, and JSON `schemaVersion: "1.0"` with additive optional fields.

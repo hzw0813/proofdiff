@@ -8,6 +8,8 @@ Facts are directly observed: Git changed a path, a parser found a declaration or
 
 Static relationships are reproducible but incomplete: file A imports file B; a test reaches a changed file through resolvable local imports. They are labeled medium confidence because they do not show that a runtime path executed.
 
+For JavaScript/TypeScript, “resolvable local imports” includes relative paths plus two bounded metadata-backed subsets: exact/single-wildcard compiler `paths` mappings and exact self-references through the importing package's own `name` and `exports`. ProofDiff records the metadata path, matched key, mechanism, target, and limitation internally. This stronger static evidence does not say that a runtime, bundler, or test runner used the same mapping.
+
 “Test-like path” and “runnable test target” are separate facts. Broad path shapes help find static relationships, including root `test.js` and `unittests/`, but never authorize execution. A recognized runner's documented convention, supported configuration, exact file list, or unambiguous compiled-source mapping must independently qualify a target.
 
 Inference ranks review attention: broad changes, missing related tests, deleted code, dependency files, parser fallbacks, and security-sensitive paths raise the score. Risk is not failure probability.
@@ -50,11 +52,12 @@ Observer records travel over a separate bounded control pipe. Missing, malformed
 ## Current limitations
 
 - ProofDiff does not ingest runtime code coverage.
-- JavaScript package aliases and TypeScript `paths` mappings are not resolved.
+- Compiler resolution is intentionally partial: package or array `extends`, project references, standalone `baseUrl`, `${configDir}`, multiple-wildcard mappings, installed packages, and arbitrary bundler aliases are not resolved.
+- Package resolution is intentionally partial: only the importing package's exact self-exports are considered. Export patterns/arrays, unmodeled built-in runtime conditions, package imports, workspace dependencies, third-party packages, and `node_modules` are not resolved.
 - Python namespace packages and dynamic imports may be missed.
 - Root project scripts are discovered; monorepo package scripts are only noted.
 - Deleted symbols are inferred only from recognizable removed declarations.
 - File-scoped observations prove only that a qualified target produced non-skipped tests with the recorded outcome; they do not prove which changed symbols, lines, branches, assertions, or runtime paths executed.
-- AVA, Vitest, Jest, Mocha, Hereby, aliases, package exports, custom unittest loaders, coverage, and additional languages/runners remain unsupported.
+- AVA, Vitest, Jest, Mocha, Hereby, custom unittest loaders, coverage, and additional languages/runners remain unsupported. Finding a test through an alias or self-export does not add runner support.
 
 Each applicable limit is surfaced in the report.

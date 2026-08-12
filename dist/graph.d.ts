@@ -1,3 +1,4 @@
+import { type StaticResolutionEvidence } from "./resolution.js";
 import type { ChangedFile, SourceAnalysis, SymbolInfo } from "./types.js";
 export interface RepositoryGraph {
     analyses: Map<string, SourceAnalysis>;
@@ -6,6 +7,7 @@ export interface RepositoryGraph {
     testLikeFiles: Set<string>;
     /** @deprecated Use testLikeFiles; this alias is retained for evaluation compatibility. */
     testFiles: Set<string>;
+    staticResolutions: StaticResolutionEvidence[];
     diagnostics: string[];
 }
 export declare function buildRepositoryGraph(root: string, repositoryFiles: string[], changedFiles: ChangedFile[]): Promise<RepositoryGraph>;

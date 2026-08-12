@@ -1,5 +1,6 @@
 import path from "node:path";
 import { analyzeSource } from "./adapters/index.js";
+import { BoundedStaticModuleResolver, javascriptModuleCandidates, type StaticResolutionEvidence } from "./resolution.js";
 import type { ChangedFile, SourceAnalysis, SymbolInfo } from "./types.js";
 import { isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
 
@@ -10,18 +11,14 @@ export interface RepositoryGraph {
   testLikeFiles: Set<string>;
   /** @deprecated Use testLikeFiles; this alias is retained for evaluation compatibility. */
   testFiles: Set<string>;
+  staticResolutions: StaticResolutionEvidence[];
   diagnostics: string[];
 }
 
 function candidatesForJavaScript(importer: string, source: string): string[] {
   if (!source.startsWith(".")) return [];
   const base = normalizeRepoPath(path.posix.normalize(path.posix.join(path.posix.dirname(importer), source)));
-  const extensions = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
-  const candidates = [base];
-  if (/\.m?js$|\.cjs$/.test(base)) candidates.push(base.replace(/\.(?:mjs|cjs|js)$/, ".ts"), base.replace(/\.(?:mjs|cjs|js)$/, ".tsx"));
-  for (const extension of extensions) candidates.push(`${base}${extension}`);
-  for (const extension of extensions) candidates.push(`${base}/index${extension}`);
-  return unique(candidates);
+  return javascriptModuleCandidates(base);
 }
 
 function candidatesForPython(importer: string, source: string, names: string[]): string[] {
@@ -38,13 +35,6 @@ function candidatesForPython(importer: string, source: string, names: string[]):
   return unique(bases.flatMap((base) => [`${base}.py`, `${base}.pyi`, `${base}/__init__.py`]));
 }
 
-function resolveImport(importer: string, analysis: SourceAnalysis, source: string, names: string[], available: Set<string>): string | null {
-  const candidates = analysis.language === "python"
-    ? candidatesForPython(importer, source, names)
-    : candidatesForJavaScript(importer, source);
-  return candidates.find((candidate) => available.has(candidate)) ?? null;
-}
-
 export async function buildRepositoryGraph(root: string, repositoryFiles: string[], changedFiles: ChangedFile[]): Promise<RepositoryGraph> {
   const sourceFiles = repositoryFiles.filter((file) => SOURCE_EXTENSIONS.has(path.extname(file).toLowerCase()));
   const available = new Set([...sourceFiles, ...changedFiles.map((file) => file.path)]);
@@ -52,6 +42,7 @@ export async function buildRepositoryGraph(root: string, repositoryFiles: string
   const dependencies = new Map<string, Set<string>>();
   const dependents = new Map<string, Set<string>>();
   const diagnostics: string[] = [];
+  const resolver = new BoundedStaticModuleResolver(root, repositoryFiles, available, diagnostics);
 
   const concurrency = 16;
   for (let offset = 0; offset < sourceFiles.length; offset += concurrency) {
@@ -66,10 +57,14 @@ export async function buildRepositoryGraph(root: string, repositoryFiles: string
     }));
   }
 
-  for (const [file, analysis] of analyses) {
+  for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => left.localeCompare(right))) {
     const targets = new Set<string>();
     for (const imported of analysis.imports) {
-      const target = resolveImport(file, analysis, imported.source, imported.names, available);
+      const target = analysis.language === "python"
+        ? candidatesForPython(file, imported.source, imported.names).find((candidate) => available.has(candidate)) ?? null
+        : imported.source.startsWith(".")
+          ? candidatesForJavaScript(file, imported.source).find((candidate) => available.has(candidate)) ?? null
+          : (await resolver.resolve(file, imported.source))?.target ?? null;
       if (target) targets.add(target);
     }
     dependencies.set(file, targets);
@@ -81,7 +76,7 @@ export async function buildRepositoryGraph(root: string, repositoryFiles: string
   }
 
   const testLikeFiles = new Set(sourceFiles.filter(isTestLikePath));
-  return { analyses, dependencies, dependents, testLikeFiles, testFiles: testLikeFiles, diagnostics };
+  return { analyses, dependencies, dependents, testLikeFiles, testFiles: testLikeFiles, staticResolutions: resolver.evidence, diagnostics };
 }
 
 export function impactedFiles(graph: RepositoryGraph, file: string, limit = 250): { files: string[]; truncated: boolean } {

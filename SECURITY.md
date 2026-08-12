@@ -15,6 +15,7 @@ ProofDiff's safe default performs these local operations:
 - invokes the system `git` executable with fixed options and argument arrays, a minimal environment, external diff/text conversion disabled, filesystem monitoring and hooks disabled, system/global config ignored, and locally named content/diff drivers overridden;
 - reads Git-listed files inside the selected repository;
 - parses JavaScript/TypeScript as data with Babel;
+- parses bounded repository-owned `tsconfig.json` JSONC and `package.json` JSON as data for a narrow static-resolution subset, rejecting metadata symlinks, traversal, `node_modules`, unsupported/ambiguous mappings, and targets outside the repository or owning package;
 - parses Python source with `python -I -S` and `ast.parse`, without importing it;
 - writes reports only to paths explicitly requested by the user;
 - performs no network requests and sends no telemetry.
@@ -43,6 +44,8 @@ These measures are defense in depth, **not a sandbox**. A command can still read
 Reports contain repository paths, symbol names, relationships, target-qualification reasons, per-target counts, check commands, and bounded check output. Owned inline observer source is abbreviated in the HTML command display but remains present in machine-readable JSON for reproducibility. Treat reports as repository-sensitive artifacts. The HTML report is self-contained, loads no remote resources, and has a restrictive Content Security Policy, but anyone receiving it can read its contents.
 
 No telemetry, analytics, update checks, remote APIs, or source-code uploads exist in ProofDiff.
+
+Static module resolution does not execute configuration or repository code. It does not invoke TypeScript, Node resolution, a bundler, package manager, lifecycle script, or installed dependency. Compiler inheritance is limited to repository-relative string paths, package identity comes only from the importing file's nearest package boundary, and successful non-relative edges remain relationship evidence rather than execution evidence.
 
 ## Vulnerability reporting
 

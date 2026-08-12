@@ -70,8 +70,8 @@ const controls = [
     }
   },
   {
-    id: "typescript-alias-unresolved",
-    purpose: "A clear tsconfig paths relationship remains a labeled miss rather than being converted into a success.",
+    id: "typescript-alias-static-found",
+    purpose: "A clear tsconfig paths mapping creates a static relationship without creating runtime evidence.",
     files: {
       "package.json": JSON.stringify({ name: "alias-control", private: true, type: "module", scripts: { test: "vitest run" } }, null, 2),
       "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@app/*": ["src/*"] } } }, null, 2),
@@ -83,7 +83,28 @@ const controls = [
     verify(report) {
       const assessment = report.assessments[0];
       return assessment?.file.language === "typescript"
-        && assessment.relatedTests.length === 0
+        && assessment.status === "unknown"
+        && assessment.relatedTests.includes("test/math.test.ts")
+        && assessment.executedTests.length === 0
+        && report.trust.repositoryCodeExecuted === false;
+    }
+  },
+  {
+    id: "package-self-export-static-found",
+    purpose: "An exact package self-export with an explicit source condition creates only a static relationship.",
+    files: {
+      "package.json": JSON.stringify({ name: "self-control", private: true, type: "module", exports: { "./math": { "@self/source": "./src/math.ts", import: "./dist/math.js" } }, scripts: { test: "vitest run" } }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "nodenext", customConditions: ["@self/source"] } }, null, 2),
+      "src/math.ts": "export function add(a: number, b: number) { return a + b; }\n",
+      "test/math.test.ts": "import { add } from 'self-control/math'; export const observed = add(1, 2);\n"
+    },
+    changes: { "src/math.ts": "export function add(a: number, b: number) { return a + b; }\n// controlled self-export mutation\n" },
+    runChecks: false,
+    verify(report) {
+      const assessment = report.assessments[0];
+      return assessment?.status === "unknown"
+        && assessment.relatedTests.includes("test/math.test.ts")
+        && assessment.executedTests.length === 0
         && report.trust.repositoryCodeExecuted === false;
     }
   },

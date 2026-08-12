@@ -1,19 +1,12 @@
 import path from "node:path";
 import { analyzeSource } from "./adapters/index.js";
+import { BoundedStaticModuleResolver, javascriptModuleCandidates } from "./resolution.js";
 import { isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
 function candidatesForJavaScript(importer, source) {
     if (!source.startsWith("."))
         return [];
     const base = normalizeRepoPath(path.posix.normalize(path.posix.join(path.posix.dirname(importer), source)));
-    const extensions = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
-    const candidates = [base];
-    if (/\.m?js$|\.cjs$/.test(base))
-        candidates.push(base.replace(/\.(?:mjs|cjs|js)$/, ".ts"), base.replace(/\.(?:mjs|cjs|js)$/, ".tsx"));
-    for (const extension of extensions)
-        candidates.push(`${base}${extension}`);
-    for (const extension of extensions)
-        candidates.push(`${base}/index${extension}`);
-    return unique(candidates);
+    return javascriptModuleCandidates(base);
 }
 function candidatesForPython(importer, source, names) {
     const leading = source.match(/^\.+/)?.[0].length ?? 0;
@@ -31,12 +24,6 @@ function candidatesForPython(importer, source, names) {
     }
     return unique(bases.flatMap((base) => [`${base}.py`, `${base}.pyi`, `${base}/__init__.py`]));
 }
-function resolveImport(importer, analysis, source, names, available) {
-    const candidates = analysis.language === "python"
-        ? candidatesForPython(importer, source, names)
-        : candidatesForJavaScript(importer, source);
-    return candidates.find((candidate) => available.has(candidate)) ?? null;
-}
 export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) {
     const sourceFiles = repositoryFiles.filter((file) => SOURCE_EXTENSIONS.has(path.extname(file).toLowerCase()));
     const available = new Set([...sourceFiles, ...changedFiles.map((file) => file.path)]);
@@ -44,6 +31,7 @@ export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) 
     const dependencies = new Map();
     const dependents = new Map();
     const diagnostics = [];
+    const resolver = new BoundedStaticModuleResolver(root, repositoryFiles, available, diagnostics);
     const concurrency = 16;
     for (let offset = 0; offset < sourceFiles.length; offset += concurrency) {
         const batch = sourceFiles.slice(offset, offset + concurrency);
@@ -56,10 +44,14 @@ export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) 
             analyses.set(file, await analyzeSource(file, source, root));
         }));
     }
-    for (const [file, analysis] of analyses) {
+    for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => left.localeCompare(right))) {
         const targets = new Set();
         for (const imported of analysis.imports) {
-            const target = resolveImport(file, analysis, imported.source, imported.names, available);
+            const target = analysis.language === "python"
+                ? candidatesForPython(file, imported.source, imported.names).find((candidate) => available.has(candidate)) ?? null
+                : imported.source.startsWith(".")
+                    ? candidatesForJavaScript(file, imported.source).find((candidate) => available.has(candidate)) ?? null
+                    : (await resolver.resolve(file, imported.source))?.target ?? null;
             if (target)
                 targets.add(target);
         }
@@ -71,7 +63,7 @@ export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) 
         }
     }
     const testLikeFiles = new Set(sourceFiles.filter(isTestLikePath));
-    return { analyses, dependencies, dependents, testLikeFiles, testFiles: testLikeFiles, diagnostics };
+    return { analyses, dependencies, dependents, testLikeFiles, testFiles: testLikeFiles, staticResolutions: resolver.evidence, diagnostics };
 }
 export function impactedFiles(graph, file, limit = 250) {
     const visited = new Set([file]);
