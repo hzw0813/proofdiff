@@ -48,7 +48,7 @@
     "build": "tsc -p tsconfig.json",
     "clean": "node scripts/clean.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:compile": "tsc -p tsconfig.test.json",
+    "test:compile": "tsc -p tsconfig.test.json && npm run evaluation:validate",
     "test": "npm run build && npm run test:compile && node scripts/verify-test-manifest.mjs && node --test --test-concurrency=1 dist-test/tests/adapters.test.js dist-test/tests/analyze.test.js dist-test/tests/checks.test.js dist-test/tests/demo.test.js dist-test/tests/e2e.test.js dist-test/tests/git.test.js dist-test/tests/privacy.test.js dist-test/tests/report.test.js",
     "test:e2e": "npm run build && npm run test:compile && node --test dist-test/tests/e2e.test.js",
     "test:action": "npm run build && node scripts/verify-action.mjs",
@@ -56,6 +56,9 @@
     "lint": "npm run typecheck",
     "demo": "npm run build && node scripts/generate-demo.mjs",
     "dogfood": "npm run build && npm run test:compile && node scripts/dogfood.mjs",
+    "evaluation:validate": "node scripts/evaluation/validate.mjs",
+    "evaluation:controlled": "node scripts/evaluation/run-controlled.mjs",
+    "evaluation:external": "node scripts/evaluation/run-external.mjs",
     "prepack": "npm run clean && npm run build && npm test"
   },
   "dependencies": {

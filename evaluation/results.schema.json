@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hzw0813/proofdiff/blob/main/evaluation/results.schema.json",
+  "title": "ProofDiff external evaluation results",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "proofdiff", "environment", "cases"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "proofdiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "version"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "version": { "type": "string" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "architecture", "node", "cpuModel", "cpuCount", "memoryGiB"],
+      "properties": {
+        "platform": { "type": "string" },
+        "architecture": { "type": "string" },
+        "node": { "type": "string" },
+        "cpuModel": { "type": "string" },
+        "cpuCount": { "type": "integer", "minimum": 1 },
+        "memoryGiB": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "stringArray": { "type": "array", "items": { "type": "string" } },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "repository", "commit", "changeType", "evaluationMode", "durationMs",
+        "inventory", "structuralAnalysis", "assessment", "relationship", "checks", "reportNotes", "trust"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "repository": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "changeType": { "type": "string" },
+        "evaluationMode": { "const": "static-only" },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "inventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trackedFiles", "manifestTrackedFiles", "inventoryFiles", "supportedSourceCandidates", "truncated"],
+          "properties": {
+            "trackedFiles": { "type": "integer", "minimum": 0 },
+            "manifestTrackedFiles": { "type": "integer", "minimum": 0 },
+            "inventoryFiles": { "type": "integer", "minimum": 0, "maximum": 5000 },
+            "supportedSourceCandidates": { "type": "integer", "minimum": 0 },
+            "truncated": { "type": "boolean" }
+          }
+        },
+        "structuralAnalysis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["analyzedFiles", "parserCounts", "confidenceCounts", "parserFallbacks", "fallbackPathGroups", "diagnosticCount", "diagnosticSamples", "changedFileParser", "resolvedDependencyEdges", "staticImportObservations", "testFilesClassified"],
+          "properties": {
+            "analyzedFiles": { "type": "integer", "minimum": 0 },
+            "parserCounts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+            "confidenceCounts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+            "parserFallbacks": { "type": "integer", "minimum": 0 },
+            "fallbackPathGroups": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+            "diagnosticCount": { "type": "integer", "minimum": 0 },
+            "diagnosticSamples": { "$ref": "#/$defs/stringArray" },
+            "changedFileParser": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["parser", "confidence", "diagnostics"],
+                  "properties": {
+                    "parser": { "type": "string" },
+                    "confidence": { "type": "string" },
+                    "diagnostics": { "$ref": "#/$defs/stringArray" }
+                  }
+                }
+              ]
+            },
+            "resolvedDependencyEdges": { "type": "integer", "minimum": 0 },
+            "staticImportObservations": { "type": "integer", "minimum": 0 },
+            "testFilesClassified": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "assessment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "language", "status", "changedSymbols", "relatedTests", "relatedTestShapes", "impactedFileCount", "limitations"],
+          "properties": {
+            "path": { "type": "string" },
+            "language": { "type": "string" },
+            "status": { "type": "string" },
+            "changedSymbols": { "$ref": "#/$defs/stringArray" },
+            "relatedTests": { "$ref": "#/$defs/stringArray" },
+            "relatedTestShapes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["filenamePattern", "directoryOnly"],
+              "properties": {
+                "filenamePattern": { "type": "integer", "minimum": 0 },
+                "directoryOnly": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "impactedFileCount": { "type": "integer", "minimum": 0 },
+            "limitations": { "$ref": "#/$defs/stringArray" }
+          }
+        },
+        "relationship": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["groundTruthStrength", "expectedTests", "foundExpectedTests", "missedExpectedTests", "classification", "chainValidated"],
+          "properties": {
+            "groundTruthStrength": { "enum": ["clear", "ambiguous"] },
+            "expectedTests": { "$ref": "#/$defs/stringArray" },
+            "foundExpectedTests": { "$ref": "#/$defs/stringArray" },
+            "missedExpectedTests": { "$ref": "#/$defs/stringArray" },
+            "classification": { "enum": ["clearly-expected-found", "clearly-expected-missed", "ambiguous"] },
+            "chainValidated": { "type": "boolean" }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expectedIds", "discoveredIds", "foundExpectedIds", "missedExpectedIds", "targetRunners", "targetedDefinitions"],
+          "properties": {
+            "expectedIds": { "$ref": "#/$defs/stringArray" },
+            "discoveredIds": { "$ref": "#/$defs/stringArray" },
+            "foundExpectedIds": { "$ref": "#/$defs/stringArray" },
+            "missedExpectedIds": { "$ref": "#/$defs/stringArray" },
+            "targetRunners": { "$ref": "#/$defs/stringArray" },
+            "targetedDefinitions": { "$ref": "#/$defs/stringArray" }
+          }
+        },
+        "reportNotes": { "$ref": "#/$defs/stringArray" },
+        "trust": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repositoryCodeExecuted", "statement"],
+          "properties": {
+            "repositoryCodeExecuted": { "const": false },
+            "statement": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

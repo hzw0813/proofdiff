@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hzw0813/proofdiff/blob/main/evaluation/controlled-results.schema.json",
+  "title": "ProofDiff controlled evaluation results",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "proofdiff", "cases"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "generatedAt": { "const": "2000-01-01T00:00:00.000Z" },
+    "proofdiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "version"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "purpose", "verdict", "observed"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "verdict": { "const": "passed" },
+          "observed": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "language", "relatedTests", "executedTests", "checkStatuses", "repositoryCodeExecuted"],
+            "properties": {
+              "status": { "type": "string", "minLength": 1 },
+              "language": { "type": "string", "minLength": 1 },
+              "relatedTests": { "$ref": "#/$defs/stringArray" },
+              "executedTests": { "$ref": "#/$defs/stringArray" },
+              "checkStatuses": {
+                "type": "object",
+                "additionalProperties": { "type": "string", "minLength": 1 }
+              },
+              "repositoryCodeExecuted": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": { "type": "array", "items": { "type": "string" } }
+  }
+}

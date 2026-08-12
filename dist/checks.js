@@ -71,7 +71,10 @@ function targetingForScript(kind, command) {
     const compiled = normalized.match(/(?:^|&& )(?:node|node\.exe) --test (.+)$/)?.[1];
     if (!compiled)
         return null;
-    const arguments_ = compiled.split(" ");
+    const rawArguments = compiled.split(" ");
+    const arguments_ = rawArguments.filter((argument) => !/^--test-concurrency=[1-9]\d*$/.test(argument));
+    if (arguments_.length === 0)
+        return { targetRunner: "node-test" };
     if (arguments_.length === 1 && arguments_[0] && (arguments_[0].match(/\*/g)?.length ?? 0) === 1 && /^[A-Za-z0-9_./*-]+\.[cm]?js$/.test(arguments_[0])) {
         return { targetRunner: "node-test", targetPattern: arguments_[0] };
     }

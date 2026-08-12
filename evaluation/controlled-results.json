@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2000-01-01T00:00:00.000Z",
+  "proofdiff": {
+    "commit": "a9b721ca7500da4b316c737dbb159ded6e6d3577",
+    "version": "0.1.0"
+  },
+  "cases": [
+    {
+      "id": "relative-targeted-pass",
+      "purpose": "A direct relative test relationship is found, explicitly targeted, and passes.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/value.test.js"
+        ],
+        "executedTests": [
+          "test/value.test.js"
+        ],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "typescript-alias-unresolved",
+      "purpose": "A clear tsconfig paths relationship remains a labeled miss rather than being converted into a success.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "not-run"
+        },
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "directory-support-file-targeted-pass",
+      "purpose": "A support module under tests/ is classified as a test and can produce a zero-test targeted pass; the evaluator preserves this false-strength risk.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verified",
+        "language": "javascript",
+        "relatedTests": [
+          "tests/fixtures/helper.js"
+        ],
+        "executedTests": [
+          "tests/fixtures/helper.js"
+        ],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "opaque-passing-command",
+      "purpose": "A passing repository test command that excludes the related test remains partial and non-targeted.",
+      "verdict": "passed",
+      "observed": {
+        "status": "partially-verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/access.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "targeted-verification-failure",
+      "purpose": "A related test that executes and fails produces verification-failed evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verification-failed",
+        "language": "javascript",
+        "relatedTests": [
+          "test/tax.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "failed",
+          "js:test:test:targeted": "failed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "unsupported-ambiguous-file",
+      "purpose": "An unsupported file remains unknown and is not forced into a binary relationship judgment.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "unknown",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {},
+        "repositoryCodeExecuted": false
+      }
+    }
+  ]
+}

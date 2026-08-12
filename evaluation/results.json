@@ -1,0 +1,1264 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-08-12T10:56:37.142Z",
+  "proofdiff": {
+    "commit": "a9b721ca7500da4b316c737dbb159ded6e6d3577",
+    "version": "0.1.0"
+  },
+  "environment": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "node": "v24.15.0",
+    "cpuModel": "Apple M3",
+    "cpuCount": 8,
+    "memoryGiB": 16
+  },
+  "cases": [
+    {
+      "id": "p-map-root-test-file",
+      "repository": "sindresorhus/p-map",
+      "commit": "bc26cf03f81292325236a1188063dac8e7a4de0f",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 176,
+      "inventory": {
+        "trackedFiles": 15,
+        "manifestTrackedFiles": 15,
+        "inventoryFiles": 15,
+        "supportedSourceCandidates": 6,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 6,
+        "parserCounts": {
+          "@babel/parser": 6
+        },
+        "confidenceCounts": {
+          "high": 5,
+          "medium": 1
+        },
+        "parserFallbacks": 0,
+        "fallbackPathGroups": {},
+        "diagnosticCount": 1,
+        "diagnosticSamples": [
+          "index.d.ts: Parser recovered: Missing initializer in const declaration. (155:36)"
+        ],
+        "changedFileParser": {
+          "parser": "@babel/parser",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 5,
+        "staticImportObservations": 15,
+        "testFilesClassified": 0
+      },
+      "assessment": {
+        "path": "index.js",
+        "language": "javascript",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [],
+        "relatedTestShapes": {
+          "filenamePattern": 0,
+          "directoryOnly": 0
+        },
+        "impactedFileCount": 3,
+        "limitations": [
+          "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "test.js"
+        ],
+        "foundExpectedTests": [],
+        "missedExpectedTests": [
+          "test.js"
+        ],
+        "classification": "clearly-expected-missed",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:test:test"
+        ],
+        "discoveredIds": [
+          "js:test:test"
+        ],
+        "foundExpectedIds": [
+          "js:test:test"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "fastify-relative-cjs",
+      "repository": "fastify/fastify",
+      "commit": "e4ffc205328db294d550c5855d2573b33f5e9d62",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 494,
+      "inventory": {
+        "trackedFiles": 393,
+        "manifestTrackedFiles": 393,
+        "inventoryFiles": 393,
+        "supportedSourceCandidates": 300,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 300,
+        "parserCounts": {
+          "@babel/parser": 300
+        },
+        "confidenceCounts": {
+          "high": 300
+        },
+        "parserFallbacks": 0,
+        "fallbackPathGroups": {},
+        "diagnosticCount": 0,
+        "diagnosticSamples": [],
+        "changedFileParser": {
+          "parser": "@babel/parser",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 351,
+        "staticImportObservations": 1215,
+        "testFilesClassified": 227
+      },
+      "assessment": {
+        "path": "lib/wrap-thenable.js",
+        "language": "javascript",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [
+          "test/async-dispose.test.js",
+          "test/body-limit.test.js",
+          "test/build/version.test.js",
+          "test/constrained-routes.test.js",
+          "test/custom-parser-async.test.js",
+          "test/custom-parser.0.test.js",
+          "test/custom-parser.1.test.js",
+          "test/custom-parser.4.test.js",
+          "test/custom-parser.5.test.js",
+          "test/diagnostics-channel/404.test.js",
+          "test/diagnostics-channel/async-delay-request.test.js",
+          "test/diagnostics-channel/async-error-handler.test.js",
+          "test/diagnostics-channel/async-request.test.js",
+          "test/diagnostics-channel/error-before-handler.test.js",
+          "test/diagnostics-channel/error-request.test.js",
+          "test/diagnostics-channel/sync-delay-request.test.js",
+          "test/diagnostics-channel/sync-request-reply.test.js",
+          "test/diagnostics-channel/sync-request.test.js",
+          "test/esm/errorCodes.test.mjs",
+          "test/esm/esm.test.mjs",
+          "test/esm/index.test.js",
+          "test/esm/named-exports.mjs",
+          "test/hooks-async.test.js",
+          "test/hooks.on-listen.test.js",
+          "test/hooks.on-ready.test.js",
+          "test/http-methods/copy.test.js",
+          "test/http-methods/custom-http-methods.test.js",
+          "test/http-methods/get.test.js",
+          "test/http-methods/head.test.js",
+          "test/http-methods/lock.test.js",
+          "test/http-methods/mkcalendar.test.js",
+          "test/http-methods/report.test.js",
+          "test/http-methods/search.test.js",
+          "test/http-methods/trace.test.js",
+          "test/http-methods/unlock.test.js",
+          "test/internals/content-type-parser.test.js",
+          "test/internals/handle-request.test.js",
+          "test/internals/hooks.test.js",
+          "test/internals/reply-serialize.test.js",
+          "test/internals/reply.test.js",
+          "test/internals/request-validate.test.js",
+          "test/internals/schema-controller-perf.test.js",
+          "test/internals/server.test.js",
+          "test/issue-4959.test.js",
+          "test/listen.4.test.js",
+          "test/listen.5.test.js",
+          "test/logger/instantiation.test.js",
+          "test/logger/logging.test.js",
+          "test/logger/options.test.js",
+          "test/logger/request.test.js",
+          "test/logger/response.test.js",
+          "test/plugin.1.test.js",
+          "test/plugin.2.test.js",
+          "test/plugin.3.test.js",
+          "test/plugin.4.test.js",
+          "test/route.2.test.js",
+          "test/serialize-response.test.js",
+          "test/skip-reply-send.test.js",
+          "test/stream-serializers.test.js",
+          "test/stream.1.test.js",
+          "test/types/content-type-parser.tst.ts",
+          "test/types/decorate-request-reply.tst.ts",
+          "test/types/dummy-plugin.mts",
+          "test/types/errors.tst.ts",
+          "test/types/fastify.tst.ts",
+          "test/types/hooks.tst.ts",
+          "test/types/instance.tst.ts",
+          "test/types/logger.tst.ts",
+          "test/types/plugin.tst.ts",
+          "test/types/register.tst.ts",
+          "test/types/reply.tst.ts",
+          "test/types/request.tst.ts",
+          "test/types/route.tst.ts",
+          "test/types/schema.tst.ts",
+          "test/types/serverFactory.tst.ts",
+          "test/types/type-provider.tst.ts",
+          "test/types/using.tst.ts",
+          "test/web-api.test.js",
+          "test/wrap-thenable.test.js"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 61,
+          "directoryOnly": 18
+        },
+        "impactedFileCount": 107,
+        "limitations": [
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "test/wrap-thenable.test.js"
+        ],
+        "foundExpectedTests": [
+          "test/wrap-thenable.test.js"
+        ],
+        "missedExpectedTests": [],
+        "classification": "clearly-expected-found",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:lint:lint",
+          "js:test:test",
+          "js:test:test:ci"
+        ],
+        "discoveredIds": [
+          "js:lint:lint",
+          "js:test:test",
+          "js:test:test:ci"
+        ],
+        "foundExpectedIds": [
+          "js:lint:lint",
+          "js:test:test",
+          "js:test:test:ci"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "zod-package-self-export",
+      "repository": "colinhacks/zod",
+      "commit": "2d90846af918af9602e088812d63a035d47cdbe4",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 522,
+      "inventory": {
+        "trackedFiles": 584,
+        "manifestTrackedFiles": 584,
+        "inventoryFiles": 584,
+        "supportedSourceCandidates": 410,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 410,
+        "parserCounts": {
+          "@babel/parser": 410
+        },
+        "confidenceCounts": {
+          "high": 410
+        },
+        "parserFallbacks": 0,
+        "fallbackPathGroups": {},
+        "diagnosticCount": 0,
+        "diagnosticSamples": [],
+        "changedFileParser": {
+          "parser": "@babel/parser",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 504,
+        "staticImportObservations": 1111,
+        "testFilesClassified": 173
+      },
+      "assessment": {
+        "path": "packages/zod/src/v3/types.ts",
+        "language": "typescript",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [
+          "packages/zod/src/v3/tests/error.test.ts",
+          "packages/zod/src/v3/tests/parseUtil.test.ts",
+          "packages/zod/src/v3/tests/refine.test.ts",
+          "packages/zod/src/v3/tests/tuple.test.ts"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 4,
+          "directoryOnly": 0
+        },
+        "impactedFileCount": 11,
+        "limitations": [
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "packages/zod/src/v3/tests/string.test.ts"
+        ],
+        "foundExpectedTests": [],
+        "missedExpectedTests": [
+          "packages/zod/src/v3/tests/string.test.ts"
+        ],
+        "classification": "clearly-expected-missed",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "discoveredIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "foundExpectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "vitest-ts-path-alias",
+      "repository": "vitest-dev/vitest",
+      "commit": "667c13954daff2d1bec8a866702da8934b9ce539",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 834,
+      "inventory": {
+        "trackedFiles": 3068,
+        "manifestTrackedFiles": 3068,
+        "inventoryFiles": 3068,
+        "supportedSourceCandidates": 2301,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 2301,
+        "parserCounts": {
+          "@babel/parser": 2292,
+          "lexical fallback": 9
+        },
+        "confidenceCounts": {
+          "high": 2290,
+          "low": 9,
+          "medium": 2
+        },
+        "parserFallbacks": 9,
+        "fallbackPathGroups": {
+          "packages/vitest/src": 4,
+          "packages/ui/client": 1,
+          "packages/ui/node": 1,
+          "test/e2e/custom.ts": 1,
+          "test/e2e/fixtures": 1,
+          "test/unit/vitest-environment-custom": 1
+        },
+        "diagnosticCount": 15,
+        "diagnosticSamples": [
+          "packages/browser/context.d.ts: Parser recovered: Missing initializer in const declaration. (836:1)",
+          "packages/browser/context.d.ts: Parser recovered: Missing initializer in const declaration. (843:33)",
+          "packages/browser/context.d.ts: Parser recovered: Missing initializer in const declaration. (850:38)",
+          "packages/browser/context.d.ts: Parser recovered: Missing initializer in const declaration. (994:1)",
+          "packages/browser/context.d.ts: Parser recovered: Missing initializer in const declaration. (996:38)",
+          "packages/ui/client/composables/explorer/tree.ts: AST parsing failed: Unexpected token, expected \"}\" (30:8)",
+          "packages/ui/node/index.ts: AST parsing failed: Unexpected token, expected \"}\" (27:8)",
+          "packages/vitest/src/integrations/env/edge-runtime.ts: AST parsing failed: Unexpected token, expected \"}\" (6:6)",
+          "packages/vitest/src/integrations/env/happy-dom.ts: AST parsing failed: Unexpected token, expected \"}\" (18:6)",
+          "packages/vitest/src/integrations/env/node.ts: AST parsing failed: Unexpected token, expected \"}\" (42:6)",
+          "packages/vitest/src/integrations/env/jsdom.ts: AST parsing failed: Unexpected token, expected \"}\" (72:6)",
+          "test/e2e/custom.ts: AST parsing failed: Unexpected token, expected \"}\" (9:6)"
+        ],
+        "changedFileParser": {
+          "parser": "@babel/parser",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 2267,
+        "staticImportObservations": 6324,
+        "testFilesClassified": 1690
+      },
+      "assessment": {
+        "path": "packages/utils/src/error.ts",
+        "language": "typescript",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [],
+        "relatedTestShapes": {
+          "filenamePattern": 0,
+          "directoryOnly": 0
+        },
+        "impactedFileCount": 0,
+        "limitations": [
+          "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "test/unit/test/error.test.ts"
+        ],
+        "foundExpectedTests": [],
+        "missedExpectedTests": [
+          "test/unit/test/error.test.ts"
+        ],
+        "classification": "clearly-expected-missed",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:lint:lint",
+          "js:test:test",
+          "js:test:test:ci",
+          "js:typecheck:typecheck"
+        ],
+        "discoveredIds": [
+          "js:lint:lint",
+          "js:test:test",
+          "js:test:test:ci",
+          "js:typecheck:typecheck"
+        ],
+        "foundExpectedIds": [
+          "js:lint:lint",
+          "js:test:test",
+          "js:test:test:ci",
+          "js:typecheck:typecheck"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "eslint-medium-relative-cjs",
+      "repository": "eslint/eslint",
+      "commit": "dc1e7a8416937edefe04cf836ee202a6fc03bedd",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 1342,
+      "inventory": {
+        "trackedFiles": 2358,
+        "manifestTrackedFiles": 2358,
+        "inventoryFiles": 2358,
+        "supportedSourceCandidates": 1542,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 1542,
+        "parserCounts": {
+          "@babel/parser": 1535,
+          "lexical fallback": 7
+        },
+        "confidenceCounts": {
+          "high": 1518,
+          "low": 7,
+          "medium": 17
+        },
+        "parserFallbacks": 7,
+        "fallbackPathGroups": {
+          "tests/fixtures/shallow-glob": 2,
+          "tests/fixtures/cli": 1,
+          "tests/fixtures/config-file": 1,
+          "tests/fixtures/config-hierarchy": 1,
+          "tests/fixtures/syntax-error.js": 1,
+          "tests/fixtures/unmatched-patterns": 1
+        },
+        "diagnosticCount": 42,
+        "diagnosticSamples": [
+          "lib/types/use-at-your-own-risk.d.ts: Parser recovered: Missing initializer in const declaration. (31:55)",
+          "tests/fixtures/cli/syntax-error.js: AST parsing failed: Unexpected token (1:2)",
+          "tests/fixtures/code-path-analysis/if-4.js: Parser recovered: 'return' outside of function. (11:4)",
+          "tests/fixtures/code-path-analysis/if-5.js: Parser recovered: 'return' outside of function. (10:7)",
+          "tests/fixtures/code-path-analysis/switch--cases-2.js: Parser recovered: 'return' outside of function. (20:8)",
+          "tests/fixtures/code-path-analysis/switch--cases-2.js: Parser recovered: 'return' outside of function. (25:8)",
+          "tests/fixtures/code-path-analysis/try--try-catch-3.js: Parser recovered: 'return' outside of function. (15:8)",
+          "tests/fixtures/code-path-analysis/try--try-catch-finally-2.js: Parser recovered: 'return' outside of function. (12:4)",
+          "tests/fixtures/code-path-analysis/try--try-finally-4.js: Parser recovered: 'return' outside of function. (19:12)",
+          "tests/fixtures/code-path-analysis/try--try-finally-2.js: Parser recovered: 'return' outside of function. (11:4)",
+          "tests/fixtures/code-path-analysis/try--try-finally-5.js: Parser recovered: 'return' outside of function. (19:12)",
+          "tests/fixtures/code-path-analysis/try--try-catch-finally-3.js: Parser recovered: 'return' outside of function. (20:8)"
+        ],
+        "changedFileParser": {
+          "parser": "@babel/parser",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 1492,
+        "staticImportObservations": 2300,
+        "testFilesClassified": 1061
+      },
+      "assessment": {
+        "path": "lib/api.js",
+        "language": "javascript",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [
+          "tests/lib/api.js"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 0,
+          "directoryOnly": 1
+        },
+        "impactedFileCount": 5,
+        "limitations": [
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "tests/lib/api.js"
+        ],
+        "foundExpectedTests": [
+          "tests/lib/api.js"
+        ],
+        "missedExpectedTests": [],
+        "classification": "clearly-expected-found",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "discoveredIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "foundExpectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "flask-python-src-layout",
+      "repository": "pallets/flask",
+      "commit": "2a8a38b051fc248865730bf3511bf2e2ea325e81",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 588,
+      "inventory": {
+        "trackedFiles": 236,
+        "manifestTrackedFiles": 236,
+        "inventoryFiles": 236,
+        "supportedSourceCandidates": 83,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 83,
+        "parserCounts": {
+          "python3 ast": 83
+        },
+        "confidenceCounts": {
+          "high": 83
+        },
+        "parserFallbacks": 0,
+        "fallbackPathGroups": {},
+        "diagnosticCount": 0,
+        "diagnosticSamples": [],
+        "changedFileParser": {
+          "parser": "python3 ast",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 174,
+        "staticImportObservations": 675,
+        "testFilesClassified": 48
+      },
+      "assessment": {
+        "path": "src/flask/config.py",
+        "language": "python",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [
+          "examples/javascript/tests/test_js_example.py",
+          "examples/tutorial/tests/test_auth.py",
+          "tests/conftest.py",
+          "tests/test_appctx.py",
+          "tests/test_apps/blueprintapp/__init__.py",
+          "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+          "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+          "tests/test_apps/cliapp/app.py",
+          "tests/test_apps/cliapp/factory.py",
+          "tests/test_apps/cliapp/importerrorapp.py",
+          "tests/test_apps/cliapp/inner1/__init__.py",
+          "tests/test_apps/cliapp/inner1/inner2/flask.py",
+          "tests/test_apps/cliapp/multiapp.py",
+          "tests/test_apps/helloworld/hello.py",
+          "tests/test_apps/subdomaintestmodule/__init__.py",
+          "tests/test_async.py",
+          "tests/test_basic.py",
+          "tests/test_blueprints.py",
+          "tests/test_cli.py",
+          "tests/test_config.py",
+          "tests/test_converters.py",
+          "tests/test_helpers.py",
+          "tests/test_instance_config.py",
+          "tests/test_json.py",
+          "tests/test_json_tag.py",
+          "tests/test_logging.py",
+          "tests/test_regression.py",
+          "tests/test_reqctx.py",
+          "tests/test_request.py",
+          "tests/test_session_interface.py",
+          "tests/test_signals.py",
+          "tests/test_subclassing.py",
+          "tests/test_templating.py",
+          "tests/test_testing.py",
+          "tests/test_user_error_handler.py",
+          "tests/test_views.py",
+          "tests/type_check/typing_app_decorators.py",
+          "tests/type_check/typing_error_handler.py",
+          "tests/type_check/typing_route.py"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 24,
+          "directoryOnly": 15
+        },
+        "impactedFileCount": 68,
+        "limitations": [
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "tests/test_config.py"
+        ],
+        "foundExpectedTests": [
+          "tests/test_config.py"
+        ],
+        "missedExpectedTests": [],
+        "classification": "clearly-expected-found",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:typecheck:mypy"
+        ],
+        "discoveredIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:test:pytest:targeted",
+          "python:typecheck:mypy"
+        ],
+        "foundExpectedIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:typecheck:mypy"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [
+          "pytest"
+        ],
+        "targetedDefinitions": [
+          "python:test:pytest:targeted"
+        ]
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "httpx-python-flat-package",
+      "repository": "encode/httpx",
+      "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 455,
+      "inventory": {
+        "trackedFiles": 125,
+        "manifestTrackedFiles": 125,
+        "inventoryFiles": 125,
+        "supportedSourceCandidates": 60,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 60,
+        "parserCounts": {
+          "python3 ast": 60
+        },
+        "confidenceCounts": {
+          "high": 60
+        },
+        "parserFallbacks": 0,
+        "fallbackPathGroups": {},
+        "diagnosticCount": 0,
+        "diagnosticSamples": [],
+        "changedFileParser": {
+          "parser": "python3 ast",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 122,
+        "staticImportObservations": 365,
+        "testFilesClassified": 37
+      },
+      "assessment": {
+        "path": "httpx/_utils.py",
+        "language": "python",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [
+          "tests/client/test_async_client.py",
+          "tests/client/test_auth.py",
+          "tests/client/test_client.py",
+          "tests/client/test_cookies.py",
+          "tests/client/test_event_hooks.py",
+          "tests/client/test_headers.py",
+          "tests/client/test_properties.py",
+          "tests/client/test_proxies.py",
+          "tests/client/test_queryparams.py",
+          "tests/client/test_redirects.py",
+          "tests/conftest.py",
+          "tests/models/test_cookies.py",
+          "tests/models/test_headers.py",
+          "tests/models/test_queryparams.py",
+          "tests/models/test_requests.py",
+          "tests/models/test_responses.py",
+          "tests/models/test_url.py",
+          "tests/models/test_whatwg.py",
+          "tests/test_api.py",
+          "tests/test_asgi.py",
+          "tests/test_auth.py",
+          "tests/test_config.py",
+          "tests/test_content.py",
+          "tests/test_decoders.py",
+          "tests/test_exceptions.py",
+          "tests/test_exported_members.py",
+          "tests/test_main.py",
+          "tests/test_multipart.py",
+          "tests/test_status_codes.py",
+          "tests/test_timeouts.py",
+          "tests/test_utils.py",
+          "tests/test_wsgi.py"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 31,
+          "directoryOnly": 1
+        },
+        "impactedFileCount": 52,
+        "limitations": [
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "tests/test_utils.py"
+        ],
+        "foundExpectedTests": [
+          "tests/test_utils.py"
+        ],
+        "missedExpectedTests": [],
+        "classification": "clearly-expected-found",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:typecheck:mypy"
+        ],
+        "discoveredIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:test:pytest:targeted",
+          "python:typecheck:mypy"
+        ],
+        "foundExpectedIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:typecheck:mypy"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [
+          "pytest"
+        ],
+        "targetedDefinitions": [
+          "python:test:pytest:targeted"
+        ]
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "pytest-current-tool-table",
+      "repository": "pytest-dev/pytest",
+      "commit": "5fd2be03b1f8b5eef48d507d001ebf0a82e875a1",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 1628,
+      "inventory": {
+        "trackedFiles": 665,
+        "manifestTrackedFiles": 665,
+        "inventoryFiles": 665,
+        "supportedSourceCandidates": 278,
+        "truncated": false
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 278,
+        "parserCounts": {
+          "python3 ast": 278
+        },
+        "confidenceCounts": {
+          "high": 278
+        },
+        "parserFallbacks": 0,
+        "fallbackPathGroups": {},
+        "diagnosticCount": 0,
+        "diagnosticSamples": [],
+        "changedFileParser": {
+          "parser": "python3 ast",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 820,
+        "staticImportObservations": 3189,
+        "testFilesClassified": 123
+      },
+      "assessment": {
+        "path": "src/_pytest/_code/source.py",
+        "language": "python",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [
+          "doc/en/example/fixtures/test_fixtures_order_autouse.py",
+          "doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py",
+          "doc/en/example/fixtures/test_fixtures_order_autouse_temp_effects.py",
+          "doc/en/example/fixtures/test_fixtures_order_dependencies.py",
+          "doc/en/example/fixtures/test_fixtures_order_scope.py",
+          "doc/en/example/fixtures/test_fixtures_request_different_scope.py",
+          "testing/_py/test_local.py",
+          "testing/acceptance_test.py",
+          "testing/code/test_code.py",
+          "testing/code/test_excinfo.py",
+          "testing/code/test_source.py",
+          "testing/deprecated_test.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_detect_recursive_dependency_error.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/test_extend_fixture_conftest_module.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_module_class.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_funcarg_basic.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_classlevel.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_modulelevel.py",
+          "testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookupfails.py",
+          "testing/example_scripts/fixtures/test_fixture_named_request.py",
+          "testing/example_scripts/fixtures/test_getfixturevalue_dynamic.py",
+          "testing/example_scripts/marks/marks_considered_keywords/test_marks_as_keywords.py",
+          "testing/example_scripts/unittest/test_parametrized_fixture_error_message.py",
+          "testing/example_scripts/warnings/test_group_warnings_by_message.py",
+          "testing/example_scripts/warnings/test_group_warnings_by_message_summary/test_1.py",
+          "testing/examples/test_issue519.py",
+          "testing/io/test_pprint.py",
+          "testing/io/test_saferepr.py",
+          "testing/io/test_terminalwriter.py",
+          "testing/io/test_wcwidth.py",
+          "testing/logging/test_fixture.py",
+          "testing/logging/test_formatter.py",
+          "testing/logging/test_reporting.py",
+          "testing/python/show_fixtures_per_test.py",
+          "testing/test_argcomplete.py",
+          "testing/test_assertion.py",
+          "testing/test_assertrewrite.py",
+          "testing/test_cacheprovider.py",
+          "testing/test_capture.py",
+          "testing/test_collect_imported_tests.py",
+          "testing/test_collection.py",
+          "testing/test_compat.py",
+          "testing/test_config.py",
+          "testing/test_conftest.py",
+          "testing/test_debugging.py",
+          "testing/test_doctest.py",
+          "testing/test_error_diffs.py",
+          "testing/test_faulthandler.py",
+          "testing/test_findpaths.py",
+          "testing/test_helpconfig.py",
+          "testing/test_junitxml.py",
+          "testing/test_legacypath.py",
+          "testing/test_link_resolve.py",
+          "testing/test_main.py",
+          "testing/test_mark.py",
+          "testing/test_mark_expression.py",
+          "testing/test_meta.py",
+          "testing/test_monkeypatch.py",
+          "testing/test_nodes.py",
+          "testing/test_parseopt.py",
+          "testing/test_pastebin.py",
+          "testing/test_pathlib.py",
+          "testing/test_pluginmanager.py",
+          "testing/test_pytester.py",
+          "testing/test_python_path.py",
+          "testing/test_recwarn.py",
+          "testing/test_reports.py",
+          "testing/test_runner.py",
+          "testing/test_runner_xunit.py",
+          "testing/test_scope.py",
+          "testing/test_session.py",
+          "testing/test_setuponly.py",
+          "testing/test_setupplan.py",
+          "testing/test_skipping.py",
+          "testing/test_stash.py",
+          "testing/test_stepwise.py",
+          "testing/test_subtests.py",
+          "testing/test_terminal.py",
+          "testing/test_threadexception.py",
+          "testing/test_tmpdir.py",
+          "testing/test_unittest.py",
+          "testing/test_unraisableexception.py",
+          "testing/test_warning_types.py",
+          "testing/test_warnings.py"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 84,
+          "directoryOnly": 0
+        },
+        "impactedFileCount": 180,
+        "limitations": [
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "testing/code/test_source.py"
+        ],
+        "foundExpectedTests": [
+          "testing/code/test_source.py"
+        ],
+        "missedExpectedTests": [],
+        "classification": "clearly-expected-found",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "python:lint:ruff",
+          "python:test:pytest",
+          "python:typecheck:mypy"
+        ],
+        "discoveredIds": [
+          "python:lint:ruff",
+          "python:typecheck:mypy"
+        ],
+        "foundExpectedIds": [
+          "python:lint:ruff",
+          "python:typecheck:mypy"
+        ],
+        "missedExpectedIds": [
+          "python:test:pytest"
+        ],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "typescript-custom-unittest-layout",
+      "repository": "microsoft/TypeScript",
+      "commit": "b465fdbfe175304d9b977da137b2c178ae1091d3",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 2242,
+      "inventory": {
+        "trackedFiles": 81368,
+        "manifestTrackedFiles": 81368,
+        "inventoryFiles": 5000,
+        "supportedSourceCandidates": 1832,
+        "truncated": true
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 1830,
+        "parserCounts": {
+          "@babel/parser": 1052,
+          "lexical fallback": 778
+        },
+        "confidenceCounts": {
+          "high": 852,
+          "low": 778,
+          "medium": 200
+        },
+        "parserFallbacks": 778,
+        "fallbackPathGroups": {
+          "tests/baselines/reference": 778
+        },
+        "diagnosticCount": 1290,
+        "diagnosticSamples": [
+          "Skipped src/compiler/checker.ts: unreadable, binary, or larger than 1 MB.",
+          "Skipped src/lib/dom.generated.d.ts: unreadable, binary, or larger than 1 MB.",
+          "tests/baselines/reference/APISample_Watch.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/2dArrays.js: AST parsing failed: Unexpected token (8:10)",
+          "tests/baselines/reference/APISample_jsdoc.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_linter.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_WatchWithOwnWatchHost.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_compile.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/AmbientModuleAndAmbientWithSameNameAndCommonRoot.js: AST parsing failed: Unexpected token, expected \"{\" (5:11)",
+          "tests/baselines/reference/APISample_transform.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_parseConfig.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/ArrowFunction1.js: AST parsing failed: Unexpected token, expected \",\" (4:10)"
+        ],
+        "changedFileParser": {
+          "parser": "@babel/parser",
+          "confidence": "high",
+          "diagnostics": []
+        },
+        "resolvedDependencyEdges": 2050,
+        "staticImportObservations": 2710,
+        "testFilesClassified": 1087
+      },
+      "assessment": {
+        "path": "src/compiler/core.ts",
+        "language": "typescript",
+        "status": "unknown",
+        "changedSymbols": [
+          "(module scope)"
+        ],
+        "relatedTests": [],
+        "relatedTestShapes": {
+          "filenamePattern": 0,
+          "directoryOnly": 0
+        },
+        "impactedFileCount": 250,
+        "limitations": [
+          "Impact traversal stopped at 250 dependent files.",
+          "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "clear",
+        "expectedTests": [
+          "src/testRunner/unittests/compilerCore.ts"
+        ],
+        "foundExpectedTests": [],
+        "missedExpectedTests": [
+          "src/testRunner/unittests/compilerCore.ts"
+        ],
+        "classification": "clearly-expected-missed",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "discoveredIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "foundExpectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Skipped src/compiler/checker.ts: unreadable, binary, or larger than 1 MB.",
+        "Skipped src/lib/dom.generated.d.ts: unreadable, binary, or larger than 1 MB.",
+        "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    },
+    {
+      "id": "typescript-cap-tail",
+      "repository": "microsoft/TypeScript",
+      "commit": "b465fdbfe175304d9b977da137b2c178ae1091d3",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "evaluationMode": "static-only",
+      "durationMs": 2132,
+      "inventory": {
+        "trackedFiles": 81368,
+        "manifestTrackedFiles": 81368,
+        "inventoryFiles": 5000,
+        "supportedSourceCandidates": 1832,
+        "truncated": true
+      },
+      "structuralAnalysis": {
+        "analyzedFiles": 1830,
+        "parserCounts": {
+          "@babel/parser": 1052,
+          "lexical fallback": 778
+        },
+        "confidenceCounts": {
+          "high": 852,
+          "low": 778,
+          "medium": 200
+        },
+        "parserFallbacks": 778,
+        "fallbackPathGroups": {
+          "tests/baselines/reference": 778
+        },
+        "diagnosticCount": 1290,
+        "diagnosticSamples": [
+          "Skipped src/compiler/checker.ts: unreadable, binary, or larger than 1 MB.",
+          "Skipped src/lib/dom.generated.d.ts: unreadable, binary, or larger than 1 MB.",
+          "tests/baselines/reference/APISample_Watch.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_WatchWithDefaults.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/2dArrays.js: AST parsing failed: Unexpected token (8:10)",
+          "tests/baselines/reference/APISample_jsdoc.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_parseConfig.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_linter.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_compile.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_transform.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/AmbientModuleAndAmbientFunctionWithTheSameNameAndCommonRoot.js: AST parsing failed: Unexpected token (5:21)",
+          "tests/baselines/reference/APISample_watcher.js: AST parsing failed: Unexpected token (5:10)"
+        ],
+        "changedFileParser": null,
+        "resolvedDependencyEdges": 2050,
+        "staticImportObservations": 2710,
+        "testFilesClassified": 1087
+      },
+      "assessment": {
+        "path": "tests/cases/compiler/2dArrays.ts",
+        "language": "typescript",
+        "status": "unknown",
+        "changedSymbols": [],
+        "relatedTests": [
+          "tests/cases/compiler/2dArrays.ts"
+        ],
+        "relatedTestShapes": {
+          "filenamePattern": 0,
+          "directoryOnly": 1
+        },
+        "impactedFileCount": 0,
+        "limitations": [
+          "Source could not be read or analyzed.",
+          "Related test files were found statically, but no recognized runner was observed executing them successfully."
+        ]
+      },
+      "relationship": {
+        "groundTruthStrength": "ambiguous",
+        "expectedTests": [],
+        "foundExpectedTests": [],
+        "missedExpectedTests": [],
+        "classification": "ambiguous",
+        "chainValidated": true
+      },
+      "checks": {
+        "expectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "discoveredIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "foundExpectedIds": [
+          "js:lint:lint",
+          "js:test:test"
+        ],
+        "missedExpectedIds": [],
+        "targetRunners": [],
+        "targetedDefinitions": []
+      },
+      "reportNotes": [
+        "Skipped src/compiler/checker.ts: unreadable, binary, or larger than 1 MB.",
+        "Skipped src/lib/dom.generated.d.ts: unreadable, binary, or larger than 1 MB.",
+        "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
+      ],
+      "trust": {
+        "repositoryCodeExecuted": false,
+        "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+      }
+    }
+  ]
+}

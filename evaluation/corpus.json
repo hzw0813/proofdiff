@@ -1,0 +1,317 @@
+{
+  "schemaVersion": "1.0",
+  "proofdiffBaseline": {
+    "commit": "a9b721ca7500da4b316c737dbb159ded6e6d3577",
+    "version": "0.1.0"
+  },
+  "selection": {
+    "strategy": "purposive-maximum-variation",
+    "stoppingRule": "Stop after every planned structural, relationship, runner, and scale mechanism has an external case and new candidates only duplicate an existing mechanism without stronger ground truth.",
+    "prevalenceClaim": false
+  },
+  "repositories": [
+    {
+      "id": "p-map",
+      "identity": "sindresorhus/p-map",
+      "url": "https://github.com/sindresorhus/p-map.git",
+      "commit": "bc26cf03f81292325236a1188063dac8e7a4de0f",
+      "commitDate": "2026-07-20T21:20:30Z",
+      "license": "MIT",
+      "ecosystem": "javascript-esm",
+      "trackedFileCount": 15,
+      "sourceFileCount": 6,
+      "structure": "Small single-package ESM library with a root AVA test file and an opaque composite test script.",
+      "reason": "Isolates root test-file classification and opaque-runner behavior in the smallest external structure."
+    },
+    {
+      "id": "fastify",
+      "identity": "fastify/fastify",
+      "url": "https://github.com/fastify/fastify.git",
+      "commit": "e4ffc205328db294d550c5855d2573b33f5e9d62",
+      "commitDate": "2026-08-12T10:32:56Z",
+      "license": "MIT",
+      "ecosystem": "javascript-commonjs",
+      "trackedFileCount": 393,
+      "sourceFileCount": 300,
+      "structure": "Single-package CommonJS service library with direct relative test imports and a Borp-based test command wrapped by npm scripts.",
+      "reason": "Provides a conventional relative-import success control in a nontrivial JavaScript repository and a real unsupported runner shape."
+    },
+    {
+      "id": "zod",
+      "identity": "colinhacks/zod",
+      "url": "https://github.com/colinhacks/zod.git",
+      "commit": "2d90846af918af9602e088812d63a035d47cdbe4",
+      "commitDate": "2026-08-10T20:11:42Z",
+      "license": "MIT",
+      "ecosystem": "typescript-pnpm-packages",
+      "trackedFileCount": 584,
+      "sourceFileCount": 410,
+      "structure": "Multi-package TypeScript repository whose tests use package self-references resolved through conditional package exports.",
+      "reason": "Separates package-export/self-reference resolution from TypeScript paths and ordinary relative imports."
+    },
+    {
+      "id": "vitest",
+      "identity": "vitest-dev/vitest",
+      "url": "https://github.com/vitest-dev/vitest.git",
+      "commit": "667c13954daff2d1bec8a866702da8934b9ce539",
+      "commitDate": "2026-08-12T10:20:45Z",
+      "license": "MIT",
+      "ecosystem": "typescript-pnpm-monorepo",
+      "trackedFileCount": 3068,
+      "sourceFileCount": 2301,
+      "structure": "Large TypeScript monorepo with explicit compiler paths, package aliases, root orchestration scripts, and package-local tests.",
+      "reason": "Exercises TypeScript path mappings, workspace package references, root check discovery, and pre-cap scale."
+    },
+    {
+      "id": "eslint",
+      "identity": "eslint/eslint",
+      "url": "https://github.com/eslint/eslint.git",
+      "commit": "dc1e7a8416937edefe04cf836ee202a6fc03bedd",
+      "commitDate": "2026-08-12T04:43:34Z",
+      "license": "MIT",
+      "ecosystem": "javascript-commonjs-workspaces",
+      "trackedFileCount": 2358,
+      "sourceFileCount": 1542,
+      "structure": "Medium-scale CommonJS repository with a tests directory, direct relative imports, custom Makefile runner, and npm workspaces.",
+      "reason": "Checks whether conventional relationships remain intact at medium scale while workspace and runner limitations remain visible."
+    },
+    {
+      "id": "flask",
+      "identity": "pallets/flask",
+      "url": "https://github.com/pallets/flask.git",
+      "commit": "2a8a38b051fc248865730bf3511bf2e2ea325e81",
+      "commitDate": "2026-08-11T22:32:49Z",
+      "license": "BSD-3-Clause",
+      "ecosystem": "python-src-layout",
+      "trackedFileCount": 236,
+      "sourceFileCount": 83,
+      "structure": "Python src-layout package with pytest, mypy, and Ruff configuration and public-package imports in tests.",
+      "reason": "Tests the baseline src-root heuristic and all three supported Python check categories."
+    },
+    {
+      "id": "httpx",
+      "identity": "encode/httpx",
+      "url": "https://github.com/encode/httpx.git",
+      "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "commitDate": "2026-02-23T10:40:42Z",
+      "license": "BSD-3-Clause",
+      "ecosystem": "python-flat-package",
+      "trackedFileCount": 125,
+      "sourceFileCount": 60,
+      "structure": "Flat Python package with direct module imports and pytest, mypy, and Ruff metadata.",
+      "reason": "Provides a clear Python package-root success control distinct from the src-layout heuristic."
+    },
+    {
+      "id": "pytest",
+      "identity": "pytest-dev/pytest",
+      "url": "https://github.com/pytest-dev/pytest.git",
+      "commit": "5fd2be03b1f8b5eef48d507d001ebf0a82e875a1",
+      "commitDate": "2026-08-12T07:43:53Z",
+      "license": "MIT",
+      "ecosystem": "python-src-custom-test-layout",
+      "trackedFileCount": 665,
+      "sourceFileCount": 278,
+      "structure": "Python src-layout project whose tests live under testing/ and whose current pytest metadata uses the [tool.pytest] table.",
+      "reason": "Tests relationship resolution separately from check discovery when a project uses its framework's current self-hosting conventions."
+    },
+    {
+      "id": "typescript",
+      "identity": "microsoft/TypeScript",
+      "url": "https://github.com/microsoft/TypeScript.git",
+      "commit": "b465fdbfe175304d9b977da137b2c178ae1091d3",
+      "commitDate": "2026-07-27T20:55:30Z",
+      "license": "Apache-2.0",
+      "ecosystem": "typescript-large-custom-harness",
+      "trackedFileCount": 81368,
+      "sourceFileCount": 39308,
+      "structure": "Very large TypeScript repository with generated namespace barrels, custom unit-test naming, a custom Hereby runner, and many baseline artifacts.",
+      "reason": "Directly exercises the 5,000-file ceiling, changed-file analysis beyond the ceiling, custom test classification, and large-repository operational behavior."
+    }
+  ],
+  "cases": [
+    {
+      "id": "p-map-root-test-file",
+      "repository": "p-map",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "index.js", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "test-file-classification", "check-discovery", "targeted-capability"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["test.js"],
+        "chain": [
+          { "from": "test.js", "specifier": "./index.js", "to": "index.js", "kind": "direct-relative-import" }
+        ],
+        "basis": "test.js is the AVA suite and directly imports the changed module; package.json test runs AVA."
+      },
+      "expectedCheckEvidence": ["package.json script test"],
+      "expectedCheckIds": ["js:test:test"],
+      "notes": "The mutation is not an upstream bug or behavioral change."
+    },
+    {
+      "id": "fastify-relative-cjs",
+      "repository": "fastify",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "lib/wrap-thenable.js", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "relative-import", "check-discovery", "targeted-capability"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["test/wrap-thenable.test.js"],
+        "chain": [
+          { "from": "test/wrap-thenable.test.js", "specifier": "../lib/wrap-thenable", "to": "lib/wrap-thenable.js", "kind": "direct-relative-require" }
+        ],
+        "basis": "The named node:test file directly requires and exercises wrapThenable."
+      },
+      "expectedCheckEvidence": ["package.json script test", "package.json script test:ci", "package.json script lint"],
+      "expectedCheckIds": ["js:test:test", "js:test:test:ci", "js:lint:lint"],
+      "notes": "Borp is intentionally not assumed to be targetable."
+    },
+    {
+      "id": "zod-package-self-export",
+      "repository": "zod",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "packages/zod/src/v3/types.ts", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "package-exports", "workspace-boundary", "related-test-discovery"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["packages/zod/src/v3/tests/string.test.ts"],
+        "chain": [
+          { "from": "packages/zod/src/v3/tests/string.test.ts", "specifier": "zod/v3", "to": "packages/zod/src/v3/index.ts", "kind": "package-self-export" },
+          { "from": "packages/zod/src/v3/index.ts", "specifier": "./external.js", "to": "packages/zod/src/v3/external.ts", "kind": "relative-re-export" },
+          { "from": "packages/zod/src/v3/external.ts", "specifier": "./types.js", "to": "packages/zod/src/v3/types.ts", "kind": "relative-re-export" }
+        ],
+        "basis": "The package's @zod/source conditional export maps zod/v3 to the source barrel used by the string suite."
+      },
+      "expectedCheckEvidence": ["package.json script test", "package.json script lint"],
+      "expectedCheckIds": ["js:test:test", "js:lint:lint"],
+      "notes": "This isolates package exports/self-reference rather than tsconfig paths."
+    },
+    {
+      "id": "vitest-ts-path-alias",
+      "repository": "vitest",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "packages/utils/src/error.ts", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "typescript-paths", "workspace-boundary", "related-test-discovery", "pre-cap-scale"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["test/unit/test/error.test.ts"],
+        "chain": [
+          { "from": "test/unit/test/error.test.ts", "specifier": "@vitest/utils/error", "to": "packages/utils/src/error.ts", "kind": "tsconfig-path-mapping" }
+        ],
+        "basis": "tsconfig.base.json maps @vitest/utils/* to packages/utils/src/* and the unit test directly imports processError."
+      },
+      "expectedCheckEvidence": ["package.json script test", "package.json script test:ci", "package.json script typecheck", "package.json script lint"],
+      "expectedCheckIds": ["js:test:test", "js:test:test:ci", "js:typecheck:typecheck", "js:lint:lint"],
+      "notes": "The external repository remains uninstalled and unexecuted."
+    },
+    {
+      "id": "eslint-medium-relative-cjs",
+      "repository": "eslint",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "lib/api.js", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "relative-import", "workspace-note", "check-discovery", "pre-cap-scale"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["tests/lib/api.js"],
+        "chain": [
+          { "from": "tests/lib/api.js", "specifier": "../../lib/api", "to": "lib/api.js", "kind": "direct-relative-require" }
+        ],
+        "basis": "The tests-directory file directly requires and exercises the public API module."
+      },
+      "expectedCheckEvidence": ["package.json script test", "package.json script lint"],
+      "expectedCheckIds": ["js:test:test", "js:lint:lint"],
+      "notes": "The Makefile runner is intentionally not assumed to be targetable."
+    },
+    {
+      "id": "flask-python-src-layout",
+      "repository": "flask",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "src/flask/config.py", "operation": "append", "content": "\n# ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "python-src-root", "transitive-related-test", "python-check-discovery", "targeted-capability"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["tests/test_config.py"],
+        "chain": [
+          { "from": "tests/test_config.py", "specifier": "flask", "to": "src/flask/__init__.py", "kind": "python-src-root" },
+          { "from": "src/flask/__init__.py", "specifier": ".config", "to": "src/flask/config.py", "kind": "python-relative-import" }
+        ],
+        "basis": "The config suite imports flask; the package root explicitly re-exports Config from the changed module."
+      },
+      "expectedCheckEvidence": ["pyproject.toml [tool.pytest.ini_options]", "pyproject.toml [tool.mypy]", "pyproject.toml [tool.ruff]"],
+      "expectedCheckIds": ["python:test:pytest", "python:typecheck:mypy", "python:lint:ruff"],
+      "notes": "Targeted capability is inspected statically; pytest is not executed."
+    },
+    {
+      "id": "httpx-python-flat-package",
+      "repository": "httpx",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "httpx/_utils.py", "operation": "append", "content": "\n# ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "python-package-root", "direct-related-test", "python-check-discovery", "targeted-capability"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["tests/test_utils.py"],
+        "chain": [
+          { "from": "tests/test_utils.py", "specifier": "httpx._utils", "to": "httpx/_utils.py", "kind": "python-package-root" }
+        ],
+        "basis": "The named pytest file directly imports functions from the changed module."
+      },
+      "expectedCheckEvidence": ["pyproject.toml [tool.pytest.ini_options]", "pyproject.toml [tool.mypy]", "pyproject.toml [tool.ruff]"],
+      "expectedCheckIds": ["python:test:pytest", "python:typecheck:mypy", "python:lint:ruff"],
+      "notes": "Targeted capability is inspected statically; pytest is not executed."
+    },
+    {
+      "id": "pytest-current-tool-table",
+      "repository": "pytest",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "src/_pytest/_code/source.py", "operation": "append", "content": "\n# ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "python-src-root", "custom-test-directory", "check-discovery", "targeted-capability"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["testing/code/test_source.py"],
+        "chain": [
+          { "from": "testing/code/test_source.py", "specifier": "_pytest._code", "to": "src/_pytest/_code/__init__.py", "kind": "python-src-root" },
+          { "from": "src/_pytest/_code/__init__.py", "specifier": ".source", "to": "src/_pytest/_code/source.py", "kind": "python-relative-import" }
+        ],
+        "basis": "The source suite imports Source from the package barrel, which explicitly imports it from the changed module."
+      },
+      "expectedCheckEvidence": ["pyproject.toml [tool.pytest]", "pyproject.toml [tool.mypy]", "pyproject.toml [tool.ruff]"],
+      "expectedCheckIds": ["python:test:pytest", "python:typecheck:mypy", "python:lint:ruff"],
+      "notes": "The [tool.pytest] table is repository-owned current metadata, not an evaluator-invented runner assumption."
+    },
+    {
+      "id": "typescript-custom-unittest-layout",
+      "repository": "typescript",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "src/compiler/core.ts", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["structural-analysis", "generated-barrels", "test-file-classification", "check-discovery", "over-cap-scale"],
+      "relationshipReview": {
+        "strength": "clear",
+        "expectedTests": ["src/testRunner/unittests/compilerCore.ts"],
+        "chain": [
+          { "from": "src/testRunner/unittests/compilerCore.ts", "specifier": "../_namespaces/ts.js", "to": "src/testRunner/_namespaces/ts.ts", "kind": "relative-import" },
+          { "from": "src/testRunner/_namespaces/ts.ts", "specifier": "../../compiler/_namespaces/ts.js", "to": "src/compiler/_namespaces/ts.ts", "kind": "relative-re-export" },
+          { "from": "src/compiler/_namespaces/ts.ts", "specifier": "../core.js", "to": "src/compiler/core.ts", "kind": "relative-re-export" }
+        ],
+        "basis": "The compilerCore unit suite exercises equalOwnProperties through generated namespace barrels that re-export the changed module."
+      },
+      "expectedCheckEvidence": ["package.json script test", "package.json script lint"],
+      "expectedCheckIds": ["js:test:test", "js:lint:lint"],
+      "notes": "This case distinguishes custom unit-test naming from the separate inventory-tail case."
+    },
+    {
+      "id": "typescript-cap-tail",
+      "repository": "typescript",
+      "changeType": "real-repository-structure+synthetic-no-op",
+      "mutation": { "path": "tests/cases/compiler/2dArrays.ts", "operation": "append", "content": "\n// ProofDiff evaluation: syntax-preserving no-op.\n" },
+      "focus": ["file-cap", "changed-file-structural-analysis", "over-cap-scale"],
+      "relationshipReview": {
+        "strength": "ambiguous",
+        "expectedTests": [],
+        "chain": [],
+        "basis": "This is a compiler input case managed by TypeScript's custom harness; no static test-to-source relationship is asserted."
+      },
+      "expectedCheckEvidence": ["package.json script test", "package.json script lint"],
+      "expectedCheckIds": ["js:test:test", "js:lint:lint"],
+      "notes": "The file is at Git index position 61,780, well beyond ProofDiff's first-5,000 inventory. This case measures truncation only."
+    }
+  ]
+}
