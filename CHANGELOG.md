@@ -9,6 +9,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Reworked the repository front page around a verified zero-install quickstart, a real-product launch walkthrough, and the distinction between deterministic evidence and AI review.
 - Published the generated interactive demo gallery through GitHub Pages and added repository-ready social-preview artwork.
 - Updated GitHub Action guidance and hosted smoke coverage to use the released `v0.1.0` integration instead of `main`.
+- Added a first-visit demo landing story, generated from the real passing-but-partially-verified access-control scenario, before the detailed evidence gallery.
 
 ## [0.1.0] - 2026-08-12
 

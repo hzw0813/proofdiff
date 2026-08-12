@@ -11,4 +11,6 @@ Run `npm run demo` to create every report below from disposable Git repositories
 
 Generated artifacts live in `examples/`; fixture inputs live in `fixtures/demo/` and `fixtures/scenarios/`. `examples/demo-gallery.html` is the visual index, while every scenario also has terminal, JSON, and self-contained HTML reports.
 
+The gallery landing hero is generated from the opaque-test-script result. It reads the real passing check, `src/access.js` assessment, `test/access.test.js` relationship, and zero-verified/one-partial counts from that report. Generation fails if the scenario stops matching those facts, so the first-screen contrast cannot silently drift into a hand-authored claim.
+
 The demo deliberately contains failure and uncertainty. Editing generated output to make it look greener is a release-blocking documentation bug.
