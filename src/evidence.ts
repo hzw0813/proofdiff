@@ -136,8 +136,9 @@ function riskFor(file: ChangedFile, status: VerificationStatus, relatedTests: st
 export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: CheckResult[]): FileAssessment {
   const analysis = graph.analyses.get(file.path);
   const impact = impactedFiles(graph, file.path);
-  const impactedSet = new Set([file.path, ...impact.files]);
-  const staticallyTestLike = impact.files.filter((candidate) => graph.testLikeFiles.has(candidate));
+  const relationshipImpact = impactedFiles(graph, file.path, 5_000);
+  const impactedSet = new Set([file.path, ...relationshipImpact.files]);
+  const staticallyTestLike = relationshipImpact.files.filter((candidate) => graph.testLikeFiles.has(candidate));
   if (isTestLikePath(file.path)) staticallyTestLike.unshift(file.path);
   const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate));
   const relatedTests = unique([...staticallyTestLike, ...qualified]).sort();
@@ -148,6 +149,7 @@ export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: Ch
   if (!analysis && file.language !== "unknown" && file.change !== "deleted") limitations.push("Source could not be read or analyzed.");
   if (analysis?.diagnostics.length) limitations.push(...analysis.diagnostics);
   if (impact.truncated) limitations.push("Impact traversal stopped at 250 dependent files.");
+  if (relationshipImpact.truncated) limitations.push("Test-like relationship and qualification traversal stopped at 5,000 dependent files.");
   if (file.deletedSymbolHints.length > 0) limitations.push("Deleted symbol names were inferred from removed declaration lines; ranges and full structure are unavailable.");
   if (file.language === "unknown") limitations.push("Only file-level analysis is available for this file type.");
   if (file.binary) limitations.push("Binary file contents were not inspected.");

@@ -175,8 +175,9 @@ function riskFor(file, status, relatedTests, impacted, analysis) {
 export function assessFile(file, graph, checks) {
     const analysis = graph.analyses.get(file.path);
     const impact = impactedFiles(graph, file.path);
-    const impactedSet = new Set([file.path, ...impact.files]);
-    const staticallyTestLike = impact.files.filter((candidate) => graph.testLikeFiles.has(candidate));
+    const relationshipImpact = impactedFiles(graph, file.path, 5_000);
+    const impactedSet = new Set([file.path, ...relationshipImpact.files]);
+    const staticallyTestLike = relationshipImpact.files.filter((candidate) => graph.testLikeFiles.has(candidate));
     if (isTestLikePath(file.path))
         staticallyTestLike.unshift(file.path);
     const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate));
@@ -191,6 +192,8 @@ export function assessFile(file, graph, checks) {
         limitations.push(...analysis.diagnostics);
     if (impact.truncated)
         limitations.push("Impact traversal stopped at 250 dependent files.");
+    if (relationshipImpact.truncated)
+        limitations.push("Test-like relationship and qualification traversal stopped at 5,000 dependent files.");
     if (file.deletedSymbolHints.length > 0)
         limitations.push("Deleted symbol names were inferred from removed declaration lines; ranges and full structure are unavailable.");
     if (file.language === "unknown")

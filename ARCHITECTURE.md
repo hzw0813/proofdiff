@@ -49,7 +49,7 @@ Every report is derived during one run and can be serialized as JSON or HTML. Th
 
 - Files larger than 1 MB and binary files are not parsed.
 - At most 5,000 repository files are structurally analyzed per run.
-- Reverse-impact traversal is capped at 250 files per changed file.
+- The displayed/risk-scored reverse-impact list is capped at 250 files per changed file; test-like relationship and qualification traversal is separately bounded by the 5,000-file analyzed inventory.
 - Check stdout/stderr defaults to 256 KB, runner observations are separately capped at 64 KB, and check duration defaults to 120 seconds.
 - Limits are reported rather than silently treated as successful analysis.
 

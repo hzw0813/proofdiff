@@ -127,6 +127,23 @@ test("a directory-only helper remains related but cannot become runner-qualified
   assert.match(assessment?.limitations.join("\n") ?? "", /not qualified/);
 });
 
+test("test-like relationship discovery remains bounded separately from the 250-file impact display", async (context) => {
+  const generated = Object.fromEntries(Array.from({ length: 260 }, (_, index) => [`src/generated/dependent-${String(index).padStart(3, "0")}.js`, "import { value } from '../value.js'; export const observed = value;\n"]));
+  const root = await initializeRepository({
+    "src/value.js": "export const value = 1;\n",
+    ...generated,
+    "src/z-names.js": "export { value } from './value.js';\n",
+    "src/testRunner/unittests/custom.js": "import { value } from '../../z-names.js'; export const observed = value;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/value.js": "export const value = 2;\n" });
+  const report = await analyzeRepository({ repo: root });
+  const assessment = report.assessments[0];
+  assert.equal(assessment?.impactedFiles.length, 250);
+  assert.match(assessment?.limitations.join("\n") ?? "", /Impact traversal stopped at 250/);
+  assert.deepEqual(assessment?.relatedTests, ["src/testRunner/unittests/custom.js"]);
+});
+
 test("root test.js and an explicit custom Node path can independently establish identity", async (context) => {
   const rootDefault = await initializeRepository({
     "package.json": JSON.stringify({ name: "root-test", private: true, type: "module", scripts: { test: "node --test" } }),

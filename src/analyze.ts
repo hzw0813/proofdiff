@@ -53,7 +53,7 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
   const inventory = await listRepositoryFiles(root);
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
-  const impactedPaths = files.flatMap((file) => [file.path, ...impactedFiles(graph, file.path).files]);
+  const impactedPaths = files.flatMap((file) => [file.path, ...impactedFiles(graph, file.path, 5_000).files]);
   const targeted = await targetedTestChecks(root, discovery.checks, impactedPaths);
   const allChecks = [...discovery.checks, ...targeted.checks];
   const checks = options.runChecks
