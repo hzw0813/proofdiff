@@ -11,6 +11,8 @@ export async function runProcess(command, args, options) {
         let truncated = false;
         let timedOut = false;
         let settled = false;
+        let timer;
+        let terminationFallback;
         const child = spawn(command, args, {
             cwd: options.cwd,
             env: options.env ?? process.env,
@@ -34,7 +36,10 @@ export async function runProcess(command, args, options) {
             if (settled)
                 return;
             settled = true;
-            clearTimeout(timer);
+            if (timer !== undefined)
+                clearTimeout(timer);
+            if (terminationFallback !== undefined)
+                clearTimeout(terminationFallback);
             resolve({
                 exitCode,
                 stdout: stdout.toString("utf8"),
@@ -50,7 +55,16 @@ export async function runProcess(command, args, options) {
         if (options.stdin !== undefined) {
             child.stdin?.end(options.stdin);
         }
-        const timer = setTimeout(() => {
+        const forceTimedOutFinish = (error) => {
+            if (settled)
+                return;
+            child.stdin?.destroy();
+            child.stdout?.destroy();
+            child.stderr?.destroy();
+            child.unref();
+            finish(null, error);
+        };
+        timer = setTimeout(() => {
             timedOut = true;
             if (child.pid !== undefined && process.platform === "win32") {
                 const terminator = spawn("taskkill.exe", ["/pid", String(child.pid), "/T", "/F"], {
@@ -59,7 +73,19 @@ export async function runProcess(command, args, options) {
                     stdio: "ignore",
                     windowsHide: true,
                 });
-                terminator.on("error", () => child.kill());
+                terminator.once("error", (error) => {
+                    child.kill();
+                    forceTimedOutFinish(`Could not terminate the timed-out process tree: ${error.message}`);
+                });
+                terminator.once("close", () => {
+                    child.kill();
+                    forceTimedOutFinish();
+                });
+                terminationFallback = setTimeout(() => {
+                    terminator.kill();
+                    child.kill();
+                    forceTimedOutFinish("Timed-out process-tree termination did not complete promptly.");
+                }, 2_000);
             }
             else if (child.pid !== undefined) {
                 try {
@@ -68,7 +94,7 @@ export async function runProcess(command, args, options) {
                 catch {
                     child.kill("SIGTERM");
                 }
-                setTimeout(() => {
+                terminationFallback = setTimeout(() => {
                     if (!settled) {
                         try {
                             process.kill(-child.pid, "SIGKILL");
@@ -76,14 +102,15 @@ export async function runProcess(command, args, options) {
                         catch {
                             child.kill("SIGKILL");
                         }
+                        forceTimedOutFinish();
                     }
-                }, 1_000).unref();
+                }, 1_000);
             }
             else {
                 child.kill("SIGTERM");
+                terminationFallback = setTimeout(() => forceTimedOutFinish(), 1_000);
             }
         }, timeoutMs);
-        timer.unref();
     });
 }
 export function safeExecutablePath() {

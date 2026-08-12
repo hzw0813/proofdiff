@@ -142,6 +142,7 @@ test("check execution enforces timeouts", async (context) => {
   const { checks } = await discoverChecks(root);
   const [result] = await runChecks(root, checks, { timeoutMs: 200, maxOutputBytes: 1_000 });
   assert.equal(result?.status, "timed-out");
+  assert.ok((result?.durationMs ?? 10_000) < 5_000, `timeout took ${String(result?.durationMs)} ms`);
 });
 
 test("check execution caps captured output", async (context) => {
