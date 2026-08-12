@@ -11,6 +11,10 @@ export async function runProcess(command, args, options) {
         let truncated = false;
         let timedOut = false;
         let settled = false;
+        let childExited = false;
+        let childExitCode = null;
+        let windowsTerminationComplete = false;
+        let windowsTerminationError;
         let timer;
         let terminationFallback;
         const child = spawn(command, args, {
@@ -50,56 +54,95 @@ export async function runProcess(command, args, options) {
                 ...(error === undefined ? {} : { error }),
             });
         };
-        child.on("error", (error) => finish(null, error.message));
-        child.on("close", (code) => finish(code));
+        const closeChildStreams = () => {
+            child.stdin?.destroy();
+            child.stdout?.destroy();
+            child.stderr?.destroy();
+        };
+        const finishWindowsTimeoutIfComplete = () => {
+            if (!timedOut || process.platform !== "win32" || !windowsTerminationComplete || !childExited)
+                return;
+            closeChildStreams();
+            finish(childExitCode, windowsTerminationError);
+        };
+        child.on("error", (error) => {
+            if (timedOut && process.platform === "win32") {
+                windowsTerminationError ??= error.message;
+            }
+            else {
+                finish(null, error.message);
+            }
+        });
+        child.on("exit", (code) => {
+            childExited = true;
+            childExitCode = code;
+            finishWindowsTimeoutIfComplete();
+        });
+        child.on("close", (code) => {
+            if (timedOut && process.platform === "win32") {
+                childExited = true;
+                childExitCode = code;
+                finishWindowsTimeoutIfComplete();
+            }
+            else {
+                finish(code);
+            }
+        });
         if (options.stdin !== undefined) {
             child.stdin?.end(options.stdin);
         }
         const forceTimedOutFinish = (error) => {
             if (settled)
                 return;
-            child.stdin?.destroy();
-            child.stdout?.destroy();
-            child.stderr?.destroy();
+            closeChildStreams();
             child.unref();
             finish(null, error);
         };
-        const scheduleForcedFinish = (error) => {
+        const scheduleForcedFinish = (error, delayMs = 1_000) => {
             if (settled)
                 return;
             if (terminationFallback !== undefined)
                 clearTimeout(terminationFallback);
-            terminationFallback = setTimeout(() => forceTimedOutFinish(error), 1_000);
+            terminationFallback = setTimeout(() => forceTimedOutFinish(error), delayMs);
         };
         timer = setTimeout(() => {
             timedOut = true;
             if (child.pid !== undefined && process.platform === "win32") {
-                let terminationError;
+                let terminatorFinished = false;
                 const terminator = spawn("taskkill.exe", ["/pid", String(child.pid), "/T", "/F"], {
                     env: options.env ?? process.env,
                     shell: false,
                     stdio: "ignore",
                     windowsHide: true,
                 });
-                terminator.once("error", (error) => {
-                    terminationError = `Could not terminate the timed-out process tree: ${error.message}`;
+                const completeTermination = (error) => {
+                    if (terminatorFinished)
+                        return;
+                    terminatorFinished = true;
+                    if (terminationFallback !== undefined)
+                        clearTimeout(terminationFallback);
+                    if (error !== undefined)
+                        windowsTerminationError = error;
+                    windowsTerminationComplete = true;
                     child.kill();
-                    scheduleForcedFinish(terminationError);
+                    finishWindowsTimeoutIfComplete();
+                    if (!settled)
+                        scheduleForcedFinish(windowsTerminationError, 2_000);
+                };
+                terminator.once("error", (error) => {
+                    completeTermination(`Could not terminate the timed-out process tree: ${error.message}`);
                 });
                 terminator.once("close", (code) => {
-                    if (code !== 0 && terminationError === undefined) {
-                        terminationError = code === null
+                    const error = code === 0
+                        ? undefined
+                        : code === null
                             ? "Could not terminate the timed-out process tree: taskkill did not report success."
                             : `Could not terminate the timed-out process tree: taskkill exited with code ${String(code)}.`;
-                    }
-                    child.kill();
-                    scheduleForcedFinish(terminationError);
+                    completeTermination(error);
                 });
                 terminationFallback = setTimeout(() => {
-                    terminationError = "Timed-out process-tree termination did not complete promptly.";
                     terminator.kill();
-                    child.kill();
-                    scheduleForcedFinish(terminationError);
+                    completeTermination("Timed-out process-tree termination did not complete promptly.");
                 }, 2_000);
             }
             else if (child.pid !== undefined) {
