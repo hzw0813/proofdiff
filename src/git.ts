@@ -1,5 +1,4 @@
 import path from "node:path";
-import os from "node:os";
 import { runProcess, safeExecutablePath, type ProcessResult } from "./process.js";
 import type { ChangedFile, ChangeKind, DiffHunk, DiffSelection, RepositoryInfo } from "./types.js";
 import { isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
@@ -11,7 +10,7 @@ export class GitError extends Error {
 }
 
 export function gitNullDevice(platform: NodeJS.Platform = process.platform): string {
-  return platform === "win32" ? "NUL" : os.devNull;
+  return platform === "win32" ? "NUL" : "/dev/null";
 }
 
 function gitEnvironment(): NodeJS.ProcessEnv {

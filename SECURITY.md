@@ -19,7 +19,7 @@ ProofDiff's safe default performs these local operations:
 - writes reports only to paths explicitly requested by the user;
 - performs no network requests and sends no telemetry.
 
-User-controlled revisions cannot begin with `-` or contain control/whitespace characters. ProofDiff's process launcher never uses a shell. (Git and package managers may internally interpret their own configuration only within the documented boundaries.) Filenames and report content are HTML-escaped; terminal control characters from untrusted report fields and check output are removed.
+User-controlled revisions cannot begin with `-` or contain control/whitespace characters. ProofDiff's process launcher disables Node's shell mode. Git and parser operations are always started directly; on Windows, explicitly selected npm, pnpm, and Yarn checks use `cmd.exe` only to start the standard `.cmd` package-manager shim with fixed arguments. Package managers may then interpret their own configuration only within the documented boundaries. Filenames and report content are HTML-escaped; terminal control characters from untrusted report fields and check output are removed.
 
 ## Repository check execution
 
@@ -27,7 +27,7 @@ User-controlled revisions cannot begin with `-` or contain control/whitespace ch
 
 - requires explicit opt-in;
 - discovers only conventional test/typecheck/lint entry points;
-- starts commands without a shell of its own;
+- starts commands directly except for the fixed Windows package-manager shim bridge described above;
 - supplies a minimal environment without inherited tokens or credentials;
 - replaces `HOME`/`USERPROFILE` with the temporary directory;
 - caps captured output and removes common secret patterns;

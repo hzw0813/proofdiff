@@ -1,5 +1,4 @@
 import path from "node:path";
-import os from "node:os";
 import { runProcess, safeExecutablePath } from "./process.js";
 import { isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -7,7 +6,7 @@ export class GitError extends Error {
     name = "GitError";
 }
 export function gitNullDevice(platform = process.platform) {
-    return platform === "win32" ? "NUL" : os.devNull;
+    return platform === "win32" ? "NUL" : "/dev/null";
 }
 function gitEnvironment() {
     const env = {

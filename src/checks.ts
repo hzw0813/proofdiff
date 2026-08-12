@@ -44,6 +44,11 @@ function packageManager(root: string, manifest: PackageJson): { command: string;
   return { command: "npm", runArgs: (name) => ["run", name, "--silent"], origin: "package.json" };
 }
 
+export function packageManagerInvocation(command: string, args: string[], platform: NodeJS.Platform = process.platform): { command: string; args: string[] } {
+  if (platform !== "win32" || command === "bun") return { command, args };
+  return { command: "cmd.exe", args: ["/d", "/s", "/c", `${command}.cmd`, ...args] };
+}
+
 function classifyScript(name: string): CheckDefinition["kind"] | null {
   const normalized = name.toLowerCase();
   if (/^(?:test|test:unit|test:ci|test:all|check:test)$/.test(normalized)) return "test";
@@ -79,12 +84,13 @@ export async function discoverChecks(root: string): Promise<{ checks: CheckDefin
         const kind = classifyScript(name);
         if (!kind || typeof command !== "string") continue;
         const targeting = targetingForScript(kind, command);
+        const invocation = packageManagerInvocation(manager.command, manager.runArgs(name));
         checks.push({
           id: `js:${kind}:${name}`,
           label: `${kind}: ${name}`,
           kind,
-          command: manager.command,
-          args: manager.runArgs(name),
+          command: invocation.command,
+          args: invocation.args,
           origin: `${manager.origin} script ${JSON.stringify(name)}`,
           executesRepositoryCode: true,
           ...(targeting === null ? {} : targeting),

@@ -1,4 +1,8 @@
 import type { CheckDefinition, CheckResult } from "./types.js";
+export declare function packageManagerInvocation(command: string, args: string[], platform?: NodeJS.Platform): {
+    command: string;
+    args: string[];
+};
 export declare function discoverChecks(root: string): Promise<{
     checks: CheckDefinition[];
     notes: string[];

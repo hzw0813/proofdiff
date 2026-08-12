@@ -47,6 +47,11 @@ function packageManager(root, manifest) {
         return { command: "bun", runArgs: (name) => ["run", name], origin: "package.json" };
     return { command: "npm", runArgs: (name) => ["run", name, "--silent"], origin: "package.json" };
 }
+export function packageManagerInvocation(command, args, platform = process.platform) {
+    if (platform !== "win32" || command === "bun")
+        return { command, args };
+    return { command: "cmd.exe", args: ["/d", "/s", "/c", `${command}.cmd`, ...args] };
+}
 function classifyScript(name) {
     const normalized = name.toLowerCase();
     if (/^(?:test|test:unit|test:ci|test:all|check:test)$/.test(normalized))
@@ -88,12 +93,13 @@ export async function discoverChecks(root) {
                 if (!kind || typeof command !== "string")
                     continue;
                 const targeting = targetingForScript(kind, command);
+                const invocation = packageManagerInvocation(manager.command, manager.runArgs(name));
                 checks.push({
                     id: `js:${kind}:${name}`,
                     label: `${kind}: ${name}`,
                     kind,
-                    command: manager.command,
-                    args: manager.runArgs(name),
+                    command: invocation.command,
+                    args: invocation.args,
                     origin: `${manager.origin} script ${JSON.stringify(name)}`,
                     executesRepositoryCode: true,
                     ...(targeting === null ? {} : targeting),

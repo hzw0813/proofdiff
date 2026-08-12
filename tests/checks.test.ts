@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { rm } from "node:fs/promises";
 import test from "node:test";
-import { discoverChecks, runChecks, targetedTestChecks } from "../src/checks.js";
+import { discoverChecks, packageManagerInvocation, runChecks, targetedTestChecks } from "../src/checks.js";
 import { initializeRepository } from "./helpers.js";
 
 test("repository scripts are discovered but execution is a separate operation", async (context) => {
@@ -10,6 +10,9 @@ test("repository scripts are discovered but execution is a separate operation", 
   const { checks } = await discoverChecks(root);
   assert.deepEqual(checks.map((check) => check.id), ["js:test:test"]);
   assert.ok(checks.every((check) => check.executesRepositoryCode));
+  assert.deepEqual(packageManagerInvocation("npm", ["run", "test", "--silent"], "linux"), { command: "npm", args: ["run", "test", "--silent"] });
+  assert.deepEqual(packageManagerInvocation("npm", ["run", "test", "--silent"], "win32"), { command: "cmd.exe", args: ["/d", "/s", "/c", "npm.cmd", "run", "test", "--silent"] });
+  assert.deepEqual(packageManagerInvocation("bun", ["run", "test"], "win32"), { command: "bun", args: ["run", "test"] });
 });
 
 test("check output redacts common secret formats", async (context) => {
