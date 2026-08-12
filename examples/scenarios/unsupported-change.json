@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "1.0",
+  "proofdiffVersion": "0.1.0",
+  "generatedAt": "2026-08-12T00:00:00.000Z",
+  "repository": {
+    "root": "/demo/policy-engine",
+    "name": "policy-engine",
+    "head": "87f1bc06c60f",
+    "branch": "main",
+    "dirty": true
+  },
+  "selection": {
+    "mode": "working-tree",
+    "description": "working tree vs HEAD"
+  },
+  "summary": {
+    "filesChanged": 1,
+    "symbolsChanged": 0,
+    "checksDiscovered": 0,
+    "checksRun": 0,
+    "counts": {
+      "verified": 0,
+      "partially-verified": 0,
+      "unverified": 0,
+      "unknown": 1,
+      "verification-failed": 0
+    },
+    "overallStatus": "unknown",
+    "highestRisk": "high"
+  },
+  "assessments": [
+    {
+      "file": {
+        "path": "policy/access.rego",
+        "change": "modified",
+        "language": "unknown",
+        "additions": 4,
+        "deletions": 0,
+        "binary": false,
+        "hunks": [
+          {
+            "oldRange": {
+              "start": 3,
+              "end": 3
+            },
+            "newRange": {
+              "start": 4,
+              "end": 7
+            }
+          }
+        ],
+        "deletedSymbolHints": []
+      },
+      "changedSymbols": [],
+      "changedCalls": [],
+      "impactedFiles": [],
+      "relatedTests": [],
+      "executedTests": [],
+      "testExecutions": [],
+      "status": "unknown",
+      "risk": "high",
+      "riskScore": 75,
+      "reasons": [
+        "No verification command was run for this change.",
+        "No statically related test file was found.",
+        "No first-class language adapter applies.",
+        "Security-sensitive path name warrants focused human review."
+      ],
+      "evidence": [],
+      "limitations": [
+        "Only file-level analysis is available for this file type.",
+        "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+      ]
+    }
+  ],
+  "checks": [],
+  "discoveredChecks": [],
+  "notes": [
+    "Check execution was requested, but no supported checks were discovered."
+  ],
+  "trust": {
+    "repositoryCodeExecuted": false,
+    "statement": "No repository code was executed. Git inspection and language parsing were performed locally."
+  }
+}

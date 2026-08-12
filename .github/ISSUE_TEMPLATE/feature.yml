@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose a concrete improvement to evidence quality, language support, safety, or usability.
+title: "feature: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Review problem
+      description: What evidence is currently missing or hard to interpret?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Desired evidence and trust semantics
+      description: Explain which facts would be observed, which relationships would be inferred, and what limitations should be shown.
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Public examples
+      description: Link or describe representative repositories and changes without sharing private code.

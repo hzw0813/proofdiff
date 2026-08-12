@@ -1,0 +1,47 @@
+name: ProofDiff evidence report
+description: Analyze a Git change and report verification evidence without uploading source code.
+author: ProofDiff contributors
+branding:
+  icon: check-circle
+  color: blue
+inputs:
+  base:
+    description: Base commit/ref for merge-base comparison. Leave empty for the working tree.
+    required: false
+  run-checks:
+    description: Explicitly run repository code through discovered checks. Keep false for untrusted changes.
+    required: false
+    default: "false"
+  fail-on:
+    description: Failure policy (never, failed, unverified, partial, high-risk).
+    required: false
+    default: failed
+  html:
+    description: HTML report output path. Leave empty to disable.
+    required: false
+    default: proofdiff-report.html
+runs:
+  using: composite
+  steps:
+    - name: Set up supported Node.js runtime
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        package-manager-cache: "false"
+    - name: Install ProofDiff runtime dependency
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci --ignore-scripts --omit=dev
+    - name: Analyze change evidence
+      shell: bash
+      env:
+        PROOFDIFF_BASE: ${{ inputs.base }}
+        PROOFDIFF_RUN_CHECKS: ${{ inputs['run-checks'] }}
+        PROOFDIFF_FAIL_ON: ${{ inputs['fail-on'] }}
+        PROOFDIFF_HTML: ${{ inputs.html }}
+      run: |
+        args=(--repo "$GITHUB_WORKSPACE" --fail-on "$PROOFDIFF_FAIL_ON" --no-color)
+        if [[ -n "$PROOFDIFF_BASE" ]]; then args+=(--base "$PROOFDIFF_BASE"); fi
+        if [[ "$PROOFDIFF_RUN_CHECKS" == "true" ]]; then args+=(--run-checks); fi
+        if [[ -n "$PROOFDIFF_HTML" ]]; then args+=(--html "$PROOFDIFF_HTML"); fi
+        node "$GITHUB_ACTION_PATH/dist/cli.js" "${args[@]}"

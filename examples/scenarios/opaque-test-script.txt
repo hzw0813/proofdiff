@@ -1,0 +1,19 @@
+ProofDiff  Evidence for this change
+────────────────────────────────────────────────────────────────────────────────────────────────────
+access-control  working tree vs HEAD  @ 4f059fcf9ab5
+
+PARTIAL  ·  highest risk MEDIUM  ·  1 file  ·  1 symbol
+0 verified  1 partial  0 unverified  0 unknown  0 failed
+
+PARTIAL    src/access.js  MEDIUM 37
+  modified, +1/-1  ·  canDelete
+  Review: Evidence exists but is not connected to a related passing test. Security-sensitive path name warrants focused human review.
+  Evidence: test: test — Repository test command passed, but ProofDiff did not observe which test files it executed.
+  Related tests: test/access.test.js (not observed executing)
+
+Checks
+  PASS      test: test  package.json script "test"  136ms
+
+Trust boundary: Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox.
+
+Verified means a statically related test file was explicitly run and passed; it is not coverage or proof.

@@ -1,0 +1,16 @@
+node_modules/
+coverage/
+dist-test/
+work/
+outputs/
+.codex/
+.idea/
+.vscode/
+.DS_Store
+*.tgz
+*.log
+.env
+.env.*
+!.env.example
+*.swp
+.proofdiff/

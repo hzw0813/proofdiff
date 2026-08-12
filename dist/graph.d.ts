@@ -1,0 +1,15 @@
+import type { ChangedFile, SourceAnalysis, SymbolInfo } from "./types.js";
+export interface RepositoryGraph {
+    analyses: Map<string, SourceAnalysis>;
+    dependencies: Map<string, Set<string>>;
+    dependents: Map<string, Set<string>>;
+    testFiles: Set<string>;
+    diagnostics: string[];
+}
+export declare function buildRepositoryGraph(root: string, repositoryFiles: string[], changedFiles: ChangedFile[]): Promise<RepositoryGraph>;
+export declare function impactedFiles(graph: RepositoryGraph, file: string, limit?: number): {
+    files: string[];
+    truncated: boolean;
+};
+export declare function symbolsChanged(file: ChangedFile, analysis: SourceAnalysis | undefined): SymbolInfo[];
+//# sourceMappingURL=graph.d.ts.map

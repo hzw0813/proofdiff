@@ -1,0 +1,313 @@
+{
+  "schemaVersion": "1.0",
+  "proofdiffVersion": "0.1.0",
+  "generatedAt": "2026-08-12T00:00:00.000Z",
+  "repository": {
+    "root": "/demo/acme-checkout",
+    "name": "acme-checkout",
+    "head": "b39d3dbbd762",
+    "branch": "main",
+    "dirty": true
+  },
+  "selection": {
+    "mode": "working-tree",
+    "description": "working tree vs HEAD"
+  },
+  "summary": {
+    "filesChanged": 2,
+    "symbolsChanged": 2,
+    "checksDiscovered": 2,
+    "checksRun": 2,
+    "counts": {
+      "verified": 1,
+      "partially-verified": 0,
+      "unverified": 1,
+      "unknown": 0,
+      "verification-failed": 0
+    },
+    "overallStatus": "partially-verified",
+    "highestRisk": "high"
+  },
+  "assessments": [
+    {
+      "file": {
+        "path": "services/email.py",
+        "change": "modified",
+        "language": "python",
+        "additions": 7,
+        "deletions": 2,
+        "binary": false,
+        "hunks": [
+          {
+            "oldRange": {
+              "start": 1,
+              "end": 2
+            },
+            "newRange": {
+              "start": 1,
+              "end": 7
+            }
+          }
+        ],
+        "deletedSymbolHints": [
+          "send_receipt"
+        ]
+      },
+      "changedSymbols": [
+        {
+          "name": "send_receipt",
+          "kind": "function",
+          "range": {
+            "start": 1,
+            "end": 7
+          },
+          "exported": true,
+          "confidence": "high"
+        }
+      ],
+      "changedCalls": [
+        {
+          "name": "range",
+          "line": 2,
+          "confidence": "high"
+        },
+        {
+          "name": "client.send",
+          "line": 4,
+          "confidence": "high"
+        }
+      ],
+      "impactedFiles": [],
+      "relatedTests": [],
+      "executedTests": [],
+      "testExecutions": [],
+      "status": "unverified",
+      "risk": "high",
+      "riskScore": 58,
+      "reasons": [
+        "Executed checks provided no applicable successful evidence.",
+        "No statically related test file was found."
+      ],
+      "evidence": [
+        {
+          "kind": "limitation",
+          "label": "No applicable check",
+          "detail": "Checks ran, but none could be associated with this file's language.",
+          "confidence": "high"
+        },
+        {
+          "kind": "static-relationship",
+          "label": "2 call references in changed lines",
+          "detail": "Parser-observed name-only call sites: range, client.send. Targets are not resolved and runtime execution is not implied.",
+          "confidence": "high"
+        },
+        {
+          "kind": "inference",
+          "label": "python3 ast structural analysis",
+          "detail": "Parser confidence: high. Structural findings are evidence about code shape, not correctness.",
+          "confidence": "high"
+        }
+      ],
+      "limitations": [
+        "Deleted symbol names were inferred from removed declaration lines; ranges and full structure are unavailable.",
+        "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+      ]
+    },
+    {
+      "file": {
+        "path": "src/discount.js",
+        "change": "modified",
+        "language": "javascript",
+        "additions": 3,
+        "deletions": 2,
+        "binary": false,
+        "hunks": [
+          {
+            "oldRange": {
+              "start": 2,
+              "end": 3
+            },
+            "newRange": {
+              "start": 2,
+              "end": 4
+            }
+          }
+        ],
+        "deletedSymbolHints": []
+      },
+      "changedSymbols": [
+        {
+          "name": "discountFor",
+          "kind": "function",
+          "range": {
+            "start": 1,
+            "end": 6
+          },
+          "exported": true,
+          "confidence": "high"
+        }
+      ],
+      "changedCalls": [
+        {
+          "name": "Math.max",
+          "line": 2,
+          "confidence": "high"
+        },
+        {
+          "name": "Number",
+          "line": 2,
+          "confidence": "high"
+        }
+      ],
+      "impactedFiles": [
+        "src/checkout.js",
+        "test/checkout.test.js"
+      ],
+      "relatedTests": [
+        "test/checkout.test.js"
+      ],
+      "executedTests": [
+        "test/checkout.test.js"
+      ],
+      "testExecutions": [
+        {
+          "path": "test/checkout.test.js",
+          "status": "passed",
+          "checkId": "js:test:test:targeted"
+        }
+      ],
+      "status": "verified",
+      "risk": "low",
+      "riskScore": 10,
+      "reasons": [],
+      "evidence": [
+        {
+          "kind": "passing-check",
+          "label": "test: test",
+          "detail": "Repository test command passed, but ProofDiff did not observe which test files it executed.",
+          "confidence": "high",
+          "checkId": "js:test:test"
+        },
+        {
+          "kind": "passing-check",
+          "label": "targeted node-test: 1 related test file",
+          "detail": "Passed with 1 explicitly targeted test file. This observes test-file execution, not changed-line coverage.",
+          "confidence": "high",
+          "checkId": "js:test:test:targeted"
+        },
+        {
+          "kind": "related-test",
+          "label": "1 related test file",
+          "detail": "Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.",
+          "confidence": "medium"
+        },
+        {
+          "kind": "executed-test",
+          "label": "1 related test file explicitly executed",
+          "detail": "ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is execution evidence, not runtime line or branch coverage.",
+          "confidence": "high"
+        },
+        {
+          "kind": "static-relationship",
+          "label": "2 call references in changed lines",
+          "detail": "Parser-observed name-only call sites: Math.max, Number. Targets are not resolved and runtime execution is not implied.",
+          "confidence": "high"
+        },
+        {
+          "kind": "static-relationship",
+          "label": "2 impacted files",
+          "detail": "Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.",
+          "confidence": "medium"
+        },
+        {
+          "kind": "inference",
+          "label": "@babel/parser structural analysis",
+          "detail": "Parser confidence: high. Structural findings are evidence about code shape, not correctness.",
+          "confidence": "high"
+        }
+      ],
+      "limitations": []
+    }
+  ],
+  "checks": [
+    {
+      "id": "js:test:test",
+      "label": "test: test",
+      "kind": "test",
+      "command": "npm",
+      "args": [
+        "run",
+        "test",
+        "--silent"
+      ],
+      "origin": "package.json script \"test\"",
+      "executesRepositoryCode": true,
+      "targetRunner": "node-test",
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 143,
+      "output": "✔ gold customers receive the documented discount (0.316834ms)\n✔ unknown tiers pay the full subtotal (0.057458ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 39.63325",
+      "outputTruncated": false,
+      "explanation": "The command exited successfully."
+    },
+    {
+      "id": "js:test:test:targeted",
+      "label": "targeted node-test: 1 related test file",
+      "kind": "test",
+      "command": "node",
+      "args": [
+        "--test",
+        "test/checkout.test.js"
+      ],
+      "origin": "ProofDiff targeted execution derived from package.json script \"test\"",
+      "executesRepositoryCode": true,
+      "targetRunner": "node-test",
+      "targetFiles": [
+        "test/checkout.test.js"
+      ],
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 63,
+      "output": "✔ gold customers receive the documented discount (0.312708ms)\n✔ unknown tiers pay the full subtotal (0.051333ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 35.3135",
+      "outputTruncated": false,
+      "explanation": "The command exited successfully."
+    }
+  ],
+  "discoveredChecks": [
+    {
+      "id": "js:test:test",
+      "label": "test: test",
+      "kind": "test",
+      "command": "npm",
+      "args": [
+        "run",
+        "test",
+        "--silent"
+      ],
+      "origin": "package.json script \"test\"",
+      "executesRepositoryCode": true,
+      "targetRunner": "node-test"
+    },
+    {
+      "id": "js:test:test:targeted",
+      "label": "targeted node-test: 1 related test file",
+      "kind": "test",
+      "command": "node",
+      "args": [
+        "--test",
+        "test/checkout.test.js"
+      ],
+      "origin": "ProofDiff targeted execution derived from package.json script \"test\"",
+      "executesRepositoryCode": true,
+      "targetRunner": "node-test",
+      "targetFiles": [
+        "test/checkout.test.js"
+      ]
+    }
+  ],
+  "notes": [],
+  "trust": {
+    "repositoryCodeExecuted": true,
+    "statement": "Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox."
+  }
+}

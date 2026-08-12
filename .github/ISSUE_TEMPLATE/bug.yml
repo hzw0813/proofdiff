@@ -1,0 +1,39 @@
+name: Bug report
+description: Report incorrect analysis, misleading evidence, a crash, or a security-safe reproducible defect.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never include credentials, private source code, or sensitive report output. Use the private security process for vulnerabilities.
+  - type: input
+    id: version
+    attributes:
+      label: ProofDiff version
+      placeholder: Output of proofdiff --version
+    validations:
+      required: true
+  - type: dropdown
+    id: selection
+    attributes:
+      label: Diff selection
+      options: [working tree, staged, base, range]
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed and expected behavior
+      description: Explain which claim, status, path, or command outcome was wrong and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal public reproduction
+      description: Include commands and a small synthetic repository if possible.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Node, Git, Python (if relevant), package manager

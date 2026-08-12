@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests / ${{ matrix.os }} / Node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24, 26]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm pack --dry-run
+
+  dogfood:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node dist/cli.js --base "${{ github.event.pull_request.base.sha }}" --json --output proofdiff.json --html proofdiff.html --fail-on failed
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: proofdiff-evidence
+          path: |
+            proofdiff.json
+            proofdiff.html
+          if-no-files-found: warn
+
+  action-smoke:
+    name: Action smoke / source tree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:action
+
+  published-action:
+    name: Action smoke / published main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create a deterministic working-tree change
+        shell: bash
+        run: node -e "require('node:fs').appendFileSync('fixtures/demo/base/src/discount.js', '\n// published Action smoke\n')"
+      - name: Run ProofDiff from the published repository
+        uses: hzw0813/proofdiff@main
+        with:
+          fail-on: never
+          html: published-action-report.html
+      - name: Verify the published Action report
+        shell: bash
+        run: |
+          test -s published-action-report.html
+          grep -Fq 'fixtures/demo/base/src/discount.js' published-action-report.html
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: published-action-report
+          path: published-action-report.html
+          if-no-files-found: error

@@ -1,0 +1,129 @@
+import { runProcess, safeExecutablePath } from "../process.js";
+const PYTHON_AST_SCRIPT = String.raw `
+import ast, json, sys
+source = sys.stdin.read()
+try:
+    tree = ast.parse(source, filename="<proofdiff-input>", type_comments=True)
+except SyntaxError as exc:
+    print(json.dumps({"error": f"{exc.msg} at line {exc.lineno or '?'}"}))
+    raise SystemExit(0)
+
+symbols, imports, calls, call_sites = [], [], set(), {}
+
+class Visitor(ast.NodeVisitor):
+    def __init__(self):
+        self.scopes = []
+
+    def _symbol(self, node, kind):
+        symbols.append({
+            "name": node.name,
+            "kind": kind,
+            "start": node.lineno,
+            "end": getattr(node, "end_lineno", node.lineno),
+            "exported": len(self.scopes) == 0 and not node.name.startswith("_"),
+        })
+
+    def visit_FunctionDef(self, node):
+        self._symbol(node, "method" if self.scopes and self.scopes[-1] == "class" else "function")
+        self.scopes.append("function")
+        self.generic_visit(node)
+        self.scopes.pop()
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node):
+        self._symbol(node, "class")
+        self.scopes.append("class")
+        self.generic_visit(node)
+        self.scopes.pop()
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            imports.append({"source": alias.name, "names": [alias.asname or alias.name], "line": node.lineno, "level": 0})
+
+    def visit_ImportFrom(self, node):
+        imports.append({"source": ("." * node.level) + (node.module or ""), "names": [a.name for a in node.names], "line": node.lineno, "level": node.level})
+
+    def visit_Call(self, node):
+        def name(value):
+            if isinstance(value, ast.Name): return value.id
+            if isinstance(value, ast.Attribute):
+                base = name(value.value)
+                return f"{base}.{value.attr}" if base else value.attr
+            return None
+        value = name(node.func)
+        if value:
+            calls.add(value)
+            call_sites[(value, node.lineno)] = {"name": value, "line": node.lineno}
+        self.generic_visit(node)
+
+Visitor().visit(tree)
+print(json.dumps({"symbols": symbols, "imports": imports, "calls": sorted(calls), "callSites": sorted(call_sites.values(), key=lambda item: (item["line"], item["name"]))}))
+`;
+export class PythonAdapter {
+    id = "python";
+    extensions = [".py", ".pyi"];
+    async analyze(_file, source, root) {
+        for (const executable of ["python3", "python"]) {
+            const result = await runProcess(executable, ["-I", "-S", "-c", PYTHON_AST_SCRIPT], {
+                cwd: root,
+                stdin: source,
+                timeoutMs: 10_000,
+                maxOutputBytes: 1_000_000,
+                env: { PATH: safeExecutablePath(), PYTHONIOENCODING: "utf-8" },
+            });
+            if (result.error?.includes("ENOENT"))
+                continue;
+            if (result.exitCode === 0) {
+                try {
+                    const parsed = JSON.parse(result.stdout);
+                    if (parsed.error)
+                        return lexicalFallback(source, parsed.error);
+                    return {
+                        language: "python",
+                        parser: `${executable} ast`,
+                        symbols: (parsed.symbols ?? []).map((symbol) => ({
+                            name: symbol.name,
+                            kind: symbol.kind,
+                            range: { start: symbol.start, end: symbol.end },
+                            exported: symbol.exported,
+                            confidence: "high",
+                        })),
+                        imports: (parsed.imports ?? []).map((item) => ({ source: item.source, names: item.names, kind: "static", line: item.line, confidence: "high" })),
+                        calls: parsed.calls ?? [],
+                        callSites: (parsed.callSites ?? []).map((site) => ({ ...site, confidence: "high" })),
+                        diagnostics: [],
+                        confidence: "high",
+                    };
+                }
+                catch {
+                    return lexicalFallback(source, "Python AST helper returned invalid output");
+                }
+            }
+            return lexicalFallback(source, result.stderr.trim() || result.error || "Python AST helper failed");
+        }
+        return lexicalFallback(source, "Python interpreter unavailable; using lexical analysis");
+    }
+}
+function lexicalFallback(source, diagnostic) {
+    const symbols = [];
+    const imports = [];
+    for (const [index, line] of source.split("\n").entries()) {
+        const definition = line.match(/^(\s*)(?:async\s+)?(def|class)\s+([A-Za-z_]\w*)/);
+        if (definition?.[2] && definition[3]) {
+            symbols.push({
+                name: definition[3],
+                kind: definition[2] === "class" ? "class" : definition[1] ? "method" : "function",
+                range: { start: index + 1, end: index + 1 },
+                exported: !definition[1] && !definition[3].startsWith("_"),
+                confidence: "low",
+            });
+        }
+        const imported = line.match(/^\s*(?:from\s+([.\w]+)\s+import|import\s+([.\w]+))/);
+        const sourceName = imported?.[1] ?? imported?.[2];
+        if (sourceName)
+            imports.push({ source: sourceName, names: [], kind: "static", line: index + 1, confidence: "low" });
+    }
+    return { language: "python", parser: "lexical fallback", symbols, imports, calls: [], callSites: [], diagnostics: [diagnostic], confidence: "low" };
+}
+//# sourceMappingURL=python.js.map

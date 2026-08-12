@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "1.0",
+  "proofdiffVersion": "0.1.0",
+  "generatedAt": "2026-08-12T00:00:00.000Z",
+  "repository": {
+    "root": "/demo/access-control",
+    "name": "access-control",
+    "head": "4f059fcf9ab5",
+    "branch": "main",
+    "dirty": true
+  },
+  "selection": {
+    "mode": "working-tree",
+    "description": "working tree vs HEAD"
+  },
+  "summary": {
+    "filesChanged": 1,
+    "symbolsChanged": 1,
+    "checksDiscovered": 1,
+    "checksRun": 1,
+    "counts": {
+      "verified": 0,
+      "partially-verified": 1,
+      "unverified": 0,
+      "unknown": 0,
+      "verification-failed": 0
+    },
+    "overallStatus": "partially-verified",
+    "highestRisk": "medium"
+  },
+  "assessments": [
+    {
+      "file": {
+        "path": "src/access.js",
+        "change": "modified",
+        "language": "javascript",
+        "additions": 1,
+        "deletions": 1,
+        "binary": false,
+        "hunks": [
+          {
+            "oldRange": {
+              "start": 2,
+              "end": 2
+            },
+            "newRange": {
+              "start": 2,
+              "end": 2
+            }
+          }
+        ],
+        "deletedSymbolHints": []
+      },
+      "changedSymbols": [
+        {
+          "name": "canDelete",
+          "kind": "function",
+          "range": {
+            "start": 1,
+            "end": 3
+          },
+          "exported": true,
+          "confidence": "high"
+        }
+      ],
+      "changedCalls": [],
+      "impactedFiles": [
+        "test/access.test.js"
+      ],
+      "relatedTests": [
+        "test/access.test.js"
+      ],
+      "executedTests": [],
+      "testExecutions": [],
+      "status": "partially-verified",
+      "risk": "medium",
+      "riskScore": 37,
+      "reasons": [
+        "Evidence exists but is not connected to a related passing test.",
+        "Security-sensitive path name warrants focused human review."
+      ],
+      "evidence": [
+        {
+          "kind": "passing-check",
+          "label": "test: test",
+          "detail": "Repository test command passed, but ProofDiff did not observe which test files it executed.",
+          "confidence": "high",
+          "checkId": "js:test:test"
+        },
+        {
+          "kind": "related-test",
+          "label": "1 related test file",
+          "detail": "Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.",
+          "confidence": "medium"
+        },
+        {
+          "kind": "static-relationship",
+          "label": "1 impacted file",
+          "detail": "Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.",
+          "confidence": "medium"
+        },
+        {
+          "kind": "inference",
+          "label": "@babel/parser structural analysis",
+          "detail": "Parser confidence: high. Structural findings are evidence about code shape, not correctness.",
+          "confidence": "high"
+        }
+      ],
+      "limitations": [
+        "Related test files were found statically, but no recognized runner was observed executing them successfully."
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "js:test:test",
+      "label": "test: test",
+      "kind": "test",
+      "command": "npm",
+      "args": [
+        "run",
+        "test",
+        "--silent"
+      ],
+      "origin": "package.json script \"test\"",
+      "executesRepositoryCode": true,
+      "targetRunner": "node-test",
+      "targetPatterns": [
+        "test/smoke.test.js"
+      ],
+      "status": "passed",
+      "exitCode": 0,
+      "durationMs": 136,
+      "output": "✔ service boots (0.274ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34.644375",
+      "outputTruncated": false,
+      "explanation": "The command exited successfully."
+    }
+  ],
+  "discoveredChecks": [
+    {
+      "id": "js:test:test",
+      "label": "test: test",
+      "kind": "test",
+      "command": "npm",
+      "args": [
+        "run",
+        "test",
+        "--silent"
+      ],
+      "origin": "package.json script \"test\"",
+      "executesRepositoryCode": true,
+      "targetRunner": "node-test",
+      "targetPatterns": [
+        "test/smoke.test.js"
+      ]
+    }
+  ],
+  "notes": [],
+  "trust": {
+    "repositoryCodeExecuted": true,
+    "statement": "Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox."
+  }
+}

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="data:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:">
+  <title>billing-service · ProofDiff</title>
+  <style>
+    :root{--bg:#080b10;--surface:#11161e;--surface2:#171e28;--line:#293341;--text:#edf2f7;--muted:#9ba9ba;--cyan:#68d9ed;--green:#56d69b;--yellow:#f3c969;--red:#ff7585;--purple:#bda2ff;--shadow:0 18px 50px #0007;color-scheme:dark}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% -10%,#123140 0,transparent 35%),radial-gradient(circle at 90% 0,#251d43 0,transparent 32%),var(--bg);color:var(--text);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;background-image:linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,#000,transparent 65%)}
+    main{position:relative;width:min(1180px,calc(100% - 32px));margin:auto;padding:56px 0 80px}.eyebrow{color:var(--cyan);font-weight:750;letter-spacing:.12em;text-transform:uppercase;font-size:12px}h1{font-size:clamp(38px,7vw,72px);line-height:.95;margin:18px 0;letter-spacing:-.055em;max-width:900px}h1 em{color:var(--muted);font-style:normal;font-weight:500}.lede{font-size:19px;color:var(--muted);max-width:760px;margin:0}.meta{display:flex;gap:18px;flex-wrap:wrap;margin:28px 0;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}.meta span{border-left:2px solid var(--line);padding-left:10px}.panel,.file-card{background:linear-gradient(145deg,#151b24e8,#0e131ae8);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+    .overview{margin:34px 0;padding:24px;display:grid;grid-template-columns:1.25fr 1fr;gap:22px}.overall{display:flex;align-items:center;gap:18px}.overall .status-icon{width:64px;height:64px;font-size:32px}.overall h2{font-size:25px;margin:0}.overall p{margin:3px 0;color:var(--muted)}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.metric{appearance:none;text-align:left;border:1px solid var(--line);color:var(--text);background:#ffffff04;border-radius:12px;padding:12px;cursor:pointer;transition:.2s}.metric:hover,.metric.active{transform:translateY(-2px);border-color:var(--cyan)}.metric strong,.metric small{display:block}.metric strong{font-size:24px}.metric small{font-size:10px;color:var(--muted);line-height:1.25}.dot{width:7px;height:7px;border-radius:50%;display:block;margin-bottom:10px}.dot.verified{background:var(--green)}.dot.partially-verified{background:var(--yellow)}.dot.unverified{background:var(--purple)}.dot.unknown{background:var(--muted)}.dot.verification-failed{background:var(--red)}
+    .trust{display:flex;gap:14px;align-items:flex-start;padding:18px 22px;margin-bottom:32px;border:1px solid #68d9ed44;background:#68d9ed0c;border-radius:14px}.trust b{color:var(--cyan);white-space:nowrap}.trust p{margin:0;color:var(--muted)}.section-head{display:flex;justify-content:space-between;align-items:end;gap:18px;margin:38px 0 14px}.section-head h2,.panel h2{margin:0;font-size:24px}.section-head p{color:var(--muted);margin:3px 0}.controls{display:flex;gap:8px;flex-wrap:wrap}.controls input,.controls select{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px;min-width:135px}.controls input{min-width:230px}
+    .file-list{display:grid;gap:12px}.file-card{padding:20px;box-shadow:none}.file-card[hidden]{display:none}.file-head{display:flex;align-items:center;gap:15px}.status-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;font-size:20px;font-weight:850;flex:none}.status-icon.verified{color:var(--green);background:#56d69b18;border:1px solid #56d69b55}.status-icon.partially-verified{color:var(--yellow);background:#f3c96918;border:1px solid #f3c96955}.status-icon.verification-failed{color:var(--red);background:#ff758518;border:1px solid #ff758555}.status-icon.unverified{color:var(--purple);background:#bda2ff18;border:1px solid #bda2ff55}.status-icon.unknown{color:var(--muted);background:#9ba9ba18;border:1px solid #9ba9ba55}.file-title{min-width:0;flex:1}.file-title h3{font:650 16px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;margin:0;overflow-wrap:anywhere}.file-title p{margin:3px 0 0;color:var(--muted);font-size:12px}.add{color:var(--green)}.del{color:var(--red)}.file-badges{display:flex;gap:7px;align-items:center}.status,.risk,.chip,.count,.check-status{border-radius:999px;padding:4px 9px;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.035em}.status.verified{color:var(--green);background:#56d69b18}.status.partially-verified{color:var(--yellow);background:#f3c96918}.status.verification-failed{color:var(--red);background:#ff758518}.status.unverified{color:var(--purple);background:#bda2ff18}.status.unknown{color:var(--muted);background:#9ba9ba18}.risk{color:var(--muted);border:1px solid var(--line)}.risk.high,.risk.critical{color:var(--red);border-color:#ff758555}.risk.medium{color:var(--yellow);border-color:#f3c96955}.risk.low{color:var(--green);border-color:#56d69b55}.symbols{margin:14px 0 0 57px;display:flex;gap:6px;flex-wrap:wrap}.chip{background:#ffffff08;color:#bdc7d4;text-transform:none;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500}
+    details>summary{cursor:pointer;list-style:none}details>summary::-webkit-details-marker{display:none}.file-card>details>summary{margin:16px 0 0 57px;color:var(--cyan);font-size:13px}.file-card>details>summary:after{content:" ↓"}.file-card>details[open]>summary:after{content:" ↑"}.detail-grid{border-top:1px solid var(--line);padding-top:18px;margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:20px}.detail-grid .wide{grid-column:1/-1}h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#c9d3df}.detail-grid ul,.notes ul{padding-left:19px;margin:0;color:var(--muted)}.paths{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}.execution-paths{list-style:none;padding-left:0!important}.execution-paths b{display:inline-block;min-width:72px;text-transform:uppercase;font-size:10px}.execution-paths .passed{color:var(--green)}.execution-paths .failed,.execution-paths .error,.execution-paths .timed-out{color:var(--red)}.count{background:#ffffff0c;padding:2px 6px;color:var(--muted)}.evidence-list{list-style:none;padding:0!important;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}.evidence{border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:10px;padding:11px}.evidence.failing-check{border-left-color:var(--red)}.evidence.passing-check,.evidence.executed-test{border-left-color:var(--green)}.evidence.inference,.evidence.limitation{border-left-color:var(--yellow)}.evidence span{font-weight:700;color:var(--text)}.evidence p{margin:4px 0;color:var(--muted);font-size:13px}.evidence small{color:#748398}.muted{color:var(--muted)}
+    .checks,.notes{padding:22px;margin-top:14px}.check{border-top:1px solid var(--line)}.check:first-of-type{margin-top:14px}.check summary{display:grid;grid-template-columns:100px 1fr auto;gap:12px;align-items:center;padding:14px 0}.check summary>span:last-child{color:var(--muted);font-size:12px}.check>div{padding:0 0 18px 112px;color:var(--muted)}.check code{color:var(--cyan);overflow-wrap:anywhere}.check pre{white-space:pre-wrap;max-height:280px;overflow:auto;background:#05070a;border:1px solid var(--line);border-radius:9px;padding:12px;color:#c9d3df}.check-status{width:max-content}.check-status.passed{color:var(--green);background:#56d69b18}.check-status.failed,.check-status.error,.check-status.timed-out{color:var(--red);background:#ff758518}.check-status.not-run{color:var(--muted);background:#9ba9ba18}.notes li{margin:.35em 0}.empty-state{color:var(--muted);padding:28px}.method{max-width:790px;margin:42px auto 0;text-align:center;color:var(--muted);font-size:13px}.method strong{color:var(--text)}footer{text-align:center;margin-top:36px;color:#657384;font-size:12px}
+    @media(max-width:820px){main{padding-top:32px}.overview{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}.section-head{align-items:stretch;flex-direction:column}.controls input{min-width:0;flex:1}.file-head{align-items:flex-start;flex-wrap:wrap}.file-badges{width:100%;margin-left:57px}.detail-grid{grid-template-columns:1fr}.detail-grid .wide{grid-column:auto}.check summary{grid-template-columns:90px 1fr}.check summary>span:last-child{display:none}.check>div{padding-left:0}}
+    @media(max-width:520px){main{width:min(100% - 24px,1180px)}h1{font-size:42px}.overview{padding:18px}.overall{align-items:flex-start}.metrics{grid-template-columns:repeat(2,1fr)}.trust{flex-direction:column;gap:5px}.trust b{white-space:normal}.controls{display:grid;grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.file-card{padding:16px}.file-badges,.symbols,.file-card>details>summary{margin-left:0}.status,.risk{font-size:10px}}
+    @media print{body{background:white;color:#111}body:before,.controls{display:none}.panel,.file-card{background:white;border-color:#bbb;box-shadow:none;break-inside:avoid}.muted,.file-title p,.detail-grid ul,.trust p{color:#444}details{display:block}details>*{display:block!important}.status,.risk{border:1px solid #aaa}.method,footer{color:#444}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">ProofDiff · evidence report</div>
+    <h1>What shows this change <em>is safe?</em></h1>
+    <p class="lede">A local, evidence-based view of changed code, related tests, deterministic checks, and the places that still need human judgment.</p>
+    <div class="meta"><span>billing-service</span><span>working tree vs HEAD</span><span>2026-08-12T00:00:00.000Z</span><span>927ff84f0aad</span></div>
+  </header>
+  <section class="overview panel">
+    <div class="overall"><span class="status-icon verification-failed">×</span><div><h2>Verification failed</h2><p>1 changed files · 1 changed symbols · highest risk critical</p></div></div>
+    <div class="metrics"><button class="metric" data-filter-status="verified"><span class="dot verified"></span><strong>0</strong><small>Verified</small></button><button class="metric" data-filter-status="partially-verified"><span class="dot partially-verified"></span><strong>0</strong><small>Partially verified</small></button><button class="metric" data-filter-status="unverified"><span class="dot unverified"></span><strong>0</strong><small>Unverified</small></button><button class="metric" data-filter-status="unknown"><span class="dot unknown"></span><strong>0</strong><small>Unknown</small></button><button class="metric" data-filter-status="verification-failed"><span class="dot verification-failed"></span><strong>1</strong><small>Verification failed</small></button></div>
+  </section>
+  <aside class="trust"><b>Repository code ran</b><p>Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox.</p></aside>
+  <section>
+    <div class="section-head"><div><h2>Change review queue</h2><p>Highest-risk files appear first. Expand a file to audit each claim.</p></div><div class="controls"><input id="search" type="search" placeholder="Search files or symbols" aria-label="Search files or symbols"><select id="status-filter" aria-label="Filter by status"><option value="">All statuses</option><option value="verified">Verified</option><option value="partially-verified">Partially verified</option><option value="unverified">Unverified</option><option value="unknown">Unknown</option><option value="verification-failed">Verification failed</option></select><select id="risk-filter" aria-label="Filter by risk"><option value="">All risks</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select></div></div>
+    <div class="file-list" id="file-list"><article class="file-card" data-status="verification-failed" data-risk="critical" data-search="src/tax.js taxfor number test/tax.test.js">
+    <div class="file-head">
+      <span class="status-icon verification-failed" aria-hidden="true">×</span>
+      <div class="file-title"><h3>src/tax.js</h3><p>modified · <span class="add">+1</span> <span class="del">−1</span> · javascript</p></div>
+      <div class="file-badges"><span class="status verification-failed">Verification failed</span><span class="risk critical">critical risk · 80</span></div>
+    </div>
+    <div class="symbols"><span class="chip">function · taxFor</span></div>
+    <details>
+      <summary>Inspect evidence and reasoning</summary>
+      <div class="detail-grid">
+        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence failing-check"><span>test: test</span><p>The command exited with code 1.</p><small>high confidence · failing check</small></li><li class="evidence failing-check"><span>targeted node-test: 1 related test file</span><p>The command exited with code 1. ProofDiff explicitly supplied 1 related test file to the recognized runner.</p><small>high confidence · failing check</small></li><li class="evidence related-test"><span>1 related test file</span><p>Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 call reference in changed lines</span><p>Parser-observed name-only call sites: Number. Targets are not resolved and runtime execution is not implied.</p><small>high confidence · static relationship</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li></ul></div>
+        <div><h4>Why review this</h4><ul><li>An applicable verification check failed.</li></ul></div>
+        <div><h4>Targeted test outcomes <span class="count">1</span></h4><ul class="paths execution-paths"><li class="failed"><b>failed</b> test/tax.test.js</li></ul></div><div><h4>Statically related tests <span class="count">1</span></h4><ul class="paths"><li>test/tax.test.js</li></ul></div><div><h4>Calls in changed lines <span class="count">1</span></h4><ul class="paths"><li>Number <span class="muted">line 2 · high confidence</span></li></ul><p class="muted">Name-only structural references; targets are not resolved and runtime execution is not implied.</p></div><div><h4>Estimated impact <span class="count">1</span></h4><ul class="paths"><li>test/tax.test.js</li></ul></div><div class="limitations"><h4>Limits</h4><ul><li>Related test files were found statically, but no recognized runner was observed executing them successfully.</li></ul></div>
+      </div>
+    </details>
+  </article></div>
+  </section>
+  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status failed">failed</span><strong>test: test</strong><span>142 ms</span></summary><div><p>The command exited with code 1. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✖ applies the configured twenty-percent tax (0.57275ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.978583
+
+✖ failing tests:
+
+test at test/tax.test.js:5:1
+✖ applies the configured twenty-percent tax (0.57275ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  2 !== 20
+
+      at TestContext.&lt;anonymous&gt; ([REPOSITORY]/test/tax.test.js:6:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: &#039;ERR_ASSERTION&#039;,
+    actual: 2,
+    expected: 20,
+    operator: &#039;strictEqual&#039;,
+    diff: &#039;simple&#039;
+  }</pre></div></details><details class="check"><summary><span class="check-status failed">failed</span><strong>targeted node-test: 1 related test file</strong><span>62 ms</span></summary><div><p>The command exited with code 1. ProofDiff targeted execution derived from package.json script &quot;test&quot;.</p><code>node --test test/tax.test.js</code><pre>✖ applies the configured twenty-percent tax (0.560583ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34.515083
+
+✖ failing tests:
+
+test at test/tax.test.js:5:1
+✖ applies the configured twenty-percent tax (0.560583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  2 !== 20
+
+      at TestContext.&lt;anonymous&gt; ([REPOSITORY]/test/tax.test.js:6:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: &#039;ERR_ASSERTION&#039;,
+    actual: 2,
+    expected: 20,
+    operator: &#039;strictEqual&#039;,
+    diff: &#039;simple&#039;
+  }</pre></div></details></div></section>
+  <p class="method"><strong>How to read this:</strong> “Verified” means ProofDiff passed a statically related test file directly to a recognized runner and observed success. It is test-file execution evidence—not changed-line coverage, mathematical proof, or a guarantee of safety. Inference and limitations are labeled separately.</p>
+  <footer>Generated locally by ProofDiff 0.1.0 · no telemetry · schema 1.0</footer>
+</main>
+<script>
+  (() => {
+    const search = document.querySelector('#search');
+    const status = document.querySelector('#status-filter');
+    const risk = document.querySelector('#risk-filter');
+    const cards = [...document.querySelectorAll('.file-card')];
+    function apply() {
+      const query = search.value.trim().toLowerCase();
+      for (const card of cards) card.hidden = !!((query && !card.dataset.search.includes(query)) || (status.value && card.dataset.status !== status.value) || (risk.value && card.dataset.risk !== risk.value));
+    }
+    search.addEventListener('input', apply); status.addEventListener('change', apply); risk.addEventListener('change', apply);
+    for (const tile of document.querySelectorAll('[data-filter-status]')) tile.addEventListener('click', () => { const next = status.value === tile.dataset.filterStatus ? '' : tile.dataset.filterStatus; status.value = next; apply(); });
+  })();
+</script>
+</body>
+</html>
