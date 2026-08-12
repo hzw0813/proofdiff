@@ -53,11 +53,8 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
   const inventory = await listRepositoryFiles(root);
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
-  const relatedTestFiles = files.flatMap((file) => {
-    const impacted = impactedFiles(graph, file.path).files.filter((candidate) => graph.testFiles.has(candidate));
-    return graph.testFiles.has(file.path) ? [file.path, ...impacted] : impacted;
-  });
-  const targeted = await targetedTestChecks(root, discovery.checks, relatedTestFiles);
+  const impactedPaths = files.flatMap((file) => [file.path, ...impactedFiles(graph, file.path).files]);
+  const targeted = await targetedTestChecks(root, discovery.checks, impactedPaths);
   const allChecks = [...discovery.checks, ...targeted.checks];
   const checks = options.runChecks
     ? await runChecks(root, allChecks, {
@@ -79,7 +76,7 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
     notes.push(`Working-tree selection includes ${generatedUntracked.length} Git-visible untracked file${generatedUntracked.length === 1 ? "" : "s"} under ${directoryList}. ProofDiff did not hide them; review git status and .gitignore if they are unintended.`);
   }
   if (inventory.truncated) notes.push("Repository source analysis was limited to the first 5,000 tracked/unignored files.");
-  if (targeted.truncated) notes.push("Targeted test execution was limited to the first 100 statically related test files.");
+  if (targeted.truncated) notes.push("Runner-qualified targeted test execution was limited to the first 100 statically impacted paths.");
   if (files.length === 0) notes.push("No changes matched the selected diff.");
   if (!options.runChecks && allChecks.length > 0) notes.push("Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.");
   if (options.runChecks && allChecks.length === 0) notes.push("Check execution was requested, but no supported checks were discovered.");

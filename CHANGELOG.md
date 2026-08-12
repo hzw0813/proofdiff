@@ -6,6 +6,9 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Changed
 
+- Separated broad static test-like relationships from runner-qualified target identity. Node default/explicit patterns, bounded pytest configuration (including pytest 9 `[tool.pytest]`), and unittest discovery now retain inspectable qualification records.
+- Added separately bounded Node `TestsStream`, pytest plugin, and unittest `TestResult` observers. `verified` now requires an exact positive non-skipped per-target observation; zero-test, filtered, skipped, malformed, missing, truncated, and cross-target records cannot strengthen evidence.
+- Added exact batched-target attribution so one target's pass or failure is not lent to another target, while preserving status names, fail policies, CLI flags, and JSON `schemaVersion: "1.0"` with additive optional fields.
 - Reworked the repository front page around a verified zero-install quickstart, a real-product launch walkthrough, and the distinction between deterministic evidence and AI review.
 - Published the generated interactive demo gallery through GitHub Pages and added repository-ready social-preview artwork.
 - Updated GitHub Action guidance and hosted smoke coverage to use the released `v0.1.0` integration instead of `main`.

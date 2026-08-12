@@ -1,6 +1,6 @@
 import path from "node:path";
 import { analyzeSource } from "./adapters/index.js";
-import { isTestFile, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
+import { isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
 function candidatesForJavaScript(importer, source) {
     if (!source.startsWith("."))
         return [];
@@ -70,7 +70,8 @@ export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) 
             dependents.set(target, reverse);
         }
     }
-    return { analyses, dependencies, dependents, testFiles: new Set(sourceFiles.filter(isTestFile)), diagnostics };
+    const testLikeFiles = new Set(sourceFiles.filter(isTestLikePath));
+    return { analyses, dependencies, dependents, testLikeFiles, testFiles: testLikeFiles, diagnostics };
 }
 export function impactedFiles(graph, file, limit = 250) {
     const visited = new Set([file]);

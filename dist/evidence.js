@@ -1,6 +1,6 @@
 import path from "node:path";
 import { impactedFiles, symbolsChanged } from "./graph.js";
-import { clamp, isTestFile, unique } from "./util.js";
+import { clamp, isTestLikePath, unique } from "./util.js";
 function checkApplies(check, file, relatedTests) {
     if (check.targetFiles && !check.targetFiles.some((target) => relatedTests.includes(target)))
         return false;
@@ -14,31 +14,38 @@ function verificationFor(file, relatedTests, checks) {
     const evidence = [];
     const executed = checks.filter((check) => check.status !== "not-run");
     const applicable = executed.filter((check) => checkApplies(check, file, relatedTests));
-    const failures = applicable.filter((check) => ["failed", "error", "timed-out"].includes(check.status));
-    const passing = applicable.filter((check) => check.status === "passed");
-    const testExecutions = applicable.flatMap((check) => (check.targetFiles ?? [])
-        .filter((target) => relatedTests.includes(target))
-        .map((target) => ({ path: target, status: check.status, checkId: check.id })));
-    const executedTests = unique(testExecutions.filter((execution) => execution.status === "passed").map((execution) => execution.path)).sort();
-    for (const check of failures) {
+    const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
+        .filter((observation) => relatedTests.includes(observation.path))
+        .map((observation) => ({ check, observation })));
+    const targetedFailures = observations.filter(({ observation }) => observation.outcome === "failed");
+    const opaqueFailures = applicable.filter((check) => check.targetQualifications === undefined
+        && ["failed", "error", "timed-out"].includes(check.status)
+        && !(check.kind === "test" && check.targetRunner !== undefined && observations.length > 0)
+        && !(check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest")));
+    const operationalFailures = applicable.filter((check) => check.targetQualifications !== undefined && ["error", "timed-out"].includes(check.status));
+    const passing = applicable.filter((check) => check.status === "passed" && check.targetQualifications === undefined);
+    const testExecutions = observations
+        .filter(({ observation }) => observation.outcome === "passed" || observation.outcome === "failed")
+        .map(({ check, observation }) => ({ path: observation.path, status: observation.outcome === "passed" ? "passed" : "failed", checkId: check.id }));
+    const executedTests = unique(observations.filter(({ observation }) => observation.outcome === "passed" && observation.testsObserved > 0).map(({ observation }) => observation.path)).sort();
+    for (const check of [...opaqueFailures, ...operationalFailures]) {
         evidence.push({
             kind: "failing-check",
             label: check.label,
-            detail: check.targetFiles?.length
-                ? `${check.explanation} ProofDiff explicitly supplied ${check.targetFiles.length} related test file${check.targetFiles.length === 1 ? "" : "s"} to the recognized runner.`
-                : check.explanation,
+            detail: check.explanation,
             confidence: "high",
             checkId: check.id,
         });
     }
-    for (const check of passing) {
+    for (const { check, observation } of targetedFailures) {
+        evidence.push({ kind: "failing-check", label: `${check.label}: ${observation.path}`, detail: `ProofDiff explicitly supplied this runner-qualified target. ${observation.detail}`, confidence: "high", checkId: check.id });
+    }
+    for (const check of passing.filter((candidate) => candidate.targetQualifications === undefined)) {
         evidence.push({
             kind: "passing-check",
             label: check.label,
             detail: check.kind === "test" && relatedTests.length > 0
-                ? check.targetFiles?.length
-                    ? `Passed with ${check.targetFiles.length} explicitly targeted test file${check.targetFiles.length === 1 ? "" : "s"}. This observes a test-file invocation and successful runner exit, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.`
-                    : `Repository test command passed, but ProofDiff did not observe which test files it executed.`
+                ? "Repository test command passed, but ProofDiff did not observe which test files it executed."
                 : "Command success is deterministic evidence, but is not by itself proof that changed behavior is correct.",
             confidence: "high",
             checkId: check.id,
@@ -47,20 +54,23 @@ function verificationFor(file, relatedTests, checks) {
     if (relatedTests.length > 0) {
         evidence.push({
             kind: "related-test",
-            label: `${relatedTests.length} related test file${relatedTests.length === 1 ? "" : "s"}`,
-            detail: "Related by resolved local import/dependency paths. This is a static relationship, not runtime coverage.",
+            label: `${relatedTests.length} statically related test-like path${relatedTests.length === 1 ? "" : "s"}`,
+            detail: "Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.",
             confidence: "medium",
         });
     }
     if (executedTests.length > 0) {
         evidence.push({
             kind: "executed-test",
-            label: `${executedTests.length} related test file${executedTests.length === 1 ? "" : "s"} explicitly executed`,
-            detail: "ProofDiff passed these file paths directly to a recognized test runner and observed a successful exit. This is test-file execution evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
+            label: `${executedTests.length} qualified related target${executedTests.length === 1 ? "" : "s"} observed passing`,
+            detail: "ProofDiff explicitly supplied each qualified target and observed at least one non-skipped passing test for that exact path. This is file-scoped test evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
             confidence: "high",
         });
     }
-    if (failures.length > 0)
+    for (const { check, observation } of observations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
+        evidence.push({ kind: "limitation", label: `${observation.path}: ${observation.outcome}`, detail: observation.detail, confidence: "high", checkId: check.id });
+    }
+    if (targetedFailures.length > 0 || opaqueFailures.length > 0 || operationalFailures.length > 0)
         return { status: "verification-failed", evidence, executedTests, testExecutions };
     if (applicable.length === 0) {
         if (executed.length > 0) {
@@ -110,9 +120,9 @@ function riskFor(file, status, relatedTests, impacted, analysis) {
         score += 12;
         reasons.push("Evidence exists but is not connected to a related passing test.");
     }
-    if (relatedTests.length === 0 && !isTestFile(file.path)) {
+    if (relatedTests.length === 0 && !isTestLikePath(file.path)) {
         score += 18;
-        reasons.push("No statically related test file was found.");
+        reasons.push("No statically related test-like path was found.");
     }
     if (file.change === "deleted") {
         score += 12;
@@ -165,9 +175,12 @@ function riskFor(file, status, relatedTests, impacted, analysis) {
 export function assessFile(file, graph, checks) {
     const analysis = graph.analyses.get(file.path);
     const impact = impactedFiles(graph, file.path);
-    const relatedTests = impact.files.filter((candidate) => graph.testFiles.has(candidate));
-    if (isTestFile(file.path))
-        relatedTests.unshift(file.path);
+    const impactedSet = new Set([file.path, ...impact.files]);
+    const staticallyTestLike = impact.files.filter((candidate) => graph.testLikeFiles.has(candidate));
+    if (isTestLikePath(file.path))
+        staticallyTestLike.unshift(file.path);
+    const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate));
+    const relatedTests = unique([...staticallyTestLike, ...qualified]).sort();
     const changedCallSites = callsInChangedLines(file, analysis);
     const verification = verificationFor(file, relatedTests, checks);
     const risk = riskFor(file, verification.status, relatedTests, impact.files, analysis);
@@ -187,11 +200,14 @@ export function assessFile(file, graph, checks) {
     if (changedCallSites.truncated)
         limitations.push("Call references in changed lines were limited to the first 100 parser-observed sites.");
     if (relatedTests.length === 0)
-        limitations.push("No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically.");
+        limitations.push("No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically.");
     else if (verification.executedTests.length === 0)
-        limitations.push("Related test files were found statically, but no recognized runner was observed executing them successfully.");
+        limitations.push("Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.");
     else
-        limitations.push("Related test files executed successfully, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
+        limitations.push("Qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
+    const unqualifiedTestLike = staticallyTestLike.filter((candidate) => !qualified.includes(candidate));
+    if (unqualifiedTestLike.length > 0)
+        limitations.push(`${unqualifiedTestLike.length} statically related test-like path${unqualifiedTestLike.length === 1 ? " was" : "s were"} not qualified by a recognized runner convention or configuration.`);
     const evidence = [...verification.evidence];
     if (changedCallSites.calls.length > 0) {
         const names = unique(changedCallSites.calls.map((site) => site.name)).slice(0, 8);

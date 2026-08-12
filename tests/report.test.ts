@@ -43,8 +43,38 @@ test("terminal report defines evidence semantics", () => {
   const output = renderTerminalReport(report, { color: false, width: 90 });
   assert.match(output, /UNKNOWN/);
   assert.match(output, /Trust boundary/);
-  assert.match(output, /Related test file passed means that file was supplied to a recognized runner/);
-  assert.match(output, /not that changed symbols or lines ran/);
+  assert.match(output, /Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target/);
+  assert.match(output, /not changed-symbol or changed-line coverage/);
+});
+
+test("HTML check details expose qualification and observations without dumping observer source", () => {
+  const observed = structuredClone(report);
+  observed.checks.push({
+    id: "node:targeted",
+    label: "targeted node-test",
+    kind: "test",
+    command: "node",
+    args: ["--test", "--test-reporter=data:text/javascript,secret-observer-source", "test/value.test.js"],
+    origin: "fixture",
+    executesRepositoryCode: true,
+    targetRunner: "node-test",
+    targetFiles: ["test/value.test.js"],
+    targetQualifications: [{ path: "test/value.test.js", runnerPath: "test/value.test.js", basis: "runner-default-pattern", confidence: "high", detail: "Matches a documented default.", limitation: "No line coverage." }],
+    targetObservations: [{ path: "test/value.test.js", runnerPath: "test/value.test.js", outcome: "passed", testsObserved: 2, detail: "Two passed." }],
+    status: "passed",
+    exitCode: 0,
+    durationMs: 10,
+    output: "",
+    outputTruncated: false,
+    explanation: "Observed.",
+  });
+  const html = renderHtmlReport(observed);
+  assert.match(html, /Target qualifications/);
+  assert.match(html, /runner-default-pattern/);
+  assert.match(html, /Target observations/);
+  assert.match(html, /2 non-skipped observed/);
+  assert.match(html, /--test-reporter=&lt;ProofDiff observer&gt;/);
+  assert.doesNotMatch(html, /secret-observer-source/);
 });
 
 test("terminal report strips untrusted control sequences", () => {

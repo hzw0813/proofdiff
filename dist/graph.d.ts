@@ -3,6 +3,8 @@ export interface RepositoryGraph {
     analyses: Map<string, SourceAnalysis>;
     dependencies: Map<string, Set<string>>;
     dependents: Map<string, Set<string>>;
+    testLikeFiles: Set<string>;
+    /** @deprecated Use testLikeFiles; this alias is retained for evaluation compatibility. */
     testFiles: Set<string>;
     diagnostics: string[];
 }

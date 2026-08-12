@@ -2,7 +2,9 @@
 
 This evaluation asks a narrow engineering question: **which mechanisms most often prevent ProofDiff from producing useful structural, related-test, check-discovery, or targeted-test evidence in a deliberately varied external corpus?** Its purpose is roadmap selection, not a product score.
 
-The preserved product baseline is commit `a9b721ca7500da4b316c737dbb159ded6e6d3577` (`proofdiff@0.1.0`). Evaluation tooling may be added after that commit, but external observations must use the baseline build unless a result explicitly names another candidate commit. The harness observes ProofDiff; it must not patch or reconfigure the product under evaluation.
+The preserved external product observation is commit `a9b721ca7500da4b316c737dbb159ded6e6d3577` (`proofdiff@0.1.0`) in `results.json` and `controlled-results.json`. The evidence-boundary implementation starts from clean `main` at `8871fdcecceda59e0cf16a525dcccf8af65b4393`; candidate artifacts name their evaluated commit separately. The preserved baseline files and schemas are never overwritten by ordinary candidate commands. The harness observes ProofDiff; it must not patch or reconfigure the product under evaluation.
+
+The decision that separates static test-like relationships, runner-qualified targets, and per-target observations is recorded in [`TARGET_QUALIFICATION_DECISION.md`](TARGET_QUALIFICATION_DECISION.md).
 
 ## Evaluation questions
 
@@ -96,7 +98,7 @@ Build the preserved baseline in a clean detached worktree, then run the controll
 git worktree add --detach work/evaluation-baseline a9b721ca7500da4b316c737dbb159ded6e6d3577
 npm --prefix work/evaluation-baseline ci
 npm --prefix work/evaluation-baseline run build
-npm run evaluation:controlled -- --proofdiff-root work/evaluation-baseline
+npm run evaluation:controlled -- --proofdiff-root work/evaluation-baseline --output work/baseline-controlled-check.json
 npm run evaluation:validate
 ```
 
@@ -107,10 +109,19 @@ External evaluation is deliberately separate from ordinary tests. It requires ne
 ```sh
 npm run evaluation:external -- \
   --cache work/evaluation-corpus \
-  --proofdiff-root work/evaluation-baseline
+  --proofdiff-root work/evaluation-baseline \
+  --output work/baseline-external-check.json
 npm run evaluation:validate
 ```
 
-The external runner refuses a dirty ProofDiff candidate worktree, verifies every remote and commit, checks the recorded tracked-file count, and never installs external dependencies or runs external checks. Use `--output` for candidate-version results unless intentionally replacing the committed baseline observation.
+The external runner refuses a dirty ProofDiff candidate worktree, verifies every remote and commit, checks the recorded tracked-file count, and never installs external dependencies or runs external checks. Candidate runs default to `evaluation/results.candidate.json` and controlled runs default to `evaluation/controlled-results.candidate.json`; explicit output paths are still recommended for scratch reruns.
+
+Validate both preserved baseline artifacts and a candidate comparison with:
+
+```sh
+npm run evaluation:validate -- \
+  --candidate-external evaluation/results.candidate.json \
+  --candidate-controlled evaluation/controlled-results.candidate.json
+```
 
 `evaluation/results.json` contains one host's wall-clock durations. Reruns should expect those values and `generatedAt` to differ; the relationship, check, trust, and structural fields are the decision evidence. `evaluation/controlled-results.json` uses a fixed clock and deterministic fixtures.

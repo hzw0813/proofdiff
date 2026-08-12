@@ -9,6 +9,8 @@ export interface ProcessResult {
   timedOut: boolean;
   durationMs: number;
   truncated: boolean;
+  observation?: string;
+  observationTruncated?: boolean;
   error?: string;
 }
 
@@ -18,6 +20,8 @@ export interface ProcessOptions {
   maxOutputBytes?: number;
   env?: NodeJS.ProcessEnv;
   stdin?: string;
+  observe?: boolean;
+  maxObservationBytes?: number;
 }
 
 export async function runProcess(command: string, args: string[], options: ProcessOptions): Promise<ProcessResult> {
@@ -27,7 +31,9 @@ export async function runProcess(command: string, args: string[], options: Proce
   return await new Promise((resolve) => {
     let stdout: Buffer<ArrayBufferLike> = Buffer.alloc(0);
     let stderr: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+    let observation: Buffer<ArrayBufferLike> = Buffer.alloc(0);
     let truncated = false;
+    let observationTruncated = false;
     let timedOut = false;
     let settled = false;
     let childExited = false;
@@ -41,7 +47,7 @@ export async function runProcess(command: string, args: string[], options: Proce
       cwd: options.cwd,
       env: options.env ?? process.env,
       shell: false,
-      stdio: [options.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+      stdio: [options.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe", ...(options.observe ? ["pipe" as const] : [])],
       detached: process.platform !== "win32",
     });
 
@@ -57,6 +63,16 @@ export async function runProcess(command: string, args: string[], options: Proce
 
     child.stdout?.on("data", (chunk: Buffer) => { stdout = append(stdout, chunk); });
     child.stderr?.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
+    const observationStream = options.observe ? child.stdio[3] : null;
+    observationStream?.on("data", (chunk: Buffer) => {
+      const remaining = (options.maxObservationBytes ?? 64_000) - observation.length;
+      if (remaining <= 0) {
+        observationTruncated = true;
+        return;
+      }
+      if (chunk.length > remaining) observationTruncated = true;
+      observation = Buffer.concat([observation, chunk.subarray(0, remaining)]);
+    });
 
     const finish = (exitCode: number | null, error?: string): void => {
       if (settled) return;
@@ -70,6 +86,7 @@ export async function runProcess(command: string, args: string[], options: Proce
         timedOut,
         durationMs: Date.now() - started,
         truncated,
+        ...(options.observe ? { observation: observation.toString("utf8"), observationTruncated } : {}),
         ...(error === undefined ? {} : { error }),
       });
     };
@@ -78,6 +95,7 @@ export async function runProcess(command: string, args: string[], options: Proce
       child.stdin?.destroy();
       child.stdout?.destroy();
       child.stderr?.destroy();
+      observationStream?.destroy();
     };
 
     const finishWindowsTimeoutIfComplete = (): void => {

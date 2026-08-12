@@ -31,13 +31,16 @@ User-controlled revisions cannot begin with `-` or contain control/whitespace ch
 - supplies a minimal environment without inherited tokens or credentials;
 - replaces `HOME`/`USERPROFILE` with the temporary directory;
 - caps captured output and removes common secret patterns;
+- uses fixed, repository-file-free Node/pytest/unittest observer code and a separate 64 KB control pipe for structured per-target counts;
 - enforces a timeout and terminates the descendant process tree with operating-system-native mechanisms.
+
+Runner qualification is static and data-only. pytest configuration reads are bounded and support only the filename fields ProofDiff needs; configuration code and plugins are not executed during static analysis. When checks are explicitly enabled, runner execution can still load repository tests, pytest plugins, import hooks, and other arbitrary code. Observer records are accepted only when their schema, runner identity, exact normalized targets, counts, and completeness match; truncated, malformed, duplicate, missing, and unmatched data is discarded rather than trusted.
 
 These measures are defense in depth, **not a sandbox**. A command can still read accessible files, use the network, spawn processes, exploit installed tools, or persist outside the repository. Use a disposable VM/container with network and secrets removed when executing checks from untrusted contributions. On pull requests from forks, keep `run-checks: false` unless the code has been reviewed.
 
 ## Data handling
 
-Reports contain repository paths, symbol names, relationships, check commands, and bounded check output. Treat reports as repository-sensitive artifacts. The HTML report is self-contained, loads no remote resources, and has a restrictive Content Security Policy, but anyone receiving it can read its contents.
+Reports contain repository paths, symbol names, relationships, target-qualification reasons, per-target counts, check commands, and bounded check output. Owned inline observer source is abbreviated in the HTML command display but remains present in machine-readable JSON for reproducibility. Treat reports as repository-sensitive artifacts. The HTML report is self-contained, loads no remote resources, and has a restrictive Content Security Policy, but anyone receiving it can read its contents.
 
 No telemetry, analytics, update checks, remote APIs, or source-code uploads exist in ProofDiff.
 

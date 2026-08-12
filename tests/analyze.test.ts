@@ -110,6 +110,162 @@ test("a passing filtered test script cannot imply that an unexecuted related tes
   assert.match(report.assessments[0]?.evidence.find((item) => item.kind === "passing-check")?.detail ?? "", /did not observe/);
 });
 
+test("a directory-only helper remains related but cannot become runner-qualified evidence", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ name: "helper-boundary", private: true, type: "module", scripts: { test: "node --test" } }),
+    "src/value.js": "export const value = 1;\n",
+    "tests/fixtures/helper.js": "import { value } from '../../src/value.js';\nexport const fixture = value;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/value.js": "export const value = 2;\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const assessment = report.assessments[0];
+  assert.deepEqual(assessment?.relatedTests, ["tests/fixtures/helper.js"]);
+  assert.deepEqual(assessment?.executedTests, []);
+  assert.equal(assessment?.status, "partially-verified");
+  assert.ok(!report.checks.some((check) => check.id.endsWith(":targeted")));
+  assert.match(assessment?.limitations.join("\n") ?? "", /not qualified/);
+});
+
+test("root test.js and an explicit custom Node path can independently establish identity", async (context) => {
+  const rootDefault = await initializeRepository({
+    "package.json": JSON.stringify({ name: "root-test", private: true, type: "module", scripts: { test: "node --test" } }),
+    "src/value.js": "export const value = 1;\n",
+    "test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from './src/value.js'; test('value', () => assert.equal(value, 2));\n",
+  });
+  const rootCustom = await initializeRepository({
+    "package.json": JSON.stringify({ name: "custom-test", private: true, type: "module", scripts: { test: "node --test quality/check.js" } }),
+    "src/value.js": "export const value = 1;\n",
+    "quality/check.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.js'; test('value', () => assert.equal(value, 2));\n",
+  });
+  context.after(() => Promise.all([rm(rootDefault, { recursive: true, force: true }), rm(rootCustom, { recursive: true, force: true })]));
+  await writeFiles(rootDefault, { "src/value.js": "export const value = 2;\n" });
+  await writeFiles(rootCustom, { "src/value.js": "export const value = 2;\n" });
+  const defaultReport = await analyzeRepository({ repo: rootDefault, runChecks: true, timeoutMs: 20_000 });
+  const customReport = await analyzeRepository({ repo: rootCustom, runChecks: true, timeoutMs: 20_000 });
+  assert.equal(defaultReport.assessments[0]?.status, "verified");
+  assert.deepEqual(defaultReport.assessments[0]?.relatedTests, ["test.js"]);
+  assert.equal(customReport.assessments[0]?.status, "verified");
+  assert.deepEqual(customReport.assessments[0]?.relatedTests, ["quality/check.js"]);
+  assert.equal(customReport.checks.find((check) => check.id.endsWith(":targeted"))?.targetQualifications?.[0]?.basis, "runner-explicit-path");
+});
+
+test("Node zero-test, name-filtered, and all-skipped targets never produce executedTests", async (context) => {
+  const fixtures = [
+    {
+      script: "node --test",
+      file: "test/empty.test.js",
+      content: "import { value } from '../src/value.js'; export const observed = value;\n",
+      outcome: "zero-tests",
+    },
+    {
+      script: "node --test --test-name-pattern=missing",
+      file: "test/value.test.js",
+      content: "import test from 'node:test'; import { value } from '../src/value.js'; test('value', () => void value);\n",
+      outcome: "zero-tests",
+    },
+    {
+      script: "node --test",
+      file: "test/value.test.js",
+      content: "import test from 'node:test'; import { value } from '../src/value.js'; test.skip('value', () => void value);\n",
+      outcome: "skipped",
+    },
+  ] as const;
+  for (const fixture of fixtures) {
+    const root = await initializeRepository({
+      "package.json": JSON.stringify({ name: "node-zero", private: true, type: "module", scripts: { test: fixture.script } }),
+      "src/value.js": "export const value = 1;\n",
+      [fixture.file]: fixture.content,
+    });
+    context.after(() => rm(root, { recursive: true, force: true }));
+    await writeFiles(root, { "src/value.js": "export const value = 2;\n" });
+    const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+    const assessment = report.assessments[0];
+    assert.deepEqual(assessment?.executedTests, [], fixture.outcome);
+    assert.equal(assessment?.status, "partially-verified", fixture.outcome);
+    assert.equal(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.[0]?.outcome, fixture.outcome);
+  }
+});
+
+test("a zero-test unittest target is unverified instead of verification-failed", async (context) => {
+  const root = await initializeRepository({
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "import unittest\nfrom value import value\nobserved = value()\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  assert.deepEqual(report.assessments[0]?.executedTests, []);
+  assert.equal(report.assessments[0]?.status, report.checks[0]?.status === "passed" ? "partially-verified" : "unverified");
+  assert.equal(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.[0]?.outcome, "zero-tests");
+});
+
+test("the fixed pytest observer attributes a configured custom target", async (context) => {
+  const root = await initializeRepository({
+    "pyproject.toml": "[tool.pytest]\npython_files = [\"check_*.py\"]\n",
+    "value.py": "def value():\n    return 1\n",
+    "quality/check_value.py": "from value import value\ndef check_value():\n    assert value() == 2\n",
+    "pytest.py": [
+      "from types import SimpleNamespace",
+      "def main(args=None, plugins=None):",
+      "    target = args[-1]",
+      "    report = SimpleNamespace(nodeid=target + '::check_value', when='call', passed=True, failed=False, skipped=False)",
+      "    plugins[0].pytest_runtest_logreport(report)",
+      "    return 0",
+      "",
+    ].join("\n"),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  assert.equal(report.assessments.find((item) => item.file.path === "value.py")?.status, "verified");
+  const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+  assert.equal(targeted?.targetQualifications?.[0]?.basis, "runner-config-pattern");
+  assert.deepEqual(targeted?.targetObservations?.map((item) => [item.path, item.outcome, item.testsObserved]), [["quality/check_value.py", "passed", 1]]);
+});
+
+test("unittest subtest failures remain exact target failures", async (context) => {
+  const root = await initializeRepository({
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "import unittest\nfrom value import value\nclass ValueTest(unittest.TestCase):\n    def test_values(self):\n        with self.subTest(case='value'):\n            self.assertEqual(value(), 1)\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  assert.equal(report.assessments[0]?.status, "verification-failed");
+  assert.equal(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.[0]?.outcome, "failed");
+});
+
+test("mixed targeted batches attribute pass, zero, and failure to exact paths", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ name: "mixed-batch", private: true, type: "module", scripts: { test: "node --test" } }),
+    "src/pass.js": "export const value = 1;\n",
+    "src/empty.js": "export const value = 1;\n",
+    "src/fail.js": "export const value = 1;\n",
+    "test/pass.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/pass.js'; test('pass', () => assert.equal(value, 2));\n",
+    "test/empty.test.js": "import { value } from '../src/empty.js'; export const observed = value;\n",
+    "test/fail.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/fail.js'; test('fail', () => assert.equal(value, 1));\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/pass.js": "export const value = 2;\n",
+    "src/empty.js": "export const value = 2;\n",
+    "src/fail.js": "export const value = 2;\n",
+  });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const byPath = new Map(report.assessments.map((item) => [item.file.path, item]));
+  assert.equal(byPath.get("src/pass.js")?.status, "verified");
+  assert.deepEqual(byPath.get("src/pass.js")?.executedTests, ["test/pass.test.js"]);
+  assert.equal(byPath.get("src/empty.js")?.status, "unverified");
+  assert.deepEqual(byPath.get("src/empty.js")?.executedTests, []);
+  assert.equal(byPath.get("src/fail.js")?.status, "verification-failed");
+  assert.deepEqual(report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations?.map((item) => [item.path, item.outcome]), [
+    ["test/empty.test.js", "zero-tests"],
+    ["test/fail.test.js", "failed"],
+    ["test/pass.test.js", "passed"],
+  ]);
+});
+
 test("working-tree analysis warns without hiding Git-visible generated files", async (context) => {
   const root = await initializeRepository({ "README.md": "# fixture\n" });
   context.after(() => rm(root, { recursive: true, force: true }));

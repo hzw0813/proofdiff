@@ -8,7 +8,9 @@ export async function runProcess(command, args, options) {
     return await new Promise((resolve) => {
         let stdout = Buffer.alloc(0);
         let stderr = Buffer.alloc(0);
+        let observation = Buffer.alloc(0);
         let truncated = false;
+        let observationTruncated = false;
         let timedOut = false;
         let settled = false;
         let childExited = false;
@@ -21,7 +23,7 @@ export async function runProcess(command, args, options) {
             cwd: options.cwd,
             env: options.env ?? process.env,
             shell: false,
-            stdio: [options.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+            stdio: [options.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe", ...(options.observe ? ["pipe"] : [])],
             detached: process.platform !== "win32",
         });
         const append = (current, chunk) => {
@@ -36,6 +38,17 @@ export async function runProcess(command, args, options) {
         };
         child.stdout?.on("data", (chunk) => { stdout = append(stdout, chunk); });
         child.stderr?.on("data", (chunk) => { stderr = append(stderr, chunk); });
+        const observationStream = options.observe ? child.stdio[3] : null;
+        observationStream?.on("data", (chunk) => {
+            const remaining = (options.maxObservationBytes ?? 64_000) - observation.length;
+            if (remaining <= 0) {
+                observationTruncated = true;
+                return;
+            }
+            if (chunk.length > remaining)
+                observationTruncated = true;
+            observation = Buffer.concat([observation, chunk.subarray(0, remaining)]);
+        });
         const finish = (exitCode, error) => {
             if (settled)
                 return;
@@ -51,6 +64,7 @@ export async function runProcess(command, args, options) {
                 timedOut,
                 durationMs: Date.now() - started,
                 truncated,
+                ...(options.observe ? { observation: observation.toString("utf8"), observationTruncated } : {}),
                 ...(error === undefined ? {} : { error }),
             });
         };
@@ -58,6 +72,7 @@ export async function runProcess(command, args, options) {
             child.stdin?.destroy();
             child.stdout?.destroy();
             child.stderr?.destroy();
+            observationStream?.destroy();
         };
         const finishWindowsTimeoutIfComplete = () => {
             if (!timedOut || process.platform !== "win32" || !windowsTerminationComplete || !childExited)

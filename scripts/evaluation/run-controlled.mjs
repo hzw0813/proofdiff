@@ -89,7 +89,7 @@ const controls = [
   },
   {
     id: "directory-support-file-targeted-pass",
-    purpose: "A support module under tests/ is classified as a test and can produce a zero-test targeted pass; the evaluator preserves this false-strength risk.",
+    purpose: "A support module under tests/ remains statically test-like but cannot produce runnable evidence without runner qualification.",
     files: {
       "package.json": JSON.stringify({ name: "directory-support-control", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
       "src/value.js": "export function value() { return 1; }\n",
@@ -100,10 +100,47 @@ const controls = [
     verify(report) {
       const assessment = report.assessments[0];
       const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
-      return assessment?.status === "verified"
+      return assessment?.status === "partially-verified"
         && assessment.relatedTests.includes("tests/fixtures/helper.js")
-        && targeted?.status === "passed"
-        && targeted.targetFiles?.includes("tests/fixtures/helper.js");
+        && assessment.executedTests.length === 0
+        && targeted === undefined;
+    }
+  },
+  {
+    id: "root-test-js-qualified-pass",
+    purpose: "The documented root test.js shape is statically related, runner-qualified, and observed passing.",
+    files: {
+      "package.json": JSON.stringify({ name: "root-test-control", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
+      "src/value.js": "export function value() { return 1; }\n",
+      "test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from './src/value.js'; test('value', () => assert.equal(value(), 2));\n"
+    },
+    changes: { "src/value.js": "export function value() { return 2; }\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status === "verified"
+        && assessment.executedTests.includes("test.js")
+        && targeted?.targetQualifications?.[0]?.basis === "runner-default-pattern"
+        && targeted.targetObservations?.[0]?.outcome === "passed";
+    }
+  },
+  {
+    id: "explicit-custom-node-path",
+    purpose: "An exact file in the discovered node --test command qualifies a custom path convention without broad heuristics.",
+    files: {
+      "package.json": JSON.stringify({ name: "custom-path-control", private: true, type: "module", scripts: { test: "node --test quality/check.js" } }, null, 2),
+      "src/value.js": "export function value() { return 1; }\n",
+      "quality/check.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.js'; test('value', () => assert.equal(value(), 2));\n"
+    },
+    changes: { "src/value.js": "export function value() { return 2; }\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status === "verified"
+        && assessment.relatedTests.includes("quality/check.js")
+        && targeted?.targetQualifications?.[0]?.basis === "runner-explicit-path";
     }
   },
   {
@@ -143,6 +180,123 @@ const controls = [
     }
   },
   {
+    id: "node-zero-test-target",
+    purpose: "A qualified Node target that declares no tests is observed as zero-test and cannot become executed evidence.",
+    files: {
+      "package.json": JSON.stringify({ name: "node-zero-control", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
+      "src/value.js": "export function value() { return 1; }\n",
+      "test/value.test.js": "import { value } from '../src/value.js'; export const observed = value();\n"
+    },
+    changes: { "src/value.js": "export function value() { return 2; }\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status === "partially-verified"
+        && assessment.executedTests.length === 0
+        && targeted?.targetObservations?.[0]?.outcome === "zero-tests";
+    }
+  },
+  {
+    id: "node-filtered-zero-target",
+    purpose: "A Node name filter that selects zero tests is observed per target and cannot become executed evidence.",
+    files: {
+      "package.json": JSON.stringify({ name: "node-filter-control", private: true, type: "module", scripts: { test: "node --test --test-name-pattern=missing" } }, null, 2),
+      "src/value.js": "export function value() { return 1; }\n",
+      "test/value.test.js": "import test from 'node:test'; import { value } from '../src/value.js'; test('value', () => value());\n"
+    },
+    changes: { "src/value.js": "export function value() { return 2; }\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status === "partially-verified"
+        && assessment.executedTests.length === 0
+        && targeted?.targetObservations?.[0]?.outcome === "zero-tests";
+    }
+  },
+  {
+    id: "node-all-skipped-target",
+    purpose: "An all-skipped Node target stays partial despite a successful runner process.",
+    files: {
+      "package.json": JSON.stringify({ name: "node-skip-control", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
+      "src/value.js": "export function value() { return 1; }\n",
+      "test/value.test.js": "import test from 'node:test'; import { value } from '../src/value.js'; test.skip('value', () => value());\n"
+    },
+    changes: { "src/value.js": "export function value() { return 2; }\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status === "partially-verified"
+        && assessment.executedTests.length === 0
+        && targeted?.targetObservations?.[0]?.outcome === "skipped";
+    }
+  },
+  {
+    id: "unittest-positive-target",
+    purpose: "unittest TestResult.testsRun produces a positive per-file passing observation.",
+    files: {
+      "value.py": "def value():\n    return 1\n",
+      "tests/test_value.py": "import unittest\nfrom value import value\nclass ValueTest(unittest.TestCase):\n    def test_value(self):\n        self.assertEqual(value(), 2)\n"
+    },
+    changes: { "value.py": "def value():\n    return 2\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status === "verified"
+        && targeted?.targetObservations?.[0]?.outcome === "passed"
+        && targeted.targetObservations[0].testsObserved === 1;
+    }
+  },
+  {
+    id: "unittest-zero-target",
+    purpose: "A unittest target with zero TestResult.testsRun does not become executed evidence.",
+    files: {
+      "value.py": "def value():\n    return 1\n",
+      "tests/test_value.py": "import unittest\nfrom value import value\nobserved = value()\n"
+    },
+    changes: { "value.py": "def value():\n    return 2\n" },
+    runChecks: true,
+    verify(report) {
+      const assessment = report.assessments[0];
+      const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+      return assessment?.status !== "verified"
+        && assessment.executedTests.length === 0
+        && targeted?.targetObservations?.[0]?.outcome === "zero-tests";
+    }
+  },
+  {
+    id: "mixed-batch-attribution",
+    purpose: "A batched Node command attributes a pass, zero-test, and failure only to their exact related paths.",
+    files: {
+      "package.json": JSON.stringify({ name: "batch-control", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
+      "src/pass.js": "export const value = 1;\n",
+      "src/empty.js": "export const value = 1;\n",
+      "src/fail.js": "export const value = 1;\n",
+      "test/pass.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/pass.js'; test('pass', () => assert.equal(value, 2));\n",
+      "test/empty.test.js": "import { value } from '../src/empty.js'; export const observed = value;\n",
+      "test/fail.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/fail.js'; test('fail', () => assert.equal(value, 1));\n"
+    },
+    changes: {
+      "src/pass.js": "export const value = 2;\n",
+      "src/empty.js": "export const value = 2;\n",
+      "src/fail.js": "export const value = 2;\n"
+    },
+    runChecks: true,
+    verify(report) {
+      const byPath = new Map(report.assessments.map((assessment) => [assessment.file.path, assessment]));
+      const observations = report.checks.find((check) => check.id.endsWith(":targeted"))?.targetObservations ?? [];
+      return byPath.get("src/pass.js")?.status === "verified"
+        && byPath.get("src/empty.js")?.status === "unverified"
+        && byPath.get("src/fail.js")?.status === "verification-failed"
+        && observations.some((item) => item.path === "test/pass.test.js" && item.outcome === "passed")
+        && observations.some((item) => item.path === "test/empty.test.js" && item.outcome === "zero-tests")
+        && observations.some((item) => item.path === "test/fail.test.js" && item.outcome === "failed");
+    }
+  },
+  {
     id: "unsupported-ambiguous-file",
     purpose: "An unsupported file remains unknown and is not forced into a binary relationship judgment.",
     files: { "policy/access.rego": "package access\ndefault allow := false\n" },
@@ -160,7 +314,7 @@ const controls = [
 
 const options = parseArgs(process.argv.slice(2));
 const proofdiffRoot = path.resolve(options.proofdiffRoot ?? projectRoot);
-const outputPath = path.resolve(options.output ?? path.join(projectRoot, "evaluation", "controlled-results.json"));
+const outputPath = path.resolve(options.output ?? path.join(projectRoot, "evaluation", "controlled-results.candidate.json"));
 const candidateCommit = git(proofdiffRoot, "rev-parse", "HEAD").trim();
 const { analyzeRepository, VERSION } = await import(pathToFileURL(path.join(proofdiffRoot, "dist", "analyze.js")).href);
 const results = [];

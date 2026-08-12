@@ -62,14 +62,14 @@
       "riskScore": 75,
       "reasons": [
         "No verification command was run for this change.",
-        "No statically related test file was found.",
+        "No statically related test-like path was found.",
         "No first-class language adapter applies.",
         "Security-sensitive path name warrants focused human review."
       ],
       "evidence": [],
       "limitations": [
         "Only file-level analysis is available for this file type.",
-        "No test-to-change relationship was found; dynamic imports and runtime dispatch may not be visible statically."
+        "No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically."
       ]
     }
   ],

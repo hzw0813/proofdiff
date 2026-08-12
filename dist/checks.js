@@ -1,17 +1,163 @@
 import path from "node:path";
 import { readdir } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { constrainedCheckEnvironment, runProcess } from "./process.js";
 import { pathExists, readUtf8File, sanitizeControlCharacters, unique } from "./util.js";
+function nodeTestReporter(targets) {
+    const source = String.raw `import{writeSync}from"node:fs";import{resolve}from"node:path";import{Readable}from"node:stream";import{fileURLToPath}from"node:url";import{spec}from"node:test/reporters";const targets=${JSON.stringify(targets)};const records=new Map(targets.map(runnerPath=>[resolve(runnerPath),{runnerPath,passed:0,failed:0,skipped:0,tests:0}]));export default async function*proofdiff(source){async function*inspect(){for await(const event of source){if(event.type==="test:summary"&&event.data.file){const raw=event.data.file;const key=resolve(raw.startsWith("file:")?fileURLToPath(raw):raw);const item=records.get(key);if(item)Object.assign(item,{passed:event.data.counts.passed,failed:event.data.counts.failed,skipped:event.data.counts.skipped,tests:event.data.counts.tests})}yield event}}for await(const output of Readable.from(inspect()).compose(spec()))yield output;try{writeSync(3,JSON.stringify({version:1,runner:"node-test",files:[...records.values()]})+"\n")}catch{}}`;
+    return `data:text/javascript,${encodeURIComponent(source)}`;
+}
+const PYTEST_OBSERVER = String.raw `
+import json, os, sys
+targets = sys.argv[1:]
+counts = {os.path.normcase(os.path.abspath(item)): {"runnerPath": item, "passed": 0, "failed": 0, "skipped": 0, "tests": 0} for item in targets}
+class Observer:
+    def pytest_runtest_logreport(self, report):
+        raw = str(getattr(report, "nodeid", "")).split("::", 1)[0]
+        key = os.path.normcase(os.path.abspath(raw))
+        item = counts.get(key)
+        if item is None: return
+        if report.when == "call":
+            if report.skipped: item["skipped"] += 1
+            elif report.failed: item["failed"] += 1; item["tests"] += 1
+            elif report.passed: item["passed"] += 1; item["tests"] += 1
+        elif report.skipped:
+            item["skipped"] += 1
+        elif report.failed:
+            item["failed"] += 1
+def emit():
+    payload = {"version": 1, "runner": "pytest", "files": list(counts.values())}
+    os.write(3, (json.dumps(payload, separators=(",", ":")) + "\n").encode())
+try:
+    import pytest
+    code = int(pytest.main(["-q", "--", *targets], plugins=[Observer()]))
+finally:
+    emit()
+raise SystemExit(code)
+`;
+const UNITTEST_OBSERVER = String.raw `
+import json, os, sys, unittest
+targets = sys.argv[1:]
+counts = {os.path.normcase(os.path.abspath(item)): {"runnerPath": item, "passed": 0, "failed": 0, "skipped": 0, "tests": 0} for item in targets}
+def target_for(test):
+    module = sys.modules.get(getattr(test.__class__, "__module__", ""))
+    filename = getattr(module, "__file__", None)
+    return counts.get(os.path.normcase(os.path.abspath(filename))) if filename else None
+class Result(unittest.TextTestResult):
+    def addSuccess(self, test):
+        super().addSuccess(test); item = target_for(test)
+        if item is not None: item["passed"] += 1; item["tests"] += 1
+    def addFailure(self, test, err):
+        super().addFailure(test, err); item = target_for(test)
+        if item is not None: item["failed"] += 1; item["tests"] += 1
+    def addError(self, test, err):
+        super().addError(test, err); item = target_for(test)
+        if item is not None: item["failed"] += 1
+    def addSkip(self, test, reason):
+        super().addSkip(test, reason); item = target_for(test)
+        if item is not None: item["skipped"] += 1
+    def addExpectedFailure(self, test, err):
+        super().addExpectedFailure(test, err); item = target_for(test)
+        if item is not None: item["skipped"] += 1
+    def addUnexpectedSuccess(self, test):
+        super().addUnexpectedSuccess(test); item = target_for(test)
+        if item is not None: item["failed"] += 1; item["tests"] += 1
+    def addSubTest(self, test, subtest, err):
+        super().addSubTest(test, subtest, err); item = target_for(test)
+        if item is not None and err is not None: item["failed"] += 1; item["tests"] += 1
+class Runner(unittest.TextTestRunner):
+    resultclass = Result
+program = unittest.main(module=None, argv=["unittest", *targets], exit=False, testRunner=Runner)
+payload = {"version": 1, "runner": "unittest", "files": list(counts.values())}
+os.write(3, (json.dumps(payload, separators=(",", ":")) + "\n").encode())
+raise SystemExit(0 if program.result.wasSuccessful() else 1)
+`;
+function tableBody(content, table) {
+    const lines = content.split(/\r?\n/);
+    const start = lines.findIndex((line) => line.trim() === `[${table}]`);
+    if (start < 0)
+        return null;
+    const body = [];
+    for (const line of lines.slice(start + 1)) {
+        if (/^\s*\[[^\]]+\]\s*(?:[#;].*)?$/.test(line))
+            break;
+        body.push(line);
+    }
+    return body.join("\n");
+}
+function configuredPatterns(body, toml) {
+    if (body === null)
+        return null;
+    if (toml) {
+        const raw = body.match(/^\s*python_files\s*=\s*(\[[\s\S]*?\]|"[^"]*"|'[^']*')/m)?.[1];
+        if (!raw)
+            return [];
+        const quoted = [...raw.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]).filter(Boolean);
+        return raw.startsWith("[") ? quoted : quoted.flatMap((value) => value.split(/\s+/)).filter(Boolean);
+    }
+    const lines = body.split(/\r?\n/);
+    for (let index = 0; index < lines.length; index += 1) {
+        const match = lines[index]?.match(/^\s*python_files\s*=\s*(.*)$/);
+        if (!match)
+            continue;
+        const values = [match[1] ?? ""];
+        while (lines[index + 1] !== undefined && /^\s+\S/.test(lines[index + 1]))
+            values.push(lines[++index].trim());
+        return values.join(" ").split(/\s+/).filter(Boolean);
+    }
+    return [];
+}
+async function readPytestConfiguration(root) {
+    const candidates = [
+        { file: "pytest.toml", table: "pytest", toml: true, unconditional: true },
+        { file: ".pytest.toml", table: "pytest", toml: true, unconditional: true },
+        { file: "pytest.ini", table: "pytest", toml: false, unconditional: true },
+        { file: ".pytest.ini", table: "pytest", toml: false, unconditional: true },
+        { file: "pyproject.toml", table: "tool.pytest", toml: true },
+        { file: "pyproject.toml", table: "tool.pytest.ini_options", toml: true },
+        { file: "tox.ini", table: "pytest", toml: false },
+        { file: "setup.cfg", table: "tool:pytest", toml: false },
+    ];
+    for (const candidate of candidates) {
+        const content = await readUtf8File(path.join(root, candidate.file), 2_000_000);
+        if (content === null)
+            continue;
+        const body = tableBody(content, candidate.table);
+        if (body === null && !candidate.unconditional)
+            continue;
+        const patterns = configuredPatterns(body ?? "", candidate.toml) ?? [];
+        return { origin: `${candidate.file}${body === null ? "" : ` [${candidate.table}]`}`, patterns: patterns.length > 0 ? patterns : ["test_*.py", "*_test.py"] };
+    }
+    return null;
+}
+function simpleGlobMatches(value, pattern) {
+    if (pattern.includes("/") || pattern.includes("\\") || /[\[\]{}]/.test(pattern))
+        return false;
+    const expression = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*").replaceAll("?", ".");
+    return new RegExp(`^${expression}$`).test(value);
+}
+function nodeDefaultTarget(file) {
+    const normalized = file.replaceAll("\\", "/");
+    const name = path.posix.basename(normalized);
+    if (!/\.(?:cjs|mjs|js)$/.test(name))
+        return false;
+    const stem = name.replace(/\.(?:cjs|mjs|js)$/, "");
+    return stem === "test" || stem.startsWith("test-") || stem.endsWith("-test") || stem.endsWith("_test") || stem.endsWith(".test") || normalized.split("/").slice(0, -1).includes("test");
+}
 async function detectPythonTests(root, limit = 2_000) {
     const queue = [
+        { absolute: root, directory: "." },
         { absolute: path.join(root, "tests"), directory: "tests" },
         { absolute: path.join(root, "test"), directory: "test" },
     ];
+    const visited = new Set();
     let inspected = 0;
     let detected = null;
     while (queue.length > 0 && inspected < limit) {
         const current = queue.shift();
+        if (visited.has(current.absolute))
+            continue;
+        visited.add(current.absolute);
         let entries;
         try {
             entries = await readdir(current.absolute, { withFileTypes: true });
@@ -24,8 +170,9 @@ async function detectPythonTests(root, limit = 2_000) {
             if (inspected >= limit)
                 break;
             const target = path.join(current.absolute, entry.name);
-            if (entry.isDirectory() && !entry.isSymbolicLink() && !["node_modules", ".git", "__pycache__"].includes(entry.name))
-                queue.push({ absolute: target, directory: current.directory });
+            if (entry.isDirectory() && !entry.isSymbolicLink() && !["node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"].includes(entry.name)) {
+                queue.push({ absolute: target, directory: current.directory === "." && (entry.name === "tests" || entry.name === "test") ? entry.name : current.directory });
+            }
             if (entry.isFile() && /(?:^test_.*|.*_(?:test|spec))\.pyi?$/.test(entry.name)) {
                 const content = await readUtf8File(target, 200_000);
                 const framework = content !== null && /(?:^|\n)\s*(?:from\s+unittest\b|import\s+unittest\b)|unittest\.TestCase/.test(content) ? "unittest" : "pytest";
@@ -66,20 +213,27 @@ function targetingForScript(kind, command) {
     if (kind !== "test")
         return null;
     const normalized = command.trim().replaceAll(/\s+/g, " ");
-    if (/^(?:node|node\.exe) --test$/.test(normalized))
-        return { targetRunner: "node-test" };
-    const compiled = normalized.match(/(?:^|&& )(?:node|node\.exe) --test (.+)$/)?.[1];
-    if (!compiled)
+    const invocation = normalized.match(/(?:^|&& )(?:node|node\.exe) --test(?: (.+))?$/);
+    if (!invocation)
         return null;
-    const rawArguments = compiled.split(" ");
-    const arguments_ = rawArguments.filter((argument) => !/^--test-concurrency=[1-9]\d*$/.test(argument));
-    if (arguments_.length === 0)
-        return { targetRunner: "node-test" };
-    if (arguments_.length === 1 && arguments_[0] && (arguments_[0].match(/\*/g)?.length ?? 0) === 1 && /^[A-Za-z0-9_./*-]+\.[cm]?js$/.test(arguments_[0])) {
-        return { targetRunner: "node-test", targetPattern: arguments_[0] };
+    const runnerArgs = [];
+    const targetArguments = [];
+    for (const argument of invocation[1]?.split(" ") ?? []) {
+        if (/^--test-concurrency=[1-9]\d*$/.test(argument) || /^--test-(?:name|skip)-pattern=[A-Za-z0-9_.:*^$-]+$/.test(argument))
+            runnerArgs.push(argument);
+        else if (argument.startsWith("-"))
+            return null;
+        else
+            targetArguments.push(argument);
     }
-    if (arguments_.every((argument) => /^[A-Za-z0-9_./-]+\.[cm]?js$/.test(argument)))
-        return { targetRunner: "node-test", targetPatterns: arguments_ };
+    const runnerMetadata = { targetRunner: "node-test", ...(runnerArgs.length === 0 ? {} : { targetRunnerArgs: runnerArgs }) };
+    if (targetArguments.length === 0)
+        return runnerMetadata;
+    if (targetArguments.length === 1 && targetArguments[0] && (targetArguments[0].match(/\*/g)?.length ?? 0) === 1 && /^[A-Za-z0-9_./*-]+\.[cm]?js$/.test(targetArguments[0])) {
+        return { ...runnerMetadata, targetPattern: targetArguments[0] };
+    }
+    if (targetArguments.every((argument) => /^[A-Za-z0-9_./-]+\.[cm]?js$/.test(argument)))
+        return { ...runnerMetadata, targetPatterns: targetArguments };
     return null;
 }
 export async function discoverChecks(root) {
@@ -121,14 +275,16 @@ export async function discoverChecks(root) {
     }
     const hasPythonProject = await pathExists(path.join(root, "pyproject.toml"));
     const pyproject = hasPythonProject ? await readUtf8File(path.join(root, "pyproject.toml")) : null;
-    const explicitPytest = await pathExists(path.join(root, "pytest.ini")) || pyproject?.includes("[tool.pytest.") === true;
+    const pytestConfiguration = await readPytestConfiguration(root);
+    const explicitPytest = pytestConfiguration !== null;
     const pythonTests = await detectPythonTests(root);
     const pythonCommand = process.platform === "win32" ? "python" : "python3";
     if (explicitPytest || pythonTests?.framework === "pytest") {
-        checks.push({ id: "python:test:pytest", label: "test: pytest", kind: "test", command: pythonCommand, args: ["-m", "pytest", "-q"], origin: explicitPytest ? "pytest configuration" : "Python test layout", executesRepositoryCode: true, targetRunner: "pytest" });
+        const patterns = pytestConfiguration?.patterns ?? ["test_*.py", "*_test.py"];
+        checks.push({ id: "python:test:pytest", label: "test: pytest", kind: "test", command: pythonCommand, args: ["-m", "pytest", "-q"], origin: explicitPytest ? `pytest configuration: ${pytestConfiguration.origin}` : "Python test layout", executesRepositoryCode: true, targetRunner: "pytest", targetPatterns: patterns });
     }
     else if (pythonTests?.framework === "unittest") {
-        checks.push({ id: "python:test:unittest", label: "test: unittest", kind: "test", command: pythonCommand, args: ["-m", "unittest", "discover", "-s", pythonTests.directory], origin: "Python unittest layout", executesRepositoryCode: true, targetRunner: "unittest" });
+        checks.push({ id: "python:test:unittest", label: "test: unittest", kind: "test", command: pythonCommand, args: ["-m", "unittest", "discover", "-s", pythonTests.directory], origin: `Python unittest layout at ${pythonTests.directory}`, executesRepositoryCode: true, targetRunner: "unittest", targetPattern: "test*.py" });
     }
     if (pyproject?.includes("[tool.mypy")) {
         checks.push({ id: "python:typecheck:mypy", label: "typecheck: mypy", kind: "typecheck", command: pythonCommand, args: ["-m", "mypy", "."], origin: "pyproject.toml [tool.mypy]", executesRepositoryCode: true });
@@ -139,84 +295,178 @@ export async function discoverChecks(root) {
     const deduplicated = unique(checks.map((check) => check.id)).map((id) => checks.find((check) => check.id === id));
     return { checks: deduplicated, notes };
 }
-function compiledNodeTarget(file, pattern, patterns) {
-    if (patterns?.length) {
-        if (/\.[cm]?jsx?$/.test(file))
-            return patterns.includes(file) ? file : null;
+function normalizedRepositoryPath(value) {
+    return value.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+function pathGlobMatches(value, pattern) {
+    const expression = normalizedRepositoryPath(pattern)
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replaceAll("**", "\u0000")
+        .replaceAll("*", "[^/]*")
+        .replaceAll("\u0000", ".*")
+        .replaceAll("?", "[^/]");
+    return new RegExp(`^${expression}$`).test(normalizedRepositoryPath(value));
+}
+function nodeQualification(definition, inputFile) {
+    const file = normalizedRepositoryPath(inputFile);
+    const explicitPaths = definition.targetPatterns?.map(normalizedRepositoryPath);
+    if (explicitPaths?.length) {
+        if (/\.[cm]?js$/.test(file) && explicitPaths.includes(file)) {
+            return { path: inputFile, runnerPath: file, basis: "runner-explicit-path", confidence: "high", detail: `${file} is an exact file listed by the discovered node --test command.`, limitation: "Qualification establishes runner identity, not test execution or behavioral coverage." };
+        }
         if (!/\.(?:ts|tsx|mts|cts)$/.test(file))
             return null;
         const compiledSource = file.replace(/\.tsx?$/, ".js").replace(/\.mts$/, ".mjs").replace(/\.cts$/, ".cjs");
-        const matches = patterns.filter((candidate) => candidate === compiledSource || candidate.endsWith(`/${compiledSource}`));
-        return matches.length === 1 ? matches[0] : null;
+        const matches = explicitPaths.filter((candidate) => candidate === compiledSource || candidate.endsWith(`/${compiledSource}`));
+        if (matches.length !== 1)
+            return null;
+        return { path: inputFile, runnerPath: matches[0], basis: "compiled-source-map", confidence: "medium", detail: `${file} maps unambiguously to the explicitly listed compiled test ${matches[0]}.`, limitation: "The source-to-compiled mapping is filename-based and does not establish source-map or changed-line execution." };
     }
-    if (pattern === undefined)
-        return /\.[cm]?jsx?$/.test(file) ? file : null;
-    if (!/\.(?:ts|tsx|mts|cts)$/.test(file))
-        return null;
-    const compiledName = path.posix.basename(file)
-        .replace(/\.tsx?$/, ".js")
-        .replace(/\.mts$/, ".mjs")
-        .replace(/\.cts$/, ".cjs");
-    const patternName = path.posix.basename(pattern);
-    const [before = "", after = ""] = patternName.split("*");
-    if (!compiledName.startsWith(before) || !compiledName.endsWith(after))
-        return null;
-    return path.posix.join(path.posix.dirname(pattern), compiledName);
+    if (definition.targetPattern !== undefined) {
+        const pattern = normalizedRepositoryPath(definition.targetPattern);
+        if (/\.[cm]?js$/.test(file) && pathGlobMatches(file, pattern)) {
+            return { path: inputFile, runnerPath: file, basis: "runner-config-pattern", confidence: "high", detail: `${file} matches the discovered node --test pattern ${pattern}.`, limitation: "Pattern qualification establishes runner identity, not test execution or behavioral coverage." };
+        }
+        if (!/\.(?:ts|tsx|mts|cts)$/.test(file))
+            return null;
+        const compiledName = path.posix.basename(file).replace(/\.tsx?$/, ".js").replace(/\.mts$/, ".mjs").replace(/\.cts$/, ".cjs");
+        const runnerPath = path.posix.join(path.posix.dirname(pattern), compiledName);
+        if (!pathGlobMatches(runnerPath, pattern))
+            return null;
+        return { path: inputFile, runnerPath, basis: "compiled-source-map", confidence: "medium", detail: `${file} maps by filename to ${runnerPath}, which matches the discovered node --test pattern ${pattern}.`, limitation: "The source-to-compiled mapping is filename-based and does not establish source-map or changed-line execution." };
+    }
+    if (/\.[cm]?js$/.test(file) && nodeDefaultTarget(file)) {
+        return { path: inputFile, runnerPath: file, basis: "runner-default-pattern", confidence: "high", detail: `${file} matches a documented default node --test discovery pattern.`, limitation: "Default-pattern qualification establishes runner identity, not test execution or behavioral coverage." };
+    }
+    return null;
 }
-export async function targetedTestChecks(root, definitions, relatedTests, limit = 100) {
-    const sorted = unique(relatedTests).sort();
+function pythonQualification(definition, inputFile) {
+    const file = normalizedRepositoryPath(inputFile);
+    if (!file.endsWith(".py"))
+        return null;
+    const name = path.posix.basename(file);
+    if (definition.targetRunner === "pytest") {
+        const patterns = definition.targetPatterns ?? ["test_*.py", "*_test.py"];
+        const matching = patterns.find((pattern) => simpleGlobMatches(name, pattern));
+        if (!matching)
+            return null;
+        const configured = definition.origin.startsWith("pytest configuration:");
+        return { path: inputFile, runnerPath: file, basis: configured ? "runner-config-pattern" : "runner-default-pattern", confidence: "high", detail: `${file} matches pytest python_files pattern ${matching}${configured ? ` from ${definition.origin.slice("pytest configuration: ".length)}` : ""}.`, limitation: "Static collection-pattern matching cannot detect deselection, skips, dynamic collection hooks, or plugin behavior." };
+    }
+    if (definition.targetRunner === "unittest" && simpleGlobMatches(name, definition.targetPattern ?? "test*.py")) {
+        return { path: inputFile, runnerPath: file, basis: "runner-default-pattern", confidence: "high", detail: `${file} matches unittest's default test*.py discovery convention.`, limitation: "Unsupported custom discovery loaders and runtime import behavior remain conservative." };
+    }
+    return null;
+}
+export async function targetedTestChecks(root, definitions, impactedPaths, limit = 100) {
+    const sorted = unique(impactedPaths.map(normalizedRepositoryPath)).sort();
     const checks = [];
     let truncated = false;
     for (const definition of definitions) {
         if (!definition.targetRunner)
             continue;
-        const candidates = [];
+        const qualifiedCandidates = [];
         for (const file of sorted) {
-            if (definition.targetRunner === "node-test") {
-                const argument = compiledNodeTarget(file, definition.targetPattern, definition.targetPatterns);
-                if (argument && await pathExists(path.join(root, argument)))
-                    candidates.push({ source: file, argument });
-            }
-            else if (/\.pyi?$/.test(file)) {
-                candidates.push({ source: file, argument: file });
-            }
+            const qualification = definition.targetRunner === "node-test" ? nodeQualification(definition, file) : pythonQualification(definition, file);
+            if (qualification && await pathExists(path.join(root, qualification.runnerPath)))
+                qualifiedCandidates.push(qualification);
         }
+        const runnerPathCounts = new Map();
+        for (const qualification of qualifiedCandidates)
+            runnerPathCounts.set(qualification.runnerPath, (runnerPathCounts.get(qualification.runnerPath) ?? 0) + 1);
+        const candidates = qualifiedCandidates.filter((qualification) => runnerPathCounts.get(qualification.runnerPath) === 1);
         if (candidates.length === 0)
             continue;
         const selected = candidates.slice(0, limit);
-        const targetFiles = selected.map((candidate) => candidate.source);
-        const targetArguments = selected.map((candidate) => candidate.argument);
+        const targetFiles = selected.map((candidate) => candidate.path);
+        const targetArguments = selected.map((candidate) => candidate.runnerPath);
         if (candidates.length > limit)
             truncated = true;
         let command;
         let args;
         if (definition.targetRunner === "node-test") {
             command = "node";
-            args = ["--test", ...targetArguments];
+            args = ["--test", ...(definition.targetRunnerArgs ?? []), `--test-reporter=${nodeTestReporter(targetArguments)}`, ...targetArguments];
         }
         else if (definition.targetRunner === "pytest") {
             command = definition.command;
-            args = ["-m", "pytest", "-q", "--", ...targetArguments];
+            args = ["-c", PYTEST_OBSERVER, ...targetArguments];
         }
         else {
             command = definition.command;
-            args = ["-m", "unittest", ...targetArguments];
+            args = ["-c", UNITTEST_OBSERVER, ...targetArguments];
         }
         checks.push({
             id: `${definition.id}:targeted`,
-            label: `targeted ${definition.targetRunner}: ${targetFiles.length} related test file${targetFiles.length === 1 ? "" : "s"}`,
+            label: `targeted ${definition.targetRunner}: ${targetFiles.length} qualified test target${targetFiles.length === 1 ? "" : "s"}`,
             kind: "test",
             command,
             args,
             origin: `ProofDiff targeted execution derived from ${definition.origin}`,
             executesRepositoryCode: true,
             targetRunner: definition.targetRunner,
+            ...(definition.targetRunnerArgs === undefined ? {} : { targetRunnerArgs: definition.targetRunnerArgs }),
             ...(definition.targetPattern === undefined ? {} : { targetPattern: definition.targetPattern }),
             ...(definition.targetPatterns === undefined ? {} : { targetPatterns: definition.targetPatterns }),
             targetFiles,
+            targetQualifications: selected,
         });
     }
     return { checks, truncated };
+}
+function notObserved(qualifications, detail) {
+    return qualifications.map((qualification) => ({ path: qualification.path, runnerPath: qualification.runnerPath, outcome: "not-observed", testsObserved: 0, detail }));
+}
+function observedAbsolutePath(root, record) {
+    const raw = record.runnerPath ?? record.file;
+    if (!raw)
+        return null;
+    try {
+        return path.resolve(raw.startsWith("file:") ? fileURLToPath(raw) : path.resolve(root, raw));
+    }
+    catch {
+        return null;
+    }
+}
+export function parseTargetObservations(root, check, raw, truncated = false) {
+    const qualifications = check.targetQualifications ?? [];
+    if (qualifications.length === 0)
+        return [];
+    if (truncated)
+        return notObserved(qualifications, "The bounded runner observation was truncated and was rejected.");
+    const lines = (raw ?? "").split(/\r?\n/).filter((line) => line.trim().length > 0);
+    if (lines.length !== 1)
+        return notObserved(qualifications, lines.length === 0 ? "The runner did not produce a target observation." : "The runner produced multiple observation records; all were rejected.");
+    let payload;
+    try {
+        payload = JSON.parse(lines[0]);
+    }
+    catch {
+        return notObserved(qualifications, "The runner observation was malformed and was rejected.");
+    }
+    if (payload.version !== 1 || payload.runner !== check.targetRunner || !Array.isArray(payload.files)) {
+        return notObserved(qualifications, "The runner observation schema or runner identity did not match the targeted check.");
+    }
+    const expected = new Map(qualifications.map((qualification) => [path.resolve(root, qualification.runnerPath), qualification]));
+    const records = new Map();
+    for (const record of payload.files) {
+        const numeric = [record.passed, record.failed, record.skipped, record.tests];
+        const absolute = observedAbsolutePath(root, record);
+        if (absolute === null || !expected.has(absolute) || numeric.some((value) => !Number.isSafeInteger(value) || value < 0) || records.has(absolute)) {
+            return notObserved(qualifications, "The runner observation contained an invalid, duplicate, or unmatched target and was rejected.");
+        }
+        records.set(absolute, record);
+    }
+    if (records.size !== expected.size)
+        return notObserved(qualifications, "The runner observation omitted one or more qualified targets and was rejected.");
+    return qualifications.map((qualification) => {
+        const record = records.get(path.resolve(root, qualification.runnerPath));
+        const outcome = record.failed > 0 ? "failed" : record.passed > 0 ? "passed" : record.skipped > 0 ? "skipped" : "zero-tests";
+        const detail = outcome === "zero-tests"
+            ? "The runner observed zero tests for this exact target."
+            : `The runner observed ${record.passed} passed, ${record.failed} failed, and ${record.skipped} skipped test${record.tests === 1 ? "" : "s"} for this exact target.`;
+        return { path: qualification.path, runnerPath: qualification.runnerPath, outcome, testsObserved: record.passed + record.failed, detail };
+    });
 }
 function redactSensitiveOutput(value, root) {
     const redactions = [
@@ -262,6 +512,8 @@ export async function runChecks(root, definitions, options) {
             timeoutMs: options.timeoutMs,
             maxOutputBytes: options.maxOutputBytes,
             env: constrainedCheckEnvironment(),
+            observe: (check.targetQualifications?.length ?? 0) > 0,
+            maxObservationBytes: 64_000,
         });
         const combined = redactSensitiveOutput([result.stdout, result.stderr].filter(Boolean).join("\n"), root);
         let status;
@@ -282,7 +534,15 @@ export async function runChecks(root, definitions, options) {
             status = "failed";
             explanation = `The command exited with code ${String(result.exitCode)}.`;
         }
-        results.push({ ...check, status, exitCode: result.exitCode, durationMs: result.durationMs, output: combined, outputTruncated: result.truncated, explanation });
+        const targetObservations = parseTargetObservations(root, check, result.observation, result.observationTruncated);
+        if (targetObservations.length > 0) {
+            const counts = targetObservations.reduce((totals, observation) => {
+                totals[observation.outcome] += 1;
+                return totals;
+            }, { passed: 0, failed: 0, "zero-tests": 0, skipped: 0, "not-observed": 0 });
+            explanation += ` Target observations: ${counts.passed} passed, ${counts.failed} failed, ${counts.skipped} skipped, ${counts["zero-tests"]} zero-test, ${counts["not-observed"]} unavailable.`;
+        }
+        results.push({ ...check, status, exitCode: result.exitCode, durationMs: result.durationMs, output: combined, outputTruncated: result.truncated, explanation, ...(targetObservations.length === 0 ? {} : { targetObservations }) });
     }
     return results;
 }

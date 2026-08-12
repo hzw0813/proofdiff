@@ -65,11 +65,13 @@ export function languageForPath(file) {
         return "python";
     return "unknown";
 }
-export function isTestFile(file) {
+export function isTestLikePath(file) {
     const normalized = `/${normalizeRepoPath(file).toLowerCase()}`;
-    return (/\/(?:tests?|__tests__)\//.test(normalized) ||
-        /(?:^|\/)(?:test_[^/]+|[^/]+_(?:test|spec)|[^/]+\.(?:test|spec))\.(?:[cm]?[jt]sx?|pyi?)$/.test(normalized));
+    return (/\/(?:tests?|__tests__|unittests?)\//.test(normalized) ||
+        /(?:^|\/)(?:test|test_[^/]+|test-[^/]+|[^/]+-(?:test|spec)|[^/]+_(?:test|spec)|[^/]+\.(?:test|spec))\.(?:[cm]?[jt]sx?|pyi?)$/.test(normalized));
 }
+/** @deprecated Test-like path heuristics are not runnable-target identity. */
+export const isTestFile = isTestLikePath;
 export function unique(items) {
     return [...new Set(items)];
 }
