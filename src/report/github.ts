@@ -33,6 +33,12 @@ function inlineCode(value: string): string {
 }
 
 function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitation: boolean } {
+  const staticLimitationNotes = new Set([
+    "Could not parse package.json; check discovery skipped its scripts.",
+    "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
+    "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
+    "Runner-qualified targeted test execution was limited to the first 100 statically impacted paths.",
+  ]);
   const exact = new Set([
     "Could not parse package.json; check discovery skipped its scripts.",
     "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
@@ -56,7 +62,7 @@ function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitati
       message: "Compiler configuration did not establish that it applies to every importer; some static alias relationships may be unavailable.",
     },
     {
-      pattern: /did not resolve .* through compiler paths|package self-reference .* no safely selectable|standalone baseUrl|wildcard mappings|mapped target|paths target|candidate expansion|higher-precedence candidate/i,
+      pattern: /compiler paths|package self-reference|module-resolution|package boundary|export condition|standalone baseUrl|wildcard mapping|mapped target|paths target|candidate expansion|higher-precedence candidate/i,
       message: "Repository-local module resolution encountered an unsupported or ambiguous case; some static relationships may be unavailable.",
     },
     {
@@ -70,7 +76,7 @@ function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitati
   const knownCount = notes.filter((note) => exact.has(note) || note.startsWith("Working-tree selection includes ")).length;
   const omitted = Math.max(0, notes.length - knownCount - categorized);
   if (omitted > 0) safe.push(`${omitted} additional static-analysis ${omitted === 1 ? "diagnostic is" : "diagnostics are"} available only in the detailed report.`);
-  return { notes: safe, hasStaticLimitation: categories.length > 0 || omitted > 0 };
+  return { notes: safe, hasStaticLimitation: notes.some((note) => staticLimitationNotes.has(note)) || categories.length > 0 || omitted > 0 };
 }
 
 function pathList(paths: string[], limit: number): string {

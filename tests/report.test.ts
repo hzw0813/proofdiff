@@ -169,17 +169,20 @@ test("GitHub summary exposes an unattributed applicable failure without inventin
 
 test("GitHub summary preserves bounded analysis limitations and static-only guidance", () => {
   const limited = structuredClone(report);
-  limited.notes = [
-    "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
-    "Checks were discovered but not executed.",
-    "Third note.",
-    "Fourth note.",
-  ];
+  limited.notes = ["Repository source analysis was limited to the first 5,000 tracked/unignored files."];
   const summary = renderGithubSummary(limited);
   assert.match(summary, /Repository source analysis was limited to the first 5,000 tracked\/unignored files/);
-  assert.match(summary, /3 additional static-analysis diagnostics are available only in the detailed report/);
   assert.match(summary, /Inspect and, where appropriate, fix the static-analysis limitation/);
   assert.doesNotMatch(summary, /`run-checks: true`/);
+});
+
+test("GitHub summary hides unclassified diagnostic content while preserving its actionable presence", () => {
+  const diagnostic = structuredClone(report);
+  diagnostic.notes = ["Unclassified parser detail SUPER_SECRET_12345 from /tmp/<repo>."];
+  const summary = renderGithubSummary(diagnostic);
+  assert.match(summary, /1 additional static-analysis diagnostic is available only in the detailed report/);
+  assert.match(summary, /fix the static-analysis limitation/);
+  assert.doesNotMatch(summary, /SUPER_SECRET|\/tmp\/<repo>|`run-checks: true`/);
 });
 
 test("GitHub summary does not recommend rerunning checks when execution was already requested but unsupported", () => {
