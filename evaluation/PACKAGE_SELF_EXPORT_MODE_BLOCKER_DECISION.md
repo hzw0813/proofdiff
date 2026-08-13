@@ -23,15 +23,26 @@ The TypeScript module-resolution reference states that self-name imports through
 
 The resolver checks that an explicit `moduleResolution` is not unsupported, but treats a missing mode as supported. Missing configuration is not evidence that exports lookup is active; TypeScript derives a default from other compiler options, which ProofDiff does not currently model.
 
+Independent adversarial review then reproduced two more false-edge paths in the same package self-export boundary:
+
+- a leading versioned `types@>=5.0` condition is potentially active in TypeScript 5.9.3, but ProofDiff skips it and selects a later `default` target;
+- a nearer ignored `package.json` changes the importing file's package identity, but inventory-only ownership skips it and applies an ancestor package's name and exports.
+
+In the first fixture, TypeScript resolves `types@>=5.0` to `src/actual.d.ts` while ProofDiff creates an edge to `src/wrong.js`. In the second, TypeScript reports the ancestor package self-name unresolved from the nested package while ProofDiff creates an edge to the ancestor package's `src/root.ts`.
+
 ## OPTIONS
 
 1. Keep accepting a missing mode at lower confidence. Rejected: confidence does not make a compiler-inconsistent relationship safe.
 2. Infer TypeScript's implied resolution mode from `module` and every relevant default. Deferred: this widens compiler-option modeling and creates another precedence surface during a blocker fix.
 3. Require an explicit export-aware `moduleResolution` before resolving package self-exports. Chosen: it is the smallest sound rule and preserves the pinned Zod gain because that package inherits explicit NodeNext resolution.
 
+For the independent-review findings, fully evaluating version selectors or parsing ignored metadata would widen the resolver unnecessarily. The smallest sound rules are to treat every `types@...` key as potentially active and block a later branch, and to treat any nearer repository-local `package.json` outside the bounded Git inventory as an opaque package boundary.
+
 ## CHOSEN RULE
 
 Package self-export resolution requires an applicable, successfully parsed compiler configuration whose effective `moduleResolution` is explicitly Node16, Node18, Node20, NodeNext, or Bundler. A missing mode, missing config, unsupported mode, invalid config, or `resolvePackageJsonExports: false` creates no edge and produces a bounded diagnostic where applicable.
+
+Before selecting a conditional export, an unmodeled `types@...` condition blocks any later branch. Before choosing package ownership or validating a target boundary, each bounded ancestor path is checked for an existing `package.json` outside the Git inventory; encountering one blocks resolution without reading or executing it.
 
 The selected export target still must satisfy all existing exact-key, condition, explicit-extension, precedence, package-boundary, containment, symlink, inventory, and expansion checks.
 
@@ -41,7 +52,7 @@ Users no longer see a plausible package self-export relationship that their conf
 
 ## SECURITY AND PERFORMANCE EFFECT
 
-The change remains local, deterministic, bounded, and data-only. It executes no repository code and adds no network or dependency behavior. It rejects unsupported work earlier, so it does not increase candidate expansion.
+The change remains local, deterministic, bounded, and data-only. It executes no repository code and adds no network or dependency behavior. Metadata existence checks are capped by the existing 32-level ancestor bound and cached by repository path. Export candidate expansion does not increase.
 
 ## COMPATIBILITY AND DEFERRED WORK
 
