@@ -6,7 +6,7 @@ branding:
   color: blue
 inputs:
   base:
-    description: Base commit/ref for merge-base comparison. Leave empty for the working tree.
+    description: Override the base commit/ref for merge-base comparison. When omitted on pull_request events, ProofDiff auto-resolves the exact PR base SHA; other events keep working-tree mode.
     required: false
   run-checks:
     description: Explicitly run repository code through discovered checks. Keep false for untrusted changes.
@@ -46,7 +46,8 @@ runs:
         PROOFDIFF_JOB_SUMMARY: ${{ inputs['job-summary'] }}
       run: |
         args=(--repo "$GITHUB_WORKSPACE" --fail-on "$PROOFDIFF_FAIL_ON" --no-color)
-        if [[ -n "$PROOFDIFF_BASE" ]]; then args+=(--base "$PROOFDIFF_BASE"); fi
+        resolved_base="$(node "$GITHUB_ACTION_PATH/scripts/resolve-action-base.mjs")"
+        if [[ -n "$resolved_base" ]]; then args+=(--base "$resolved_base"); fi
         if [[ "$PROOFDIFF_RUN_CHECKS" == "true" ]]; then args+=(--run-checks); fi
         if [[ -n "$PROOFDIFF_HTML" ]]; then args+=(--html "$PROOFDIFF_HTML"); fi
         if [[ "$PROOFDIFF_JOB_SUMMARY" == "true" ]]; then
