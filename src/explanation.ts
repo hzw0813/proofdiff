@@ -41,7 +41,7 @@ export function explainEvidenceBoundary(item: FileAssessment, checks: CheckResul
   const strongestWithoutTarget = passingOpaqueCheck ? "passing-check" : item.relatedTests.length > 0 ? "static-relationship" : "change-observed";
 
   if (item.status === "verification-failed") {
-    if (unlocalizedTargetFailure || unavailableObservation) {
+    if (unlocalizedTargetFailure) {
       return {
         strongestEvidence: "verification-failure",
         stage: "failure-attribution",
