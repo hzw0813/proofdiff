@@ -89,7 +89,7 @@ On macOS arm64 with Node 24.15.0:
 
 - typecheck passed;
 - 78/78 tests passed;
-- coverage passed at 89.65% lines, 81.36% branches, and 92.52% functions;
+- coverage passed at 89.54% lines, 80.67% branches, and 92.42% functions;
 - GitHub Action smoke passed for production-only install, static default, trusted checks, base diff, and HTML output;
 - dogfood passed with one related test-file pass and all four executed checks passing;
 - four truthful demo scenarios regenerated and passed;
