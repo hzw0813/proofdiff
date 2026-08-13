@@ -59,6 +59,7 @@ try {
   assert.match(actionDefinition, /working-directory: \$\{\{ github\.action_path \}\}/);
   assert.match(actionDefinition, /run: npm ci --ignore-scripts --omit=dev/);
   assert.match(actionDefinition, /auto-resolves the exact PR base SHA/);
+  assert.match(actionDefinition, /pull_request_target, which fails closed/);
   assert.match(actionDefinition, /resolve-action-base\.mjs/);
   assert.match(actionDefinition, /job-summary:/);
   assert.match(actionDefinition, /default: "true"/);
@@ -90,7 +91,7 @@ try {
   assert.equal(autoResolved.stdout.trim(), base);
 
   const explicitResolved = await run(process.execPath, [resolver], fixtureRoot, {
-    env: { ...process.env, PROOFDIFF_BASE: base, GITHUB_EVENT_NAME: "pull_request", GITHUB_EVENT_PATH: path.join(temporaryRoot, "missing-event.json") },
+    env: { ...process.env, PROOFDIFF_BASE: base, GITHUB_EVENT_NAME: "pull_request_target", GITHUB_EVENT_PATH: path.join(temporaryRoot, "missing-event.json") },
   });
   assert.equal(explicitResolved.stdout.trim(), base, "explicit base must win without reading event metadata");
 
@@ -98,6 +99,13 @@ try {
     env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "push", GITHUB_EVENT_PATH: path.join(temporaryRoot, "missing-event.json") },
   });
   assert.equal(pushResolved.stdout.trim(), "", "non-PR events must preserve working-tree fallback");
+
+  const pullRequestTarget = await run(process.execPath, [resolver], fixtureRoot, {
+    expectedCode: 2,
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request_target", GITHUB_EVENT_PATH: prEvent },
+  });
+  assert.match(pullRequestTarget.stderr, /will not auto-select a pull-request diff on pull_request_target/);
+  assert.match(pullRequestTarget.stderr, /Use pull_request for untrusted changes/);
 
   const missingBaseEvent = path.join(temporaryRoot, "missing-base-event.json");
   await writeFile(missingBaseEvent, `${JSON.stringify({ pull_request: { base: {} } })}\n`, "utf8");
@@ -112,7 +120,7 @@ try {
   await writeFile(hostileEvent, `${JSON.stringify({ pull_request: { base: { sha: "--help\n$(touch-pwned)" } } })}\n`, "utf8");
   const hostileBase = await run(process.execPath, [resolver], fixtureRoot, {
     expectedCode: 2,
-    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request_target", GITHUB_EVENT_PATH: hostileEvent },
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request", GITHUB_EVENT_PATH: hostileEvent },
   });
   assert.match(hostileBase.stderr, /cannot auto-resolve a trustworthy pull-request base commit SHA/);
   assert.equal(await exists(path.join(fixtureRoot, "touch-pwned")), false);
@@ -143,7 +151,7 @@ try {
   assert.match(trustedSummaryContent, /Observed passing target: <code>test\/checkout\.test\.js<\/code>/);
   assert.match(trustedSummaryContent, /does not show that changed code ran or that behavior is correct/);
 
-  process.stdout.write("GitHub Action smoke passed: production-only install, PR base auto-resolution, static default, trusted checks, base diff, HTML output, and bounded job summaries.\n");
+  process.stdout.write("GitHub Action smoke passed: production-only install, safe PR base auto-resolution, static default, trusted checks, base diff, HTML output, and bounded job summaries.\n");
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }
