@@ -36,7 +36,7 @@ export async function runProcess(command: string, args: string[], options: Proce
     let observationTruncated = false;
     let timedOut = false;
     let settled = false;
-    let childClosed = false;
+    let childExited = false;
     let childExitCode: number | null = null;
     let windowsTerminationComplete = false;
     let windowsTerminationError: string | undefined;
@@ -99,7 +99,7 @@ export async function runProcess(command: string, args: string[], options: Proce
     };
 
     const finishWindowsTimeoutIfComplete = (): void => {
-      if (!timedOut || process.platform !== "win32" || !windowsTerminationComplete || !childClosed) return;
+      if (!timedOut || process.platform !== "win32" || !windowsTerminationComplete || !childExited) return;
       closeChildStreams();
       finish(childExitCode, windowsTerminationError);
     };
@@ -112,11 +112,13 @@ export async function runProcess(command: string, args: string[], options: Proce
       }
     });
     child.on("exit", (code) => {
+      childExited = true;
       childExitCode = code;
+      finishWindowsTimeoutIfComplete();
     });
     child.on("close", (code) => {
       if (timedOut && process.platform === "win32") {
-        childClosed = true;
+        childExited = true;
         childExitCode = code;
         finishWindowsTimeoutIfComplete();
       } else {
