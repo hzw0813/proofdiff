@@ -86,4 +86,8 @@ Ensure checkout history is available. With GitHub Actions, use `actions/checkout
 
 Reports are local files but may include paths, symbols, commands, and bounded check output. ProofDiff creates requested output files with user-only permissions where supported. Review a report before sharing it and delete it using your normal secure workflow if it should not persist.
 
+## The GitHub job summary is missing
+
+The composite Action enables it by default. Confirm `job-summary` was not set to `false` and that the Action step ran far enough to produce a report. Custom CLI workflows must pass `--github-summary "$GITHUB_STEP_SUMMARY"`. The summary is attached to the job/run surface, not posted as a pull-request comment, and needs no write permission.
+
 If a reproducible problem remains, include the ProofDiff version, operating system, Node.js version, exact non-secret command, exit code, and a minimal repository fixture in the issue. Never attach credentials or private source code.

@@ -26,6 +26,8 @@ For each changed file, the stable JSON status algorithm is:
 
 The overall JSON result is `verification-failed` if any file failed, `verified` only if every file has a related test-file pass, `unverified`/`unknown` if every file has that same state, and `partially-verified` for mixed results.
 
+Terminal, JSON, HTML, and GitHub job-summary output are projections of this same algorithm. The job summary does not recompute, infer, or strengthen evidence; it presents a bounded per-file subset and directs users to the detailed reports.
+
 The `verified` machine value is retained for schema compatibility; it is not a runtime-coverage claim. A file labeled **Related test file passed** can still contain bugs, missing assertions, unexecuted symbols, lines, or branches, environmental differences, flaky behavior, or threats outside the discovered graph.
 
 ProofDiff currently stops at the fourth level in this evidence ladder:

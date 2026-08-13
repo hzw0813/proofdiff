@@ -58,6 +58,9 @@ try {
   assert.match(actionDefinition, /package-manager-cache: "false"/);
   assert.match(actionDefinition, /working-directory: \$\{\{ github\.action_path \}\}/);
   assert.match(actionDefinition, /run: npm ci --ignore-scripts --omit=dev/);
+  assert.match(actionDefinition, /job-summary:/);
+  assert.match(actionDefinition, /default: "true"/);
+  assert.match(actionDefinition, /--github-summary "\$GITHUB_STEP_SUMMARY"/);
   assert.match(actionDefinition, /node "\$GITHUB_ACTION_PATH\/dist\/cli\.js" "\$\{args\[@\]\}"/);
 
   await run(npmCommand, ["ci", "--ignore-scripts", "--omit=dev"], actionRoot, { env: cleanNpmEnvironment });
@@ -78,19 +81,31 @@ try {
 
   const cli = path.join(actionRoot, "dist", "cli.js");
   const staticHtml = path.join(outputRoot, "static.html");
-  const staticRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--fail-on", "failed", "--no-color", "--html", staticHtml], fixtureRoot);
+  const staticSummary = path.join(outputRoot, "static-summary.md");
+  const staticRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--fail-on", "failed", "--no-color", "--html", staticHtml, "--github-summary", staticSummary], fixtureRoot);
   assert.match(staticRun.stdout, /UNKNOWN/);
   assert.match(staticRun.stdout, /No repository code was executed/);
   assert.match(await readFile(staticHtml, "utf8"), /Content-Security-Policy/);
+  const staticSummaryContent = await readFile(staticSummary, "utf8");
+  assert.match(staticSummaryContent, /^## ProofDiff · Change Evidence/);
+  assert.match(staticSummaryContent, /\*\*Run mode:\*\* Static only\. No repository code was executed/);
+  assert.match(staticSummaryContent, /services\/email\.py/);
+  assert.match(staticSummaryContent, /Static relationship only: <code>test\/checkout\.test\.js<\/code>/);
+  assert.doesNotMatch(staticSummaryContent, new RegExp(fixtureRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
   const trustedHtml = path.join(outputRoot, "trusted.html");
-  const trustedRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--run-checks", "--fail-on", "failed", "--no-color", "--html", trustedHtml], fixtureRoot);
+  const trustedSummary = path.join(outputRoot, "trusted-summary.md");
+  const trustedRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--run-checks", "--fail-on", "failed", "--no-color", "--html", trustedHtml, "--github-summary", trustedSummary], fixtureRoot);
   assert.match(trustedRun.stdout, /PARTIAL/);
   assert.match(trustedRun.stdout, /Executed tests: test\/checkout\.test\.js/);
   assert.match(trustedRun.stdout, /Repository-defined checks were executed because --run-checks was explicitly supplied/);
   assert.match(await readFile(trustedHtml, "utf8"), /Targeted test outcomes/);
+  const trustedSummaryContent = await readFile(trustedSummary, "utf8");
+  assert.match(trustedSummaryContent, /\*\*Run mode:\*\* Repository-defined checks ran with explicit consent/);
+  assert.match(trustedSummaryContent, /Observed passing target: <code>test\/checkout\.test\.js<\/code>/);
+  assert.match(trustedSummaryContent, /does not show that changed code ran or that behavior is correct/);
 
-  process.stdout.write("GitHub Action smoke passed: production-only install, static default, trusted checks, base diff, and HTML output.\n");
+  process.stdout.write("GitHub Action smoke passed: production-only install, static default, trusted checks, base diff, HTML output, and bounded job summaries.\n");
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }

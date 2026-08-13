@@ -17,9 +17,11 @@ Only one selector may be used. Revisions are validated as commits before analysi
 
 ## Reports
 
-`--format terminal` is the default. `--json` emits `AnalysisReport` schema 1.0. `--output` redirects the primary report. `--html` writes an additional self-contained report with no external assets.
+`--format terminal` is the default. `--json` emits `AnalysisReport` schema 1.0. `--output` redirects the primary report. `--html` writes an additional self-contained report with no external assets. `--github-summary <file>` writes bounded GitHub-flavored Markdown intended for `GITHUB_STEP_SUMMARY`; it is a concise projection of the same report, not a stronger evidence source.
 
 Output files are created with user-only permissions where the operating system supports them because reports may contain sensitive repository metadata and command output.
+
+The GitHub summary includes changed paths and related/observed target paths, but deliberately omits source text, symbols, commands, check output, observer payloads, and absolute repository paths. Terminal, JSON, and HTML remain the inspectable provenance surfaces.
 
 ## Exit codes
 

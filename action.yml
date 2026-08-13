@@ -20,6 +20,10 @@ inputs:
     description: HTML report output path. Leave empty to disable.
     required: false
     default: proofdiff-report.html
+  job-summary:
+    description: Write concise change evidence to the GitHub Actions job summary (true or false).
+    required: false
+    default: "true"
 runs:
   using: composite
   steps:
@@ -39,9 +43,16 @@ runs:
         PROOFDIFF_RUN_CHECKS: ${{ inputs['run-checks'] }}
         PROOFDIFF_FAIL_ON: ${{ inputs['fail-on'] }}
         PROOFDIFF_HTML: ${{ inputs.html }}
+        PROOFDIFF_JOB_SUMMARY: ${{ inputs['job-summary'] }}
       run: |
         args=(--repo "$GITHUB_WORKSPACE" --fail-on "$PROOFDIFF_FAIL_ON" --no-color)
         if [[ -n "$PROOFDIFF_BASE" ]]; then args+=(--base "$PROOFDIFF_BASE"); fi
         if [[ "$PROOFDIFF_RUN_CHECKS" == "true" ]]; then args+=(--run-checks); fi
         if [[ -n "$PROOFDIFF_HTML" ]]; then args+=(--html "$PROOFDIFF_HTML"); fi
+        if [[ "$PROOFDIFF_JOB_SUMMARY" == "true" ]]; then
+          args+=(--github-summary "$GITHUB_STEP_SUMMARY")
+        elif [[ "$PROOFDIFF_JOB_SUMMARY" != "false" ]]; then
+          echo "proofdiff: job-summary must be true or false." >&2
+          exit 2
+        fi
         node "$GITHUB_ACTION_PATH/dist/cli.js" "${args[@]}"
