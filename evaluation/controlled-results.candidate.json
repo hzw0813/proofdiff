@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "generatedAt": "2000-01-01T00:00:00.000Z",
   "proofdiff": {
-    "commit": "781a44427e712f5368768bedff3ea7cf260fd0ab",
+    "commit": "273ef39856a5a84fe069b7b923af688ab9839c46",
     "version": "0.2.0"
   },
   "cases": [
