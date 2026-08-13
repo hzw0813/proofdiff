@@ -21,6 +21,11 @@ function inlineCode(value) {
     const bounded = singleLine.length > 240 ? `${singleLine.slice(0, 239)}…` : singleLine;
     return `<code>${escapeHtml(bounded)}</code>`;
 }
+function safeText(value) {
+    return escapeHtml(sanitizeControlCharacters(value)
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+        .replace(/[\r\n\t]+/g, " "));
+}
 function safeSummaryNotes(notes) {
     const staticLimitationNotes = new Set([
         "Could not parse package.json; check discovery skipped its scripts.",
@@ -114,6 +119,18 @@ function targetEvidence(item, maxPaths) {
     }
     return "No supported related test-like path was established.";
 }
+function boundaryEvidence(item) {
+    const boundary = item.evidenceBoundary;
+    if (!boundary)
+        return [];
+    const failClosed = boundary.proofdiffFailClosed ? " ProofDiff intentionally failed closed at this boundary." : "";
+    const lines = [
+        `Evidence boundary: ${inlineCode(boundary.stage)} · ${inlineCode(boundary.reason)}. ${safeText(boundary.detail)}${failClosed}`,
+    ];
+    if (boundary.nextAction)
+        lines.push(`Next action: ${inlineCode(boundary.nextAction.kind)} — ${safeText(boundary.nextAction.detail)}`);
+    return lines;
+}
 function reportPath(value) {
     const normalized = value.replaceAll("\\", "/");
     return path.isAbsolute(value) || path.win32.isAbsolute(value) ? path.posix.basename(normalized) : normalized;
@@ -144,6 +161,8 @@ export function renderGithubSummary(report, options = {}) {
     for (const item of report.assessments.slice(0, maxFiles)) {
         output.push(`- ${statusIcons[item.status]} **${statusLabels[item.status]}** · ${inlineCode(item.file.path)} · ${item.risk.toUpperCase()} risk`);
         output.push(`  - ${targetEvidence(item, maxPaths)}`);
+        for (const line of boundaryEvidence(item))
+            output.push(`  - ${line}`);
         output.push("");
     }
     if (report.assessments.length > maxFiles) {

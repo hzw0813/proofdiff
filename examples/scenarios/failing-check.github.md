@@ -9,6 +9,8 @@
 
 - ❌ **Verification failed** · <code>src/tax.js</code> · CRITICAL risk
   - Attributed failed target: <code>test/tax.test.js (failed)</code>.
+  - Evidence boundary: <code>runtime-observation</code> · <code>target-failed</code>. A runner-qualified related target was explicitly supplied and observed failing.
+  - Next action: <code>inspect-failure</code> — Inspect the attributed target failure before seeking stronger positive evidence.
 
 **Next step:** Inspect the relevant failure and full provenance; a passing target elsewhere does not erase it.
 

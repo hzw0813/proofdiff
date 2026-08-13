@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0",
-  "proofdiffVersion": "0.1.0",
+  "proofdiffVersion": "0.2.0",
   "generatedAt": "2026-08-12T00:00:00.000Z",
   "repository": {
     "root": "/demo/access-control",
     "name": "access-control",
     "head": "4f059fcf9ab5",
-    "branch": "main",
+    "branch": "master",
     "dirty": true
   },
   "selection": {
@@ -104,12 +104,30 @@
           "label": "@babel/parser structural analysis",
           "detail": "Parser confidence: high. Structural findings are evidence about code shape, not correctness.",
           "confidence": "high"
+        },
+        {
+          "kind": "limitation",
+          "label": "Evidence boundary · runner-qualification · opaque-passing-check",
+          "detail": "A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner. ProofDiff intentionally failed closed at this boundary. Next action: Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file.",
+          "confidence": "high"
         }
       ],
       "limitations": [
         "Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.",
         "1 statically related test-like path was not qualified by a recognized runner convention or configuration."
-      ]
+      ],
+      "evidenceBoundary": {
+        "strongestEvidence": "passing-check",
+        "stage": "runner-qualification",
+        "reason": "opaque-passing-check",
+        "detail": "A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner.",
+        "proofdiffFailClosed": true,
+        "nextAction": {
+          "kind": "qualify-related-test",
+          "detail": "Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file.",
+          "requiresRepositoryCodeExecution": false
+        }
+      }
     }
   ],
   "checks": [
@@ -131,8 +149,8 @@
       ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 142,
-      "output": "✔ service boots (0.279833ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34.74775",
+      "durationMs": 204,
+      "output": "✔ service boots (0.697252ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 58.300558",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     }

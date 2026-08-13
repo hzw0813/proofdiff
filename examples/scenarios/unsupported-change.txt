@@ -9,6 +9,8 @@ UNKNOWN    policy/access.rego  HIGH 75
   modified, +4/-0  ·  no changed symbol identified
   Review: No verification command was run for this change. No statically related test-like path was found.
   Evidence: none observed; status is not a safety claim.
+  Boundary: static-relationship · unsupported-semantics · fail-closed — ProofDiff could not establish first-class structural semantics for this changed file, so stronger relationship claims were not made.
+  Next: Inspect the file-level and static-analysis limitations; add or connect explicit verification rather than inferring that no tests exist.
 
 Checks
   None discovered. Add conventional test, typecheck, or lint configuration.

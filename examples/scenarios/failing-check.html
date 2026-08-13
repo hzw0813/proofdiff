@@ -48,14 +48,14 @@
     <details>
       <summary>Inspect evidence and reasoning</summary>
       <div class="detail-grid">
-        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence failing-check"><span>targeted node-test: 1 qualified test target: test/tax.test.js</span><p>ProofDiff explicitly supplied this runner-qualified target. The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.</p><small>high confidence · failing check</small></li><li class="evidence related-test"><span>1 statically related test-like path</span><p>Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 call reference in changed lines</span><p>Parser-observed name-only call sites: Number. Targets are not resolved and runtime execution is not implied.</p><small>high confidence · static relationship</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li></ul></div>
+        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence failing-check"><span>targeted node-test: 1 qualified test target: test/tax.test.js</span><p>ProofDiff explicitly supplied this runner-qualified target. The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.</p><small>high confidence · failing check</small></li><li class="evidence related-test"><span>1 statically related test-like path</span><p>Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 call reference in changed lines</span><p>Parser-observed name-only call sites: Number. Targets are not resolved and runtime execution is not implied.</p><small>high confidence · static relationship</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li><li class="evidence limitation"><span>Evidence boundary · runtime-observation · target-failed</span><p>A runner-qualified related target was explicitly supplied and observed failing. Next action: Inspect the attributed target failure before seeking stronger positive evidence.</p><small>high confidence · limitation</small></li></ul></div>
         <div><h4>Why review this</h4><ul><li>An applicable verification check failed.</li></ul></div>
         <div><h4>Targeted test outcomes <span class="count">1</span></h4><ul class="paths execution-paths"><li class="failed"><b>failed</b> test/tax.test.js</li></ul></div><div><h4>Statically related test-like paths <span class="count">1</span></h4><ul class="paths"><li>test/tax.test.js</li></ul></div><div><h4>Calls in changed lines <span class="count">1</span></h4><ul class="paths"><li>Number <span class="muted">line 2 · high confidence</span></li></ul><p class="muted">Name-only structural references; targets are not resolved and runtime execution is not implied.</p></div><div><h4>Estimated impact <span class="count">1</span></h4><ul class="paths"><li>test/tax.test.js</li></ul></div><div class="limitations"><h4>Limits</h4><ul><li>Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.</li></ul></div>
       </div>
     </details>
   </article></div>
   </section>
-  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status failed">failed</span><strong>test: test</strong><span>148 ms</span></summary><div><p>The command exited with code 1. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✖ applies the configured twenty-percent tax (0.570667ms)
+  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status failed">failed</span><strong>test: test</strong><span>219 ms</span></summary><div><p>The command exited with code 1. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✖ applies the configured twenty-percent tax (1.368285ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 0
@@ -63,28 +63,28 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 41.40925
+ℹ duration_ms 68.670976
 
 ✖ failing tests:
 
 test at test/tax.test.js:5:1
-✖ applies the configured twenty-percent tax (0.570667ms)
+✖ applies the configured twenty-percent tax (1.368285ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 
   2 !== 20
 
       at TestContext.&lt;anonymous&gt; ([REPOSITORY]/test/tax.test.js:6:10)
       at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1201:25)
-      at Test.start (node:internal/test_runner/test:1096:17)
-      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
     generatedMessage: true,
     code: &#039;ERR_ASSERTION&#039;,
     actual: 2,
     expected: 20,
     operator: &#039;strictEqual&#039;,
     diff: &#039;simple&#039;
-  }</pre></div></details><details class="check"><summary><span class="check-status failed">failed</span><strong>targeted node-test: 1 qualified test target</strong><span>67 ms</span></summary><div><p>The command exited with code 1. Target observations: 0 passed, 1 failed, 0 skipped, 0 zero-test, 0 unavailable. ProofDiff targeted execution derived from package.json script &quot;test&quot;.</p><code>node --test --test-reporter=&lt;ProofDiff observer&gt; test/tax.test.js</code><h4>Target qualifications</h4><ul><li><code>test/tax.test.js</code> → <code>test/tax.test.js</code> · runner-default-pattern (high)<br>test/tax.test.js matches a documented default node --test discovery pattern. <span class="muted">Default-pattern qualification establishes runner identity, not test execution or behavioral coverage.</span></li></ul><h4>Target observations</h4><ul><li><b>failed</b> <code>test/tax.test.js</code> · 1 non-skipped observed<br>The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.</li></ul><pre>✖ applies the configured twenty-percent tax (0.575333ms)
+  }</pre></div></details><details class="check"><summary><span class="check-status failed">failed</span><strong>targeted node-test: 1 qualified test target</strong><span>106 ms</span></summary><div><p>The command exited with code 1. Target observations: 0 passed, 1 failed, 0 skipped, 0 zero-test, 0 unavailable. ProofDiff targeted execution derived from package.json script &quot;test&quot;.</p><code>node --test --test-reporter=&lt;ProofDiff observer&gt; test/tax.test.js</code><h4>Target qualifications</h4><ul><li><code>test/tax.test.js</code> → <code>test/tax.test.js</code> · runner-default-pattern (high)<br>test/tax.test.js matches a documented default node --test discovery pattern. <span class="muted">Default-pattern qualification establishes runner identity, not test execution or behavioral coverage.</span></li></ul><h4>Target observations</h4><ul><li><b>failed</b> <code>test/tax.test.js</code> · 1 non-skipped observed<br>The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.</li></ul><pre>✖ applies the configured twenty-percent tax (1.365942ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 0
@@ -92,21 +92,21 @@ test at test/tax.test.js:5:1
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 37.264541
+ℹ duration_ms 65.039675
 
 ✖ failing tests:
 
 test at test/tax.test.js:5:1
-✖ applies the configured twenty-percent tax (0.575333ms)
+✖ applies the configured twenty-percent tax (1.365942ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 
   2 !== 20
 
       at TestContext.&lt;anonymous&gt; ([REPOSITORY]/test/tax.test.js:6:10)
       at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1201:25)
-      at Test.start (node:internal/test_runner/test:1096:17)
-      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
     generatedMessage: true,
     code: &#039;ERR_ASSERTION&#039;,
     actual: 2,
@@ -115,7 +115,7 @@ test at test/tax.test.js:5:1
     diff: &#039;simple&#039;
   }</pre></div></details></div></section>
   <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It requires a static relationship, runner qualification, explicit target supply, and at least one non-skipped passing test observed for that exact path—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety.</p>
-  <footer>Generated locally by ProofDiff 0.1.0 · no telemetry · schema 1.0</footer>
+  <footer>Generated locally by ProofDiff 0.2.0 · no telemetry · schema 1.0</footer>
 </main>
 <script>
   (() => {

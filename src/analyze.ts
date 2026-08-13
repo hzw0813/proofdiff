@@ -1,5 +1,6 @@
 import { discoverChecks, notRunResults, runChecks, targetedTestChecks } from "./checks.js";
 import { assessFile } from "./evidence.js";
+import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
@@ -64,7 +65,25 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
     })
     : notRunResults(allChecks);
   const assessments = stableSort(
-    files.map((file) => assessFile(file, graph, checks)),
+    files.map((file) => {
+      const assessment = assessFile(file, graph, checks);
+      const evidenceBoundary = explainEvidenceBoundary(assessment, checks);
+      const failClosed = evidenceBoundary.proofdiffFailClosed ? " ProofDiff intentionally failed closed at this boundary." : "";
+      const nextAction = evidenceBoundary.nextAction ? ` Next action: ${evidenceBoundary.nextAction.detail}` : "";
+      return {
+        ...assessment,
+        evidenceBoundary,
+        evidence: [
+          ...assessment.evidence,
+          {
+            kind: "limitation" as const,
+            label: `Evidence boundary · ${evidenceBoundary.stage} · ${evidenceBoundary.reason}`,
+            detail: `${evidenceBoundary.detail}${failClosed}${nextAction}`,
+            confidence: "high" as const,
+          },
+        ],
+      };
+    }),
     (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path),
   );
   const checksRun = checks.filter((check) => check.status !== "not-run").length;

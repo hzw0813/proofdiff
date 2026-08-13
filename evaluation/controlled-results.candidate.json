@@ -2,8 +2,8 @@
   "schemaVersion": "1.0",
   "generatedAt": "2000-01-01T00:00:00.000Z",
   "proofdiff": {
-    "commit": "37cccdfdfa89d7fb12c969a5ba364e16782b5eb4",
-    "version": "0.1.0"
+    "commit": "273ef39856a5a84fe069b7b923af688ab9839c46",
+    "version": "0.2.0"
   },
   "cases": [
     {
@@ -27,17 +27,62 @@
       }
     },
     {
-      "id": "typescript-alias-unresolved",
-      "purpose": "A clear tsconfig paths relationship remains a labeled miss rather than being converted into a success.",
+      "id": "typescript-alias-static-found",
+      "purpose": "A clear tsconfig paths mapping creates a static relationship without creating runtime evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [
+          "test/math.test.ts"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "not-run"
+        },
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "typescript-paths-unsupported-probing-unresolved",
+      "purpose": "NodeNext ESM extensionless lookup and an incorrect .mjs-to-.ts substitution cannot create static relationships.",
       "verdict": "passed",
       "observed": {
         "status": "unknown",
         "language": "typescript",
         "relatedTests": [],
         "executedTests": [],
+        "checkStatuses": {},
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "package-self-export-static-found",
+      "purpose": "An exact package self-export with an explicit source condition creates only a static relationship.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [
+          "test/math.test.ts"
+        ],
+        "executedTests": [],
         "checkStatuses": {
           "js:test:test": "not-run"
         },
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "typescript-metadata-ownership-unresolved",
+      "purpose": "An ignored nearer package boundary and a nearest compiler config that excludes the importer cannot create static relationships.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {},
         "repositoryCodeExecuted": false
       }
     },

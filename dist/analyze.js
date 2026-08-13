@@ -1,5 +1,6 @@
 import { discoverChecks, notRunResults, runChecks, targetedTestChecks } from "./checks.js";
 import { assessFile } from "./evidence.js";
+import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { compareCodeUnits, stableSort } from "./util.js";
@@ -65,7 +66,25 @@ export async function analyzeRepository(options) {
             maxOutputBytes: options.maxOutputBytes ?? 256_000,
         })
         : notRunResults(allChecks);
-    const assessments = stableSort(files.map((file) => assessFile(file, graph, checks)), (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path));
+    const assessments = stableSort(files.map((file) => {
+        const assessment = assessFile(file, graph, checks);
+        const evidenceBoundary = explainEvidenceBoundary(assessment, checks);
+        const failClosed = evidenceBoundary.proofdiffFailClosed ? " ProofDiff intentionally failed closed at this boundary." : "";
+        const nextAction = evidenceBoundary.nextAction ? ` Next action: ${evidenceBoundary.nextAction.detail}` : "";
+        return {
+            ...assessment,
+            evidenceBoundary,
+            evidence: [
+                ...assessment.evidence,
+                {
+                    kind: "limitation",
+                    label: `Evidence boundary · ${evidenceBoundary.stage} · ${evidenceBoundary.reason}`,
+                    detail: `${evidenceBoundary.detail}${failClosed}${nextAction}`,
+                    confidence: "high",
+                },
+            ],
+        };
+    }), (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path));
     const checksRun = checks.filter((check) => check.status !== "not-run").length;
     const notes = [...discovery.notes, ...graph.diagnostics];
     const generatedUntracked = untracked.filter((file) => /^(?:node_modules|vendor|dist|build|coverage|\.venv|venv)\//.test(file));
