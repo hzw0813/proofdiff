@@ -66,9 +66,9 @@ Impact and test-like relationships are explicitly labeled static estimates. Qual
 
 ## Use it in GitHub Actions
 
-The released composite Action is available at `hzw0813/proofdiff@v0.1.0`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. See the [complete workflow and trust guidance](docs/github-actions.md).
+The released composite Action is available at `hzw0813/proofdiff@v0.2.0`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. See the [complete workflow and trust guidance](docs/github-actions.md).
 
-The next release writes a concise, bounded **ProofDiff · Change Evidence** job summary by default, so reviewers can see changed-file evidence without opening logs. It uses the same report as terminal/JSON/HTML output, requires no write token, and does not create PR comments. Full provenance remains in the log and optional HTML artifact.
+The released Action writes a concise, bounded **ProofDiff · Change Evidence** job summary by default, so reviewers can see changed-file evidence without opening logs. It uses the same report as terminal/JSON/HTML output, requires no write token, and does not create PR comments. Full provenance remains in the log and optional HTML artifact.
 
 ## Useful commands
 
