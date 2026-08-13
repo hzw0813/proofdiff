@@ -15,6 +15,16 @@ Only one selector may be used. Revisions are validated as commits before analysi
 
 `--run-checks` opts into all discovered checks. `--check test`, `--check typecheck`, `--check lint`, or a check ID limits execution and can be repeated. `--timeout` controls the per-check limit.
 
+## Existing coverage artifacts
+
+`--coverage-lcov <file>` and `--coverage-commit <ref>` are an explicit pair. ProofDiff parses the LCOV artifact as bounded data and only reports artifact coverage evidence when the user-declared commit resolves exactly to the selected committed diff target (`HEAD` for `--base`, or the right-hand commit for `--range`).
+
+Working-tree and staged selections reject coverage reporting because their content is not identified by a commit. Commit mismatches also fail closed. This verifies the declaration against the diff target; it does not independently attest that the artifact was actually produced by that commit. Relative `SF:` paths are resolved only from the repository root; paths outside the repository and ambiguous cross-platform absolute paths are ignored rather than guessed.
+
+Coverage can report that the supplied artifact contains hits for changed current lines; ProofDiff does not independently attest that the artifact was produced by the declared commit. It does not establish which test was relevant, whether branches or assertions were exercised, or whether behavior is correct. It does not change the historical JSON `verified` meaning.
+
+Example: `proofdiff --base origin/main --coverage-lcov coverage/lcov.info --coverage-commit HEAD`
+
 ## Reports
 
 `--format terminal` is the default. `--json` emits `AnalysisReport` schema 1.0. `--output` redirects the primary report. `--html` writes an additional self-contained report with no external assets. `--github-summary <file>` writes bounded GitHub-flavored Markdown intended for `GITHUB_STEP_SUMMARY`; it is a concise projection of the same report, not a stronger evidence source.

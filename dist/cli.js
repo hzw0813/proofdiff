@@ -3,6 +3,7 @@ import { chmod, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { analyzeRepository, VERSION } from "./analyze.js";
+import { CoverageError } from "./coverage.js";
 import { GitError } from "./git.js";
 import { renderGithubSummary } from "./report/github.js";
 import { renderHtmlReport } from "./report/html.js";
@@ -22,6 +23,10 @@ Verification:
   --run-checks          Explicitly allow discovered repository checks to run
   --check <id|kind>     Run only a check id or test/typecheck/lint (repeatable)
   --timeout <seconds>   Per-check timeout, 1–1800 seconds (default: 120)
+
+Coverage artifact evidence:
+  --coverage-lcov <file>   Read an existing LCOV artifact as bounded data
+  --coverage-commit <ref>  User-declared artifact commit; must match the selected diff target
 
 Reports and CI:
   --format <terminal|json>  Primary output format (default: terminal)
@@ -109,6 +114,16 @@ function parseArgs(args) {
             index += 1;
             continue;
         }
+        if (arg === "--coverage-lcov") {
+            options.coverageLcov = valueAfter(args, index, arg);
+            index += 1;
+            continue;
+        }
+        if (arg === "--coverage-commit") {
+            options.coverageCommit = valueAfter(args, index, arg);
+            index += 1;
+            continue;
+        }
         if (arg === "--html") {
             options.html = valueAfter(args, index, arg);
             index += 1;
@@ -147,6 +162,9 @@ function parseArgs(args) {
     }
     if (options.selectedChecks.length > 0 && !options.runChecks)
         throw new UsageError("--check requires --run-checks; static analysis does not execute repository code.");
+    if ((options.coverageLcov === undefined) !== (options.coverageCommit === undefined)) {
+        throw new UsageError("--coverage-lcov and --coverage-commit must be supplied together.");
+    }
     return options;
 }
 async function writeOutput(file, content) {
@@ -184,6 +202,8 @@ async function main() {
         runChecks: parsed.runChecks,
         selectedChecks: parsed.selectedChecks,
         timeoutMs: parsed.timeoutMs,
+        ...(parsed.coverageLcov === undefined ? {} : { coverageLcov: parsed.coverageLcov }),
+        ...(parsed.coverageCommit === undefined ? {} : { coverageCommit: parsed.coverageCommit }),
     });
     const primary = parsed.format === "json" ? `${JSON.stringify(report, null, 2)}\n` : renderTerminalReport(report, { color: parsed.color, width: process.stdout.columns });
     if (parsed.output)
@@ -204,6 +224,11 @@ async function main() {
 main().catch((error) => {
     if (error instanceof UsageError) {
         process.stderr.write(`proofdiff: ${error.message}\nRun proofdiff --help for usage.\n`);
+        process.exitCode = 2;
+        return;
+    }
+    if (error instanceof CoverageError) {
+        process.stderr.write(`proofdiff: ${error.message}\nCoverage evidence was not accepted; no coverage-artifact evidence was produced.\n`);
         process.exitCode = 2;
         return;
     }

@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0",
-  "proofdiffVersion": "0.2.0",
+  "proofdiffVersion": "0.3.0",
   "generatedAt": "2026-08-12T00:00:00.000Z",
   "repository": {
     "root": "/demo/policy-engine",
     "name": "policy-engine",
     "head": "87f1bc06c60f",
-    "branch": "master",
+    "branch": "main",
     "dirty": true
   },
   "selection": {

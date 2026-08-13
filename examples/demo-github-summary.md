@@ -18,6 +18,6 @@
 
 **Next step:** Inspect the files without passing target observations and the detailed limitations before deciding whether more verification is needed.
 
-> **Trust boundary:** A related target pass means ProofDiff observed at least one non-skipped test for that exact runner-qualified target. It does not show that changed code ran or that behavior is correct.
+> **Trust boundary:** A related target pass does not show that changed code ran or that behavior is correct. Declared-commit-matched LCOV can add separate artifact-reported coverage evidence, but ProofDiff does not independently attest that artifact provenance, relevant assertions, or behavioral correctness.
 
 Full provenance remains in the job log and configured HTML report <code>demo-report.html</code>. Upload that file as a workflow artifact to retain it.

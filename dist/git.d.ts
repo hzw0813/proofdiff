@@ -4,6 +4,8 @@ export declare class GitError extends Error {
 }
 export declare function gitNullDevice(platform?: NodeJS.Platform): string;
 export declare function findRepository(value: string): Promise<string>;
+export declare function resolveRevisionCommit(root: string, value: string): Promise<string>;
+export declare function diffTargetCommit(root: string, selection: DiffSelection): Promise<string | null>;
 export declare function selectDiff(root: string, options: {
     base?: string;
     range?: string;

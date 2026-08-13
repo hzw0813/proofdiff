@@ -18,4 +18,4 @@ Checks
 Trust boundary: No repository code was executed. Git inspection and language parsing were performed locally.
 Note: Check execution was requested, but no supported checks were discovered.
 
-Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target—not changed-symbol or changed-line coverage.
+Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target. This is not changed-symbol or changed-line coverage and does not show that behavior is correct. Declared-commit-matched LCOV, when supplied, is separate additive coverage evidence reporting artifact hits; ProofDiff does not independently attest artifact provenance, assertion relevance, or correctness.

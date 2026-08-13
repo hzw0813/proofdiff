@@ -84,6 +84,13 @@ export function renderTerminalReport(report, options = {}) {
             output.push(`  ${colors.green("Evidence:")} ${safe(passing.label)} — ${safe(passing.detail)}`);
         else
             output.push(`  ${colors.gray("Evidence:")} none observed; status is not a safety claim.`);
+        if (assessment.coverage && assessment.coverage.state !== "not-applicable") {
+            const coverage = assessment.coverage;
+            const marker = coverage.state === "all-covered" ? colors.green("Coverage:")
+                : coverage.state === "partially-covered" ? colors.yellow("Coverage:")
+                    : colors.gray("Coverage:");
+            output.push(`  ${marker} ${coverage.coveredChangedLines}/${coverage.changedLines} changed lines reported with hits by the supplied artifact · ${safe(coverage.state)}`);
+        }
         if (assessment.evidenceBoundary) {
             const boundary = assessment.evidenceBoundary;
             const failClosed = boundary.proofdiffFailClosed ? " · fail-closed" : "";
@@ -118,12 +125,17 @@ export function renderTerminalReport(report, options = {}) {
             output.push(`  ${marker.padEnd(options.color ? 18 : 9)} ${safe(check.label)}  ${colors.dim(safe(check.origin))}${check.durationMs ? `  ${check.durationMs}ms` : ""}${observed}`);
         }
     }
+    if (report.coverage) {
+        output.push("");
+        const marker = report.coverage.accepted ? colors.green("ACCEPTED") : colors.yellow("NOT USED");
+        output.push(`${colors.bold("Coverage input:")} ${marker}  ${safe(report.coverage.artifact)}  ${colors.dim(safe(report.coverage.commitBinding))}`);
+    }
     output.push("");
     output.push(`${colors.bold("Trust boundary:")} ${safe(report.trust.statement)}`);
     for (const note of report.notes.slice(0, 5))
         output.push(`${colors.dim("Note:")} ${safe(note)}`);
     output.push("");
-    output.push(colors.dim("Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target—not changed-symbol or changed-line coverage."));
+    output.push(colors.dim("Related test file passed requires runner qualification, explicit supply, and a non-skipped passing test observed for that exact target. This is not changed-symbol or changed-line coverage and does not show that behavior is correct. Declared-commit-matched LCOV, when supplied, is separate additive coverage evidence reporting artifact hits; ProofDiff does not independently attest artifact provenance, assertion relevance, or correctness."));
     return output.join("\n");
 }
 //# sourceMappingURL=terminal.js.map

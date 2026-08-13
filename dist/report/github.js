@@ -131,6 +131,19 @@ function boundaryEvidence(item) {
         lines.push(`Next action: ${inlineCode(boundary.nextAction.kind)} — ${safeText(boundary.nextAction.detail)}`);
     return lines;
 }
+function coverageEvidence(item) {
+    const coverage = item.coverage;
+    if (!coverage || coverage.state === "not-applicable")
+        return null;
+    if (coverage.state === "all-covered")
+        return `Coverage artifact: ${coverage.coveredChangedLines}/${coverage.changedLines} changed lines reported with hits by the supplied artifact.`;
+    if (coverage.state === "partially-covered") {
+        return `Coverage artifact: ${coverage.coveredChangedLines}/${coverage.changedLines} changed lines reported with hits by the supplied artifact; ${coverage.uncoveredChangedLines} measured with zero hits and ${coverage.unmeasuredChangedLines} unmeasured.`;
+    }
+    if (coverage.state === "uncovered")
+        return `Coverage artifact: changed lines were measured but the supplied artifact reported zero hits for them.`;
+    return "Coverage artifact: current changed lines were not measured.";
+}
 function reportPath(value) {
     const normalized = value.replaceAll("\\", "/");
     return path.isAbsolute(value) || path.win32.isAbsolute(value) ? path.posix.basename(normalized) : normalized;
@@ -156,11 +169,21 @@ export function renderGithubSummary(report, options = {}) {
         "### Changed files",
         "",
     ];
+    if (report.coverage) {
+        const index = output.indexOf("### Changed files");
+        const coverageLine = report.coverage.accepted
+            ? `**Coverage input:** accepted declared-commit-matched LCOV ${inlineCode(report.coverage.artifact)}.`
+            : `**Coverage input:** not used (${inlineCode(report.coverage.commitBinding)}).`;
+        output.splice(index, 0, coverageLine, "");
+    }
     if (report.assessments.length === 0)
         output.push("No changed files matched the selected diff.", "");
     for (const item of report.assessments.slice(0, maxFiles)) {
         output.push(`- ${statusIcons[item.status]} **${statusLabels[item.status]}** · ${inlineCode(item.file.path)} · ${item.risk.toUpperCase()} risk`);
         output.push(`  - ${targetEvidence(item, maxPaths)}`);
+        const coverageLine = coverageEvidence(item);
+        if (coverageLine)
+            output.push(`  - ${coverageLine}`);
         for (const line of boundaryEvidence(item))
             output.push(`  - ${line}`);
         output.push("");
@@ -193,7 +216,7 @@ export function renderGithubSummary(report, options = {}) {
     else if (report.assessments.some((item) => item.status !== "verified")) {
         output.push("**Next step:** Inspect the files without passing target observations and the detailed limitations before deciding whether more verification is needed.", "");
     }
-    output.push("> **Trust boundary:** A related target pass means ProofDiff observed at least one non-skipped test for that exact runner-qualified target. It does not show that changed code ran or that behavior is correct.", "");
+    output.push("> **Trust boundary:** A related target pass does not show that changed code ran or that behavior is correct. Declared-commit-matched LCOV can add separate artifact-reported coverage evidence, but ProofDiff does not independently attest that artifact provenance, relevant assertions, or behavioral correctness.", "");
     if (options.htmlPath) {
         output.push(`Full provenance remains in the job log and configured HTML report ${inlineCode(reportPath(options.htmlPath))}. Upload that file as a workflow artifact to retain it.`);
     }

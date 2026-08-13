@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0",
-  "proofdiffVersion": "0.2.0",
+  "proofdiffVersion": "0.3.0",
   "generatedAt": "2026-08-12T00:00:00.000Z",
   "repository": {
     "root": "/demo/access-control",
     "name": "access-control",
     "head": "4f059fcf9ab5",
-    "branch": "master",
+    "branch": "main",
     "dirty": true
   },
   "selection": {
@@ -149,8 +149,8 @@
       ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 204,
-      "output": "✔ service boots (0.697252ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 58.300558",
+      "durationMs": 143,
+      "output": "✔ service boots (0.28ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.240875",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     }

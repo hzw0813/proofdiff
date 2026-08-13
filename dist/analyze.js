@@ -1,4 +1,5 @@
 import { discoverChecks, notRunResults, runChecks, targetedTestChecks } from "./checks.js";
+import { attachCoverageEvidence, CoverageError, loadCoverageEvidence } from "./coverage.js";
 import { assessFile } from "./evidence.js";
 import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
@@ -53,6 +54,9 @@ export async function analyzeRepository(options) {
     const includeUntracked = selection.mode === "working-tree";
     const untracked = includeUntracked ? await listUntrackedFiles(root) : [];
     const files = await changedFiles(root, args, includeUntracked, untracked);
+    if ((options.coverageLcov === undefined) !== (options.coverageCommit === undefined)) {
+        throw new CoverageError("Coverage evidence requires both coverageLcov and coverageCommit.");
+    }
     const inventory = await listRepositoryFiles(root);
     const graph = await buildRepositoryGraph(root, inventory.files, files);
     const discovery = await discoverChecks(root);
@@ -66,8 +70,11 @@ export async function analyzeRepository(options) {
             maxOutputBytes: options.maxOutputBytes ?? 256_000,
         })
         : notRunResults(allChecks);
+    const coverage = options.coverageLcov !== undefined && options.coverageCommit !== undefined
+        ? await loadCoverageEvidence(root, selection, options.coverageLcov, options.coverageCommit, files)
+        : undefined;
     const assessments = stableSort(files.map((file) => {
-        const assessment = assessFile(file, graph, checks);
+        const assessment = attachCoverageEvidence(assessFile(file, graph, checks), coverage?.byPath.get(file.path));
         const evidenceBoundary = explainEvidenceBoundary(assessment, checks);
         const failClosed = evidenceBoundary.proofdiffFailClosed ? " ProofDiff intentionally failed closed at this boundary." : "";
         const nextAction = evidenceBoundary.nextAction ? ` Next action: ${evidenceBoundary.nextAction.detail}` : "";
@@ -103,6 +110,8 @@ export async function analyzeRepository(options) {
         notes.push("Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.");
     if (options.runChecks && allChecks.length === 0)
         notes.push("Check execution was requested, but no supported checks were discovered.");
+    if (coverage && !coverage.summary.accepted)
+        notes.push(`Coverage artifact was not used. ${coverage.summary.detail}`);
     return {
         schemaVersion: "1.0",
         proofdiffVersion: VERSION,
@@ -114,11 +123,14 @@ export async function analyzeRepository(options) {
         checks,
         discoveredChecks: allChecks,
         notes,
+        ...(coverage === undefined ? {} : { coverage: coverage.summary }),
         trust: {
             repositoryCodeExecuted: checksRun > 0,
-            statement: checksRun > 0
+            statement: `${checksRun > 0
                 ? "Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox."
-                : "No repository code was executed. Git inspection and language parsing were performed locally.",
+                : "No repository code was executed. Git inspection and language parsing were performed locally."}${coverage?.summary.accepted
+                ? " A declared-commit-matched LCOV artifact was parsed as bounded data; ProofDiff did not execute code to produce it."
+                : ""}`,
         },
     };
 }
