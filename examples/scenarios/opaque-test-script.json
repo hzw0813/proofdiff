@@ -132,7 +132,7 @@
       "status": "passed",
       "exitCode": 0,
       "durationMs": 143,
-      "output": "✔ service boots (0.274ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 36.58975",
+      "output": "✔ service boots (0.277625ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 35.69025",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     }

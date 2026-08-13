@@ -2,7 +2,7 @@
 
 ## CURRENT STATE
 
-PR #5 adds bounded package self-export resolution and currently accepts an absent `moduleResolution` as if package exports might be active. The corrected static-resolution candidate is otherwise evaluated at `311158441acf8c1e9d7527d9ff912cc79fc5fcab` against `main` at `9f59523f9c2bc7e513bf0f7379c6f5111c6846ae`.
+PR #5 adds bounded package self-export resolution. Independent review found that its earlier candidate accepted an absent `moduleResolution` as if package exports might be active. The final clean code candidate is `7750e9e9d2ab3688fe4a640d5f6c8dec1f3f195a` against `main` at `9f59523f9c2bc7e513bf0f7379c6f5111c6846ae`.
 
 ## USER PROBLEM AND OBSERVED FAILURE
 

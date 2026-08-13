@@ -23,7 +23,7 @@ The implementation does not recognize repository names or corpus paths. It adds 
 
 ### Compiler paths
 
-- The nearest Git-inventory ancestor `tsconfig.json` owns the importer.
+- The nearest Git-inventory ancestor `tsconfig.json` is used only when no hidden nearer config exists and bounded inherited `files`/`include`/`exclude`, source-extension, `allowJs`, output-directory, and declaration-directory evidence includes the importer.
 - JSON-with-comments, block/line comments, trailing commas, and Windows separators are accepted deliberately.
 - One repository-relative string `extends` chain is merged base-first; relative option paths retain the configuration that defined them.
 - Exact keys win. Otherwise a key may contain one `*`, and the match with the longest literal prefix wins. Equal-prefix ambiguity creates no edge.
@@ -33,11 +33,11 @@ The implementation does not recognize repository names or corpus paths. It adds 
 
 ### Package self-exports
 
-- The nearest Git-inventory ancestor `package.json` owns the importer and defines the package boundary.
+- The nearest physical `package.json` must be visible in the Git inventory before it can own the importer and define the package boundary.
 - The import must equal that package's exact declared `name` or a subpath below it, and the package must declare `exports`.
 - Root or exact subpath keys are supported. Export patterns and arrays are unsupported.
 - Direct `./` targets are supported. Conditional objects preserve declaration order and select only an explicitly active compiler `customConditions` branch or an unambiguous `default`. A skipped potentially active built-in condition such as `types`, `import`, `require`, or `node` makes the choice unsupported.
-- `moduleResolution` must be absent or one of the export-aware modes; explicit `resolvePackageJsonExports: false` disables the edge.
+- `moduleResolution` must explicitly name an export-aware mode; absent or unsupported modes and `resolvePackageJsonExports: false` disable the edge.
 - Targets must remain inside both the repository and owning package and cannot cross a nested package boundary.
 
 Successful non-relative edges retain internal evidence for importer, original specifier, mechanism, config/package file, matched key, target, confidence, explanation, and the static-only limitation. Public report schema `1.0` is unchanged.
@@ -80,7 +80,7 @@ Every external assessment remains `unknown`, every check is `not-run`, and every
 
 ## Controlled evaluation
 
-All 15 controls passed. The two added cases establish positive static relationships for compiler aliases and package self-exports without runtime evidence. The retained cases cover conventional related target passes, directory helpers, root/custom Node identity, opaque commands, genuine failures, Node zero/filtered/skipped targets, positive/zero unittest targets, exact mixed-batch attribution, and an unsupported language.
+The original module-resolution candidate passed 15 controls. The final independently reviewed candidate passes 17/17, adding a negative metadata-ownership control alongside the unsupported post-substitution control. Positive compiler aliases and package self-exports remain static-only. The retained cases cover conventional related target passes, directory helpers, root/custom Node identity, opaque commands, genuine failures, Node zero/filtered/skipped targets, positive/zero unittest targets, exact mixed-batch attribution, and an unsupported language.
 
 ## Compatibility and remaining misses
 

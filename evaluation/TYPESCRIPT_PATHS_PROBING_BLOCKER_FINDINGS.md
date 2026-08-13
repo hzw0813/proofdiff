@@ -5,7 +5,7 @@
 - Product baseline: clean `main` at `9f59523f9c2bc7e513bf0f7379c6f5111c6846ae`.
 - Original PR implementation candidate: `342ee543c06c7ad90e82e525fe8fee0afe8f4b98`.
 - Independent-review blocker decision: [`TYPESCRIPT_PATHS_PROBING_BLOCKER_DECISION.md`](TYPESCRIPT_PATHS_PROBING_BLOCKER_DECISION.md).
-- Clean corrected candidate evaluated here: `311158441acf8c1e9d7527d9ff912cc79fc5fcab`.
+- Clean corrected code candidate evaluated here: `7750e9e9d2ab3688fe4a640d5f6c8dec1f3f195a`.
 - Pull request: [#5](https://github.com/hzw0813/proofdiff/pull/5).
 
 The preserved historical `results.json`, `controlled-results.json`, and their schemas remain unchanged. The corrected candidate observations replace only the separately named static-resolution candidate artifacts.
@@ -25,7 +25,7 @@ These are false static relationships, so lower confidence would not make them sa
 
 ## Corrected supported semantics
 
-The candidate now separates path-key selection from bounded post-substitution lookup:
+The candidate now separates path-key selection from bounded post-substitution lookup and proves supported metadata ownership before using it:
 
 - `.js`, `.jsx`, `.mjs`, and `.cjs` targets use TypeScript's distinct documented extension-substitution families and ordering;
 - extensionless file and directory lookup is accepted only for an explicitly configured `bundler`, `node10`, or `node` mode;
@@ -33,6 +33,8 @@ The candidate now separates path-key selection from bounded post-substitution lo
 - directory `package.json`, exact physical extensionless files, omitted MTS/CTS-family files, unsupported extensions, and non-default `moduleSuffixes` block fallback instead of being guessed around;
 - without `baseUrl`, target strings must be explicitly relative;
 - package self-export targets receive exact extension substitution only, never extensionless or directory probing.
+- inherited project selectors must include the importer; JavaScript requires `allowJs`, output directories are excluded, and hidden nearer metadata blocks ownership;
+- package self-exports require an explicit export-aware mode, while versioned or otherwise unmodeled potentially active conditions block later branches.
 
 Every accepted edge remains static-only and retains the configuration-backed resolution mechanism. Public schema `1.0`, status names, CLI flags, Action inputs, and runtime evidence semantics are unchanged.
 
@@ -57,7 +59,7 @@ A sixteenth controlled evaluation case combines the two strongest counterexample
 | --- | ---: | ---: |
 | Existing controlled cases passed | 15/15 | 15/15 |
 | New unsupported-probing negative case | absent | passed |
-| Total corrected controls | 15 | 16/16 |
+| Total corrected controls | 15 | 17/17 |
 
 Existing positive aliases, package self-exports, qualified target passes, helpers, zero/filtered/skipped targets, genuine failures, mixed-batch attribution, unittest outcomes, opaque commands, and unsupported-language observations did not change.
 
@@ -86,21 +88,23 @@ The change adds no network behavior, dependency installation, configuration exec
 On macOS arm64 with Node 24.15.0:
 
 - typecheck passed;
-- 77/77 tests passed;
+- 78/78 tests passed;
 - coverage passed at 89.65% lines, 81.36% branches, and 92.52% functions;
 - GitHub Action smoke passed for production-only install, static default, trusted checks, base diff, and HTML output;
 - dogfood passed with one related test-file pass and all four executed checks passing;
 - four truthful demo scenarios regenerated and passed;
 - normal and scripts-disabled package dry-runs passed; the package contains only `dist`, README, LICENSE, and package metadata;
-- preserved and candidate evaluation validation passed; the candidate has 10 external and 16 controlled observations;
+- preserved and candidate evaluation validation passed; the candidate has 10 external and 17 controlled observations;
 - the full pinned external corpus passed its manifest, trust-boundary, and clean-candidate checks;
 - terminal and self-contained HTML reports were inspected;
 - generated-artifact, local-path, secret-signature, package-content, and `git diff --check` audits passed.
 
 Hosted Linux/macOS/Windows and Node-version results are recorded on PR #5 after the corrected candidate is pushed.
 
+Independent adversarial review reproduced and blocked unsafe missing export modes, versioned export-condition precedence, hidden package ownership, excluded compiler-project inputs, inherited selector origins, `allowJs`, output/declaration directory exclusions, and locale-dependent bounded traversal. After correction, all eight primary false-edge fixtures plus hidden config and hidden target-boundary variants produced no edge. The independent reviewer accepted code candidate `7750e9e9d2ab3688fe4a640d5f6c8dec1f3f195a` with no remaining credible false-relationship, deterministic-bound, security, runtime-evidence, or compatibility blocker.
+
 ## Remaining limits and next review target
 
 The candidate deliberately misses valid Node16/NodeNext CommonJS extensionless aliases because the current import evidence does not preserve exact resolution mode. It also does not model directory package metadata, non-default module suffixes, arbitrary extensions, Classic extensionless lookup, package imports, workspace dependency linking, project references, or package-based `extends`.
 
-The next action is independent adversarial review of PR #5, specifically looking for a remaining way to create a false static edge through post-substitution precedence. No unrelated semantic feature should begin before that review is accepted and the PR is merged by a maintainer.
+The next action is maintainer review and merge of PR #5. No unrelated semantic feature should begin before that merge; after merge, the next cycle should rerank correctness, first-run UX, PR experience, stronger runtime evidence, and real feedback rather than inheriting an old TODO automatically.

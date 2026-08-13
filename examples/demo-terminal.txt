@@ -18,8 +18,8 @@ RELATED TEST FILE PASSED src/discount.js  LOW 10
   Executed tests: test/checkout.test.js
 
 Checks
-  PASS      test: test  package.json script "test"  151ms
-  PASS      targeted node-test: 1 qualified test target  ProofDiff targeted execution derived from package.json script "test"  69ms  targets +1/-0/?0
+  PASS      test: test  package.json script "test"  147ms
+  PASS      targeted node-test: 1 qualified test target  ProofDiff targeted execution derived from package.json script "test"  66ms  targets +1/-0/?0
 
 Trust boundary: Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox.
 

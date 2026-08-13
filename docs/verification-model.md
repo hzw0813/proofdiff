@@ -53,7 +53,7 @@ Observer records travel over a separate bounded control pipe. Missing, malformed
 
 - ProofDiff does not ingest runtime code coverage.
 - Compiler resolution is intentionally partial: NodeNext-family extensionless paths, directory package metadata, non-default `moduleSuffixes`, Classic lookup, package or array `extends`, project references, standalone `baseUrl`, `${configDir}`, multiple-wildcard mappings, installed packages, and arbitrary bundler aliases are not resolved.
-- Package resolution is intentionally partial: only the importing package's exact self-exports are considered. Export patterns/arrays, unmodeled built-in runtime conditions, package imports, workspace dependencies, third-party packages, and `node_modules` are not resolved.
+- Package resolution is intentionally partial: only the importing package's exact self-exports under an explicit export-aware compiler mode are considered. Hidden package boundaries, versioned or unmodeled conditions, export patterns/arrays, package imports, workspace dependencies, third-party packages, and `node_modules` are not resolved. Compiler aliases also require bounded evidence that the selected config includes the importer.
 - Python namespace packages and dynamic imports may be missed.
 - Root project scripts are discovered; monorepo package scripts are only noted.
 - Deleted symbols are inferred only from recognizable removed declarations.
