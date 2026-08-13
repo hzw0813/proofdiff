@@ -1,6 +1,6 @@
 import path from "node:path";
 import { impactedFiles, symbolsChanged } from "./graph.js";
-import { clamp, isTestLikePath, unique } from "./util.js";
+import { clamp, compareCodeUnits, isTestLikePath, unique } from "./util.js";
 function checkApplies(check, file, relatedTests) {
     if (check.targetFiles && !check.targetFiles.some((target) => relatedTests.includes(target)))
         return false;
@@ -120,7 +120,7 @@ function callsInChangedLines(file, analysis, limit = 100) {
             return false;
         seen.add(key);
         return true;
-    }).sort((a, b) => a.line - b.line || a.name.localeCompare(b.name));
+    }).sort((a, b) => a.line - b.line || compareCodeUnits(a.name, b.name));
     return { calls: matching.slice(0, limit), truncated: matching.length > limit };
 }
 function riskFor(file, status, relatedTests, impacted, analysis) {

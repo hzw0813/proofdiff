@@ -7,6 +7,10 @@ export const SOURCE_EXTENSIONS = new Set([
   ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".py", ".pyi",
 ]);
 
+export function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export async function pathExists(value: string): Promise<boolean> {
   try {
     await access(value, constants.F_OK);

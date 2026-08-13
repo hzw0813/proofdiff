@@ -2,7 +2,7 @@ import path from "node:path";
 import { analyzeSource } from "./adapters/index.js";
 import { BoundedStaticModuleResolver, javascriptModuleCandidates, type StaticResolutionEvidence } from "./resolution.js";
 import type { ChangedFile, SourceAnalysis, SymbolInfo } from "./types.js";
-import { isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
+import { compareCodeUnits, isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
 
 export interface RepositoryGraph {
   analyses: Map<string, SourceAnalysis>;
@@ -57,7 +57,7 @@ export async function buildRepositoryGraph(root: string, repositoryFiles: string
     }));
   }
 
-  for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+  for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => compareCodeUnits(left, right))) {
     const targets = new Set<string>();
     for (const imported of analysis.imports) {
       const target = analysis.language === "python"

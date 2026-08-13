@@ -4,6 +4,9 @@ import path from "node:path";
 export const SOURCE_EXTENSIONS = new Set([
     ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".py", ".pyi",
 ]);
+export function compareCodeUnits(left, right) {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
 export async function pathExists(value) {
     try {
         await access(value, constants.F_OK);

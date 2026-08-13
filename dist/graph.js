@@ -1,7 +1,7 @@
 import path from "node:path";
 import { analyzeSource } from "./adapters/index.js";
 import { BoundedStaticModuleResolver, javascriptModuleCandidates } from "./resolution.js";
-import { isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
+import { compareCodeUnits, isTestLikePath, normalizeRepoPath, readUtf8File, SOURCE_EXTENSIONS, unique } from "./util.js";
 function candidatesForJavaScript(importer, source) {
     if (!source.startsWith("."))
         return [];
@@ -44,7 +44,7 @@ export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) 
             analyses.set(file, await analyzeSource(file, source, root));
         }));
     }
-    for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => compareCodeUnits(left, right))) {
         const targets = new Set();
         for (const imported of analysis.imports) {
             const target = analysis.language === "python"

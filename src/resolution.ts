@@ -1,7 +1,7 @@
 import path from "node:path";
 import { realpath, stat } from "node:fs/promises";
 import type { Confidence } from "./types.js";
-import { isInside, normalizeRepoPath, readUtf8File, unique } from "./util.js";
+import { compareCodeUnits, isInside, normalizeRepoPath, readUtf8File, unique } from "./util.js";
 
 const MAX_ANCESTOR_DEPTH = 32;
 const MAX_CONFIG_FILES = 64;
@@ -668,7 +668,7 @@ export class BoundedStaticModuleResolver {
       matches.push({ key, capture: specifier.slice(prefix.length, specifier.length - suffix.length), targets, prefixLength: prefix.length });
     }
     if (matches.length === 0) return null;
-    matches.sort((left, right) => right.prefixLength - left.prefixLength || left.key.localeCompare(right.key));
+    matches.sort((left, right) => right.prefixLength - left.prefixLength || compareCodeUnits(left.key, right.key));
     if (matches[1]?.prefixLength === matches[0]?.prefixLength) return "ambiguous";
     return matches[0]!;
   }

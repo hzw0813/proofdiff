@@ -1,7 +1,7 @@
 import path from "node:path";
 import { runProcess, safeExecutablePath, type ProcessResult } from "./process.js";
 import type { ChangedFile, ChangeKind, DiffHunk, DiffSelection, RepositoryInfo } from "./types.js";
-import { isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
+import { compareCodeUnits, isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
 
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
@@ -263,7 +263,7 @@ export async function changedFiles(root: string, diffArgs: string[], includeUntr
       deletedSymbolHints: deletedSymbolHints(patch),
     });
   }
-  return files.sort((a, b) => a.path.localeCompare(b.path));
+  return files.sort((a, b) => compareCodeUnits(a.path, b.path));
 }
 
 export async function listUntrackedFiles(root: string): Promise<string[]> {

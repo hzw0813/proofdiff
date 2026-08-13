@@ -1,6 +1,7 @@
 import path from "node:path";
 import { parse, type ParserOptions } from "@babel/parser";
 import type { CallInfo, ImportInfo, SourceAnalysis, SymbolInfo } from "../types.js";
+import { compareCodeUnits } from "../util.js";
 import type { LanguageAdapter } from "./types.js";
 
 type NodeLike = {
@@ -150,7 +151,7 @@ function analyzeAst(ast: NodeLike, language: "typescript" | "javascript"): Sourc
     symbols,
     imports,
     calls: [...calls].sort(),
-    callSites: callSites.sort((a, b) => a.line - b.line || a.name.localeCompare(b.name)),
+    callSites: callSites.sort((a, b) => a.line - b.line || compareCodeUnits(a.name, b.name)),
     diagnostics: [],
     confidence: "high",
   };

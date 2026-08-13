@@ -4,6 +4,7 @@ import test, { type TestContext } from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
 import { listRepositoryFiles } from "../src/git.js";
 import { buildRepositoryGraph, impactedFiles, type RepositoryGraph } from "../src/graph.js";
+import { compareCodeUnits } from "../src/util.js";
 import { initializeRepository, writeFiles } from "./helpers.js";
 
 async function fixtureGraph(context: TestContext, files: Record<string, string>): Promise<{ root: string; graph: RepositoryGraph }> {
@@ -16,6 +17,12 @@ async function fixtureGraph(context: TestContext, files: Record<string, string>)
 function hasEdge(graph: RepositoryGraph, importer: string, target: string): boolean {
   return graph.dependencies.get(importer)?.has(target) ?? false;
 }
+
+test("semantic path ordering uses locale-independent code units", () => {
+  assert.deepEqual(["z.ts", "ä.ts", "a.ts"].sort(compareCodeUnits), ["a.ts", "z.ts", "ä.ts"]);
+  assert.equal(compareCodeUnits("ä.ts", "z.ts"), 1);
+  assert.equal(compareCodeUnits("same.ts", "same.ts"), 0);
+});
 
 test("compiler paths resolve exact, wildcard, inherited, baseUrl, ordered fallback, and mode-supported probes", async (context) => {
   const { graph } = await fixtureGraph(context, {

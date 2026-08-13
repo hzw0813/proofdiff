@@ -1,6 +1,6 @@
 import path from "node:path";
 import { realpath, stat } from "node:fs/promises";
-import { isInside, normalizeRepoPath, readUtf8File, unique } from "./util.js";
+import { compareCodeUnits, isInside, normalizeRepoPath, readUtf8File, unique } from "./util.js";
 const MAX_ANCESTOR_DEPTH = 32;
 const MAX_CONFIG_FILES = 64;
 const MAX_PACKAGE_FILES = 256;
@@ -631,7 +631,7 @@ export class BoundedStaticModuleResolver {
         }
         if (matches.length === 0)
             return null;
-        matches.sort((left, right) => right.prefixLength - left.prefixLength || left.key.localeCompare(right.key));
+        matches.sort((left, right) => right.prefixLength - left.prefixLength || compareCodeUnits(left.key, right.key));
         if (matches[1]?.prefixLength === matches[0]?.prefixLength)
             return "ambiguous";
         return matches[0];
