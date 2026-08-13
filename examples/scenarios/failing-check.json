@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0",
-  "proofdiffVersion": "0.2.0",
+  "proofdiffVersion": "0.3.0",
   "generatedAt": "2026-08-12T00:00:00.000Z",
   "repository": {
     "root": "/demo/billing-service",
     "name": "billing-service",
     "head": "927ff84f0aad",
-    "branch": "master",
+    "branch": "main",
     "dirty": true
   },
   "selection": {
@@ -162,8 +162,8 @@
       "targetRunner": "node-test",
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 219,
-      "output": "✖ applies the configured twenty-percent tax (1.368285ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 68.670976\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (1.368285ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.start (node:internal/test_runner/test:1242:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "durationMs": 150,
+      "output": "✖ applies the configured twenty-percent tax (0.570542ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 40.921667\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.570542ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
       "outputTruncated": false,
       "explanation": "The command exited with code 1."
     },
@@ -195,8 +195,8 @@
       ],
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 106,
-      "output": "✖ applies the configured twenty-percent tax (1.365942ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 65.039675\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (1.365942ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.start (node:internal/test_runner/test:1242:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
+      "durationMs": 76,
+      "output": "✖ applies the configured twenty-percent tax (0.573667ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 42.916833\n\n✖ failing tests:\n\ntest at test/tax.test.js:5:1\n✖ applies the configured twenty-percent tax (0.573667ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n  2 !== 20\n\n      at TestContext.<anonymous> ([REPOSITORY]/test/tax.test.js:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1201:25)\n      at Test.start (node:internal/test_runner/test:1096:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 20,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }",
       "outputTruncated": false,
       "explanation": "The command exited with code 1. Target observations: 0 passed, 1 failed, 0 skipped, 0 zero-test, 0 unavailable.",
       "targetObservations": [

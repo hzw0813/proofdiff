@@ -18,6 +18,6 @@
 
 **Next step:** Check discovery found nothing it could run. Inspect the supported conventions and detailed limitations; do not treat this unknown state as a pass.
 
-> **Trust boundary:** A related target pass means ProofDiff observed at least one non-skipped test for that exact runner-qualified target. It does not show that changed code ran or that behavior is correct.
+> **Trust boundary:** A related target pass does not show that changed code ran or that behavior is correct. Declared-commit-matched LCOV can add separate artifact-reported coverage evidence, but ProofDiff does not independently attest that artifact provenance, relevant assertions, or behavioral correctness.
 
 Full provenance remains in the job log and configured HTML report <code>unsupported-change.html</code>. Upload that file as a workflow artifact to retain it.

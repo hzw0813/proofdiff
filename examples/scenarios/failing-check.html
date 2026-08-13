@@ -55,7 +55,7 @@
     </details>
   </article></div>
   </section>
-  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status failed">failed</span><strong>test: test</strong><span>219 ms</span></summary><div><p>The command exited with code 1. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✖ applies the configured twenty-percent tax (1.368285ms)
+  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status failed">failed</span><strong>test: test</strong><span>150 ms</span></summary><div><p>The command exited with code 1. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✖ applies the configured twenty-percent tax (0.570542ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 0
@@ -63,28 +63,28 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 68.670976
+ℹ duration_ms 40.921667
 
 ✖ failing tests:
 
 test at test/tax.test.js:5:1
-✖ applies the configured twenty-percent tax (1.368285ms)
+✖ applies the configured twenty-percent tax (0.570542ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 
   2 !== 20
 
       at TestContext.&lt;anonymous&gt; ([REPOSITORY]/test/tax.test.js:6:10)
       at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1382:25)
-      at Test.start (node:internal/test_runner/test:1242:17)
-      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
     generatedMessage: true,
     code: &#039;ERR_ASSERTION&#039;,
     actual: 2,
     expected: 20,
     operator: &#039;strictEqual&#039;,
     diff: &#039;simple&#039;
-  }</pre></div></details><details class="check"><summary><span class="check-status failed">failed</span><strong>targeted node-test: 1 qualified test target</strong><span>106 ms</span></summary><div><p>The command exited with code 1. Target observations: 0 passed, 1 failed, 0 skipped, 0 zero-test, 0 unavailable. ProofDiff targeted execution derived from package.json script &quot;test&quot;.</p><code>node --test --test-reporter=&lt;ProofDiff observer&gt; test/tax.test.js</code><h4>Target qualifications</h4><ul><li><code>test/tax.test.js</code> → <code>test/tax.test.js</code> · runner-default-pattern (high)<br>test/tax.test.js matches a documented default node --test discovery pattern. <span class="muted">Default-pattern qualification establishes runner identity, not test execution or behavioral coverage.</span></li></ul><h4>Target observations</h4><ul><li><b>failed</b> <code>test/tax.test.js</code> · 1 non-skipped observed<br>The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.</li></ul><pre>✖ applies the configured twenty-percent tax (1.365942ms)
+  }</pre></div></details><details class="check"><summary><span class="check-status failed">failed</span><strong>targeted node-test: 1 qualified test target</strong><span>76 ms</span></summary><div><p>The command exited with code 1. Target observations: 0 passed, 1 failed, 0 skipped, 0 zero-test, 0 unavailable. ProofDiff targeted execution derived from package.json script &quot;test&quot;.</p><code>node --test --test-reporter=&lt;ProofDiff observer&gt; test/tax.test.js</code><h4>Target qualifications</h4><ul><li><code>test/tax.test.js</code> → <code>test/tax.test.js</code> · runner-default-pattern (high)<br>test/tax.test.js matches a documented default node --test discovery pattern. <span class="muted">Default-pattern qualification establishes runner identity, not test execution or behavioral coverage.</span></li></ul><h4>Target observations</h4><ul><li><b>failed</b> <code>test/tax.test.js</code> · 1 non-skipped observed<br>The runner observed 0 passed, 1 failed, and 0 skipped test for this exact target.</li></ul><pre>✖ applies the configured twenty-percent tax (0.573667ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 0
@@ -92,21 +92,21 @@ test at test/tax.test.js:5:1
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 65.039675
+ℹ duration_ms 42.916833
 
 ✖ failing tests:
 
 test at test/tax.test.js:5:1
-✖ applies the configured twenty-percent tax (1.365942ms)
+✖ applies the configured twenty-percent tax (0.573667ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 
   2 !== 20
 
       at TestContext.&lt;anonymous&gt; ([REPOSITORY]/test/tax.test.js:6:10)
       at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1382:25)
-      at Test.start (node:internal/test_runner/test:1242:17)
-      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
     generatedMessage: true,
     code: &#039;ERR_ASSERTION&#039;,
     actual: 2,
@@ -115,7 +115,7 @@ test at test/tax.test.js:5:1
     diff: &#039;simple&#039;
   }</pre></div></details></div></section>
   <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It requires a static relationship, runner qualification, explicit target supply, and at least one non-skipped passing test observed for that exact path—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety.</p>
-  <footer>Generated locally by ProofDiff 0.2.0 · no telemetry · schema 1.0</footer>
+  <footer>Generated locally by ProofDiff 0.3.0 · no telemetry · schema 1.0</footer>
 </main>
 <script>
   (() => {
