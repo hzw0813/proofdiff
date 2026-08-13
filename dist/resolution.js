@@ -508,7 +508,8 @@ export class BoundedStaticModuleResolver {
                 ? { kind: "blocked", reason: "standalone baseUrl precedence is outside the supported subset", diagnosticKey: `${config.configPath}:baseUrl-precedence` }
                 : { kind: "not-applicable" };
         }
-        const match = this.matchCompilerPath(config.paths, specifier);
+        const paths = config.paths;
+        const match = this.matchCompilerPath(paths, specifier);
         if (match === null) {
             return config.baseUrl
                 ? { kind: "blocked", reason: "standalone baseUrl precedence is outside the supported subset", diagnosticKey: `${config.configPath}:baseUrl-precedence` }
@@ -516,7 +517,7 @@ export class BoundedStaticModuleResolver {
         }
         if (match === "ambiguous")
             return { kind: "blocked", reason: "multiple equally specific wildcard mappings matched" };
-        const base = config.baseUrl?.path ?? path.posix.dirname(config.paths.origin);
+        const base = config.baseUrl?.path ?? path.posix.dirname(paths.origin);
         let candidateCount = 0;
         const priorCandidates = [];
         let unsupportedOmittedExtension = null;
@@ -545,11 +546,11 @@ export class BoundedStaticModuleResolver {
                     importer,
                     specifier,
                     mechanism: "typescript-paths",
-                    metadataPath: config.paths.origin,
+                    metadataPath: paths.origin,
                     matchedKey: match.key,
                     target,
                     confidence: "high",
-                    detail: `${config.configPath}${config.configPath === config.paths.origin ? "" : ` inherits ${config.paths.origin}, which`} maps ${JSON.stringify(match.key)} to the repository-local target ${target}${config.baseUrl ? ` using baseUrl from ${config.baseUrl.origin}` : ""} through ${lookup}.`,
+                    detail: `${config.configPath}${config.configPath === paths.origin ? "" : ` inherits ${paths.origin}, which`} maps ${JSON.stringify(match.key)} to the repository-local target ${target}${config.baseUrl ? ` using baseUrl from ${config.baseUrl.origin}` : ""} through ${lookup}.`,
                     limitation: "Static compiler-configuration evidence only; it does not establish runtime resolution, runnable-test identity, or execution.",
                 },
             },
