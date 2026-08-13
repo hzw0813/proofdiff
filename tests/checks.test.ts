@@ -253,9 +253,9 @@ test("checks receive no inherited application secrets", async (context) => {
 
 test("check execution enforces timeouts", async (context) => {
   const root = await initializeRepository({ "package.json": JSON.stringify({ scripts: { test: "node -e \"setInterval(()=>{},1000)\"" } }) });
-  context.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
+  context.after(() => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   const { checks } = await discoverChecks(root);
-  const [result] = await runChecks(root, checks, { timeoutMs: 200, maxOutputBytes: 1_000 });
+  const [result] = await runChecks(root, checks, { timeoutMs: 2_000, maxOutputBytes: 1_000 });
   assert.equal(result?.status, "timed-out");
   assert.ok((result?.durationMs ?? 10_000) < 5_000, `timeout took ${String(result?.durationMs)} ms`);
 });
