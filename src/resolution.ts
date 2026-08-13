@@ -57,6 +57,8 @@ interface CompilerConfig {
   projectFiles?: Set<string>;
   projectIncludes?: ProjectPattern[];
   projectExcludes?: ProjectPattern[];
+  allowJs?: boolean;
+  outDir?: string;
 }
 
 interface ProjectPattern {
@@ -508,6 +510,11 @@ export class BoundedStaticModuleResolver {
       ...(parent?.customConditions === undefined ? {} : { customConditions: [...parent.customConditions] }),
       ...(parent?.moduleResolution === undefined ? {} : { moduleResolution: parent.moduleResolution }),
       ...(parent?.resolvePackageJsonExports === undefined ? {} : { resolvePackageJsonExports: parent.resolvePackageJsonExports }),
+      ...(parent?.projectFiles === undefined ? {} : { projectFiles: new Set(parent.projectFiles) }),
+      ...(parent?.projectIncludes === undefined ? {} : { projectIncludes: [...parent.projectIncludes] }),
+      ...(parent?.projectExcludes === undefined ? {} : { projectExcludes: [...parent.projectExcludes] }),
+      ...(parent?.allowJs === undefined ? {} : { allowJs: parent.allowJs }),
+      ...(parent?.outDir === undefined ? {} : { outDir: parent.outDir }),
     };
 
     if (Object.hasOwn(parsed, "files")) {
@@ -544,6 +551,16 @@ export class BoundedStaticModuleResolver {
       const resolved = joinRepositoryPath(path.posix.dirname(configPath), options.baseUrl);
       if (resolved === null) return this.rejectConfig(configPath, "baseUrl must remain inside the repository");
       config.baseUrl = { path: resolved === "." ? "" : resolved, origin: configPath };
+    }
+    if (options && Object.hasOwn(options, "allowJs")) {
+      if (typeof options.allowJs !== "boolean") return this.rejectConfig(configPath, "allowJs must be boolean");
+      config.allowJs = options.allowJs;
+    }
+    if (options && Object.hasOwn(options, "outDir")) {
+      if (typeof options.outDir !== "string" || options.outDir.includes("${")) return this.rejectConfig(configPath, "outDir must be a repository-relative string");
+      const resolved = joinRepositoryPath(path.posix.dirname(configPath), options.outDir);
+      if (resolved === null) return this.rejectConfig(configPath, "outDir must remain inside the repository");
+      config.outDir = resolved;
     }
     if (options && Object.hasOwn(options, "paths")) {
       const paths = this.parsePaths(configPath, options.paths);
@@ -586,9 +603,17 @@ export class BoundedStaticModuleResolver {
   }
 
   private configIncludesImporter(config: CompilerConfig, importer: string): boolean {
-    if (config.projectFiles) return config.projectFiles.has(importer);
-    if (config.projectIncludes && !config.projectIncludes.some((pattern) => pattern.expression.test(importer))) return false;
-    if (config.projectExcludes?.some((pattern) => pattern.expression.test(importer))) return false;
+    const extension = path.posix.extname(importer).toLowerCase();
+    const isJavaScript = [".js", ".jsx", ".mjs", ".cjs"].includes(extension);
+    if (isJavaScript && config.allowJs !== true) return false;
+    if (!isJavaScript && ![".ts", ".tsx", ".mts", ".cts"].includes(extension)) return false;
+    if (config.projectFiles?.has(importer)) return true;
+    if (config.projectFiles && config.projectIncludes === undefined) return false;
+    const included = config.projectIncludes?.some((pattern) => pattern.expression.test(importer)) ?? isWithin(path.posix.dirname(config.configPath) === "." ? "" : path.posix.dirname(config.configPath), importer);
+    if (!included) return false;
+    const defaultExcluded = importer.split("/").some((segment) => ["node_modules", "bower_components", "jspm_packages"].includes(segment))
+      || (config.outDir !== undefined && isWithin(config.outDir, importer));
+    if (defaultExcluded || config.projectExcludes?.some((pattern) => pattern.expression.test(importer))) return false;
     return true;
   }
 

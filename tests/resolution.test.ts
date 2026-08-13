@@ -321,6 +321,31 @@ test("compiler paths reject missing evidence, preserve case, normalize Windows t
   assert.equal(hasEdge(excludedFromNearestProject.graph, "nested/test/consumer.test.ts", "src/actual.ts"), false);
   assert.match(excludedFromNearestProject.graph.diagnostics.join("\n"), /does not include the importer.*ancestor project selection is outside the supported subset/i);
 
+  const inheritedProjectMembership = await fixtureGraph(context, {
+    "config/base.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", baseUrl: "../nested", paths: { "@value": ["src/wrong.ts"] } }, include: ["src/**/*.ts"] }),
+    "nested/tsconfig.json": JSON.stringify({ extends: "../config/base.json" }),
+    "nested/src/wrong.ts": "export const value = false;\n",
+    "nested/test/consumer.test.ts": "import { value } from '@value'; void value;\n",
+  });
+  assert.equal(inheritedProjectMembership.graph.staticResolutions.length, 0);
+  assert.equal(hasEdge(inheritedProjectMembership.graph, "nested/test/consumer.test.ts", "nested/src/wrong.ts"), false);
+
+  const javascriptWithoutAllowJs = await fixtureGraph(context, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/value.ts"] } }, include: ["**/*"] }),
+    "src/value.ts": "export const value = true;\n",
+    "test/consumer.js": "import { value } from '@value'; void value;\n",
+  });
+  assert.equal(javascriptWithoutAllowJs.graph.staticResolutions.length, 0);
+  assert.equal(hasEdge(javascriptWithoutAllowJs.graph, "test/consumer.js", "src/value.ts"), false);
+
+  const defaultOutputExclusion = await fixtureGraph(context, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/value.ts"] }, outDir: "dist" } }),
+    "src/value.ts": "export const value = true;\n",
+    "dist/test/consumer.test.ts": "import { value } from '@value'; void value;\n",
+  });
+  assert.equal(defaultOutputExclusion.graph.staticResolutions.length, 0);
+  assert.equal(hasEdge(defaultOutputExclusion.graph, "dist/test/consumer.test.ts", "src/value.ts"), false);
+
   const missingAndBaseUrlOnly = await fixtureGraph(context, {
     "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: "src", paths: { "@missing": ["missing.ts"] } } }),
     "src/looks-bare.ts": "export {};\n",
@@ -621,7 +646,7 @@ test("resolved aliases and self-exports create only static transitive relationsh
 test("new static edges do not qualify helpers or strengthen zero-test runtime evidence", async (context) => {
   const helperRoot = await initializeRepository({
     "package.json": JSON.stringify({ name: "helper-boundary", type: "module", scripts: { test: "node --test" } }),
-    "tsconfig.json": JSON.stringify({ compilerOptions: { paths: { "#value": ["./src/value.js"] } } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { allowJs: true, paths: { "#value": ["./src/value.js"] } } }),
     "src/value.js": "export const value = 1;\n",
     "tests/fixtures/helper.js": "import { value } from '#value'; export const fixture = value;\n",
   });
@@ -634,7 +659,7 @@ test("new static edges do not qualify helpers or strengthen zero-test runtime ev
 
   const zeroRoot = await initializeRepository({
     "package.json": JSON.stringify({ name: "zero-boundary", type: "module", exports: { "./value": "./src/value.js" }, scripts: { test: "node --test" } }),
-    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "NodeNext" } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { allowJs: true, moduleResolution: "NodeNext" } }),
     "src/value.js": "export const value = 1;\n",
     "test/empty.test.js": "import { value } from 'zero-boundary/value'; export const observed = value;\n",
   });
