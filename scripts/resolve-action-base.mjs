@@ -14,7 +14,11 @@ async function main() {
   }
 
   const eventName = process.env.GITHUB_EVENT_NAME ?? "";
-  if (eventName !== "pull_request" && eventName !== "pull_request_target") {
+  if (eventName === "pull_request_target") {
+    fail("will not auto-select a pull-request diff on pull_request_target because the default checkout normally points at the base repository revision. Use pull_request for untrusted changes, or explicitly check out the intended trusted revision and set the Action 'base' input.");
+    return;
+  }
+  if (eventName !== "pull_request") {
     process.stdout.write("\n");
     return;
   }
