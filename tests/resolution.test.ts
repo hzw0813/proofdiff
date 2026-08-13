@@ -308,6 +308,19 @@ test("compiler paths reject missing evidence, preserve case, normalize Windows t
   });
   assert.equal(noConfig.graph.staticResolutions.length, 0);
 
+  const excludedFromNearestProject = await fixtureGraph(context, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", baseUrl: ".", paths: { "@value": ["src/actual.ts"] } }, include: ["nested/test/**/*.ts", "src/**/*.ts"] }),
+    "src/actual.ts": "export const value = true;\n",
+    "nested/tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", baseUrl: ".", paths: { "@value": ["src/wrong.ts"] } }, files: ["src/other.ts"] }),
+    "nested/src/wrong.ts": "export const value = false;\n",
+    "nested/src/other.ts": "export {};\n",
+    "nested/test/consumer.test.ts": "import { value } from '@value'; void value;\n",
+  });
+  assert.equal(excludedFromNearestProject.graph.staticResolutions.length, 0);
+  assert.equal(hasEdge(excludedFromNearestProject.graph, "nested/test/consumer.test.ts", "nested/src/wrong.ts"), false);
+  assert.equal(hasEdge(excludedFromNearestProject.graph, "nested/test/consumer.test.ts", "src/actual.ts"), false);
+  assert.match(excludedFromNearestProject.graph.diagnostics.join("\n"), /does not include the importer.*ancestor project selection is outside the supported subset/i);
+
   const missingAndBaseUrlOnly = await fixtureGraph(context, {
     "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: "src", paths: { "@missing": ["missing.ts"] } } }),
     "src/looks-bare.ts": "export {};\n",
@@ -387,6 +400,7 @@ test("hidden higher-precedence files prevent fallback edges", async (context) =>
   const packageRoot = await initializeRepository({
     ".gitignore": "src/*.ts\n",
     "package.json": JSON.stringify({ name: "fixture", exports: { "./value": "./src/value.js" } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "NodeNext" } }),
     "src/value.js": "export {};\n",
     "test/c.test.ts": "import 'fixture/value';\n",
   });
@@ -396,6 +410,21 @@ test("hidden higher-precedence files prevent fallback edges", async (context) =>
   const packageGraph = await buildRepositoryGraph(packageRoot, packageInventory.files, []);
   assert.equal(packageGraph.staticResolutions.length, 0);
   assert.match(packageGraph.diagnostics.join("\n"), /higher-precedence package self-export candidate src\/value\.ts/);
+
+  const hiddenPackageRoot = await initializeRepository({
+    ".gitignore": "nested/package.json\n",
+    "package.json": JSON.stringify({ name: "root-package", type: "module", exports: ".\/src\/root.js" }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext" } }),
+    "src/root.ts": "export const root = true;\n",
+    "nested/test/consumer.test.ts": "import { root } from 'root-package'; void root;\n",
+  });
+  context.after(() => rm(hiddenPackageRoot, { recursive: true, force: true }));
+  await writeFiles(hiddenPackageRoot, { "nested/package.json": JSON.stringify({ name: "nested-package", type: "module" }) });
+  const hiddenPackageInventory = await listRepositoryFiles(hiddenPackageRoot);
+  const hiddenPackageGraph = await buildRepositoryGraph(hiddenPackageRoot, hiddenPackageInventory.files, []);
+  assert.equal(hiddenPackageGraph.staticResolutions.length, 0);
+  assert.equal(hasEdge(hiddenPackageGraph, "nested/test/consumer.test.ts", "src/root.ts"), false);
+  assert.match(hiddenPackageGraph.diagnostics.join("\n"), /nearer package\.json.*outside the bounded Git inventory/i);
 });
 
 test("package self-exports resolve exact root/subpaths and explicit nested source conditions", async (context) => {
@@ -502,6 +531,25 @@ test("package self-exports fail closed on ambiguous shapes, malformed identity, 
       },
     },
     {
+      name: "versioned types condition can preempt default",
+      files: {
+        "package.json": JSON.stringify({ name: "fixture", exports: { "./feature": { "types@>=5.0": "./src/actual.d.ts", default: "./src/feature.ts" } } }),
+        "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "nodenext" } }),
+        "src/actual.d.ts": "export declare const actual: true;\n",
+        "src/feature.ts": "export {};\n",
+        "test/c.test.ts": "import 'fixture/feature';\n",
+      },
+    },
+    {
+      name: "missing export-aware module resolution",
+      files: {
+        "package.json": JSON.stringify({ name: "fixture", exports: { "./feature": "./src/feature.js" } }),
+        "tsconfig.json": JSON.stringify({ compilerOptions: {} }),
+        "src/feature.ts": "export {};\n",
+        "test/c.test.ts": "import 'fixture/feature';\n",
+      },
+    },
+    {
       name: "unsupported compiler mode",
       files: {
         "package.json": JSON.stringify({ name: "fixture", exports: { "./feature": "./src/feature.ts" } }),
@@ -533,6 +581,7 @@ test("package self-exports fail closed on ambiguous shapes, malformed identity, 
 test("nearest package ownership isolates monorepo self-references", async (context) => {
   const { graph } = await fixtureGraph(context, {
     "package.json": JSON.stringify({ name: "root-app", exports: { "./feature": "./src/feature.ts" } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "NodeNext" } }),
     "src/feature.ts": "export {};\n",
     "packages/child/package.json": JSON.stringify({ name: "child", exports: { "./feature": "./src/feature.ts" } }),
     "packages/child/src/feature.ts": "export {};\n",
@@ -554,6 +603,7 @@ test("resolved aliases and self-exports create only static transitive relationsh
 
   const self = await fixtureGraph(context, {
     "package.json": JSON.stringify({ name: "fixture", exports: { "./value": "./src/barrel.ts" } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "NodeNext" } }),
     "src/value.ts": "export const value = 1;\n",
     "src/barrel.ts": "export { value } from './value.js';\n",
     "test/value.test.ts": "import { value } from 'fixture/value'; void value;\n",
@@ -584,6 +634,7 @@ test("new static edges do not qualify helpers or strengthen zero-test runtime ev
 
   const zeroRoot = await initializeRepository({
     "package.json": JSON.stringify({ name: "zero-boundary", type: "module", exports: { "./value": "./src/value.js" }, scripts: { test: "node --test" } }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "NodeNext" } }),
     "src/value.js": "export const value = 1;\n",
     "test/empty.test.js": "import { value } from 'zero-boundary/value'; export const observed = value;\n",
   });

@@ -11,6 +11,7 @@ const MAX_CONFIG_EXTENDS_DEPTH = 8;
 const MAX_PATH_MAPPINGS = 128;
 const MAX_PATH_TARGETS = 8;
 const MAX_CUSTOM_CONDITIONS = 32;
+const MAX_PROJECT_PATTERNS = 128;
 const MAX_CANDIDATES_PER_IMPORT = 64;
 const MAX_EXPORT_CONDITION_DEPTH = 8;
 const MAX_EXPORT_BRANCHES = 64;
@@ -53,6 +54,13 @@ interface CompilerConfig {
   customConditions?: string[];
   moduleResolution?: string;
   resolvePackageJsonExports?: boolean;
+  projectFiles?: Set<string>;
+  projectIncludes?: ProjectPattern[];
+  projectExcludes?: ProjectPattern[];
+}
+
+interface ProjectPattern {
+  expression: RegExp;
 }
 
 interface PackageMetadata {
@@ -92,6 +100,35 @@ function isRepositoryPath(value: string): boolean {
 
 function normalizeConfiguredPath(value: string): string {
   return value.replaceAll("\\", "/");
+}
+
+function escapeRegularExpression(value: string): string {
+  return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+}
+
+function projectPattern(configPath: string, value: string): ProjectPattern | null {
+  const normalized = normalizeConfiguredPath(value).replace(/^\.\//, "");
+  if (normalized.length === 0 || normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized) || normalized.includes("${") || /[\[\]{}]/.test(normalized)) return null;
+  const anchored = path.posix.normalize(path.posix.join(path.posix.dirname(configPath), normalized));
+  if (!isRepositoryPath(anchored)) return null;
+  let expression = "^";
+  for (let index = 0; index < anchored.length; index += 1) {
+    const character = anchored[index]!;
+    if (character === "*" && anchored[index + 1] === "*") {
+      if (anchored[index + 2] === "/") {
+        expression += "(?:.*/)?";
+        index += 2;
+      } else {
+        expression += ".*";
+        index += 1;
+      }
+    } else if (character === "*") expression += "[^/]*";
+    else if (character === "?") expression += "[^/]";
+    else expression += escapeRegularExpression(character);
+  }
+  if (!/[?*]/.test(anchored) && path.posix.extname(anchored) === "") expression += "(?:/.*)?";
+  expression += "$";
+  return { expression: new RegExp(expression) };
 }
 
 function joinRepositoryPath(base: string, relative: string): string | null {
@@ -244,6 +281,7 @@ export class BoundedStaticModuleResolver {
   private readonly configOwnerCache = new Map<string, string | null>();
   private readonly packageOwnerCache = new Map<string, string | null>();
   private readonly targetSafetyCache = new Map<string, boolean>();
+  private readonly fileExistenceCache = new Map<string, boolean>();
   private readonly evidenceKeys = new Set<string>();
   private readonly diagnosticKeys = new Set<string>();
   private loadedConfigs = 0;
@@ -340,9 +378,14 @@ export class BoundedStaticModuleResolver {
   }
 
   private async hiddenFileExists(candidate: string): Promise<boolean> {
+    const cached = this.fileExistenceCache.get(candidate);
+    if (cached !== undefined) return cached;
     try {
-      return (await stat(path.resolve(this.root, candidate))).isFile();
+      const exists = (await stat(path.resolve(this.root, candidate))).isFile();
+      this.fileExistenceCache.set(candidate, exists);
+      return exists;
     } catch {
+      this.fileExistenceCache.set(candidate, false);
       return false;
     }
   }
@@ -354,7 +397,7 @@ export class BoundedStaticModuleResolver {
     return null;
   }
 
-  private nearestMetadataPath(importer: string, filename: "tsconfig.json" | "package.json"): string | null {
+  private async nearestMetadataPath(importer: string, filename: "tsconfig.json" | "package.json"): Promise<string | null> {
     const candidates = filename === "tsconfig.json" ? this.configPaths : this.packagePaths;
     const cache = filename === "tsconfig.json" ? this.configOwnerCache : this.packageOwnerCache;
     const importerDirectory = path.posix.dirname(importer);
@@ -365,6 +408,11 @@ export class BoundedStaticModuleResolver {
       if (candidates.has(candidate)) {
         cache.set(importerDirectory, candidate);
         return candidate;
+      }
+      if (await this.hiddenFileExists(candidate)) {
+        this.note(`${importer}: nearer ${filename} at ${candidate} exists outside the bounded Git inventory; metadata ownership was left unresolved.`, `${filename}:hidden-owner:${candidate}`);
+        cache.set(importerDirectory, null);
+        return null;
       }
       if (directory === ".") {
         cache.set(importerDirectory, null);
@@ -378,8 +426,14 @@ export class BoundedStaticModuleResolver {
   }
 
   private async applicableConfig(importer: string): Promise<CompilerConfig | null> {
-    const configPath = this.nearestMetadataPath(importer, "tsconfig.json");
-    return configPath ? await this.loadConfig(configPath, []) : null;
+    const configPath = await this.nearestMetadataPath(importer, "tsconfig.json");
+    if (!configPath) return null;
+    const config = await this.loadConfig(configPath, []);
+    if (config && !this.configIncludesImporter(config, importer)) {
+      this.note(`${importer}: nearest compiler configuration ${configPath} does not include the importer; ancestor project selection is outside the supported subset.`, `${configPath}:importer-not-in-project:${importer}`);
+      return null;
+    }
+    return config;
   }
 
   private async loadConfig(configPath: string, stack: string[]): Promise<CompilerConfig | null> {
@@ -456,6 +510,34 @@ export class BoundedStaticModuleResolver {
       ...(parent?.resolvePackageJsonExports === undefined ? {} : { resolvePackageJsonExports: parent.resolvePackageJsonExports }),
     };
 
+    if (Object.hasOwn(parsed, "files")) {
+      if (!Array.isArray(parsed.files) || parsed.files.length > MAX_PROJECT_PATTERNS || !parsed.files.every((file) => typeof file === "string" && file.length > 0 && !/[?*\[\]{}]/.test(file))) {
+        return this.rejectConfig(configPath, `files must contain at most ${MAX_PROJECT_PATTERNS} explicit relative paths`);
+      }
+      const projectFiles = new Set<string>();
+      for (const file of parsed.files as string[]) {
+        const resolved = joinRepositoryPath(path.posix.dirname(configPath), file);
+        if (resolved === null) return this.rejectConfig(configPath, `files entry ${JSON.stringify(file)} must remain inside the repository`);
+        projectFiles.add(resolved);
+      }
+      config.projectFiles = projectFiles;
+    }
+    for (const field of ["include", "exclude"] as const) {
+      if (!Object.hasOwn(parsed, field)) continue;
+      const values = parsed[field];
+      if (!Array.isArray(values) || values.length > MAX_PROJECT_PATTERNS || !values.every((value) => typeof value === "string" && value.length > 0)) {
+        return this.rejectConfig(configPath, `${field} must contain at most ${MAX_PROJECT_PATTERNS} non-empty patterns`);
+      }
+      const patterns: ProjectPattern[] = [];
+      for (const value of values as string[]) {
+        const pattern = projectPattern(configPath, value);
+        if (pattern === null) return this.rejectConfig(configPath, `unsupported ${field} pattern ${JSON.stringify(value)}`);
+        patterns.push(pattern);
+      }
+      if (field === "include") config.projectIncludes = patterns;
+      else config.projectExcludes = patterns;
+    }
+
     if (options && Object.hasOwn(options, "baseUrl")) {
       if (typeof options.baseUrl !== "string") return this.rejectConfig(configPath, "baseUrl must be a string");
       if (options.baseUrl.includes("${")) return this.rejectConfig(configPath, "baseUrl template variables are unsupported");
@@ -501,6 +583,13 @@ export class BoundedStaticModuleResolver {
     this.note(`${configPath}: unsupported compiler configuration was rejected (${reason}).`);
     this.configCache.set(configPath, null);
     return null;
+  }
+
+  private configIncludesImporter(config: CompilerConfig, importer: string): boolean {
+    if (config.projectFiles) return config.projectFiles.has(importer);
+    if (config.projectIncludes && !config.projectIncludes.some((pattern) => pattern.expression.test(importer))) return false;
+    if (config.projectExcludes?.some((pattern) => pattern.expression.test(importer))) return false;
+    return true;
   }
 
   private resolveExtends(configPath: string, value: string): string | null {
@@ -731,13 +820,13 @@ export class BoundedStaticModuleResolver {
         if (selected === "unsupported" || selected === null) return selected;
         return { target: selected.target, conditions: [condition, ...selected.conditions] };
       }
-      if (POTENTIALLY_ACTIVE_BUILTIN_CONDITIONS.has(condition)) return "unsupported";
+      if (POTENTIALLY_ACTIVE_BUILTIN_CONDITIONS.has(condition) || condition.startsWith("types@")) return "unsupported";
     }
     return null;
   }
 
   private async resolvePackageSelfReference(importer: string, specifier: string): Promise<StaticModuleResolution | null> {
-    const packagePath = this.nearestMetadataPath(importer, "package.json");
+    const packagePath = await this.nearestMetadataPath(importer, "package.json");
     if (!packagePath) return null;
     const metadata = await this.loadPackage(packagePath);
     if (!metadata?.name || metadata.exports === undefined) return null;
@@ -750,20 +839,26 @@ export class BoundedStaticModuleResolver {
       return null;
     }
 
-    const configPath = this.nearestMetadataPath(importer, "tsconfig.json");
+    const configPath = await this.nearestMetadataPath(importer, "tsconfig.json");
     const config = configPath ? await this.loadConfig(configPath, []) : null;
     if (configPath && config === null) return null;
-    if (config?.resolvePackageJsonExports === false) {
+    if (config && !this.configIncludesImporter(config, importer)) {
+      this.note(`${importer}: nearest compiler configuration ${configPath} does not include the importer; package self-reference resolution was left unresolved.`, `${configPath}:importer-not-in-project:${importer}`);
+      return null;
+    }
+    if (!config?.moduleResolution) {
+      this.note(`${importer}: package self-reference ${JSON.stringify(specifier)} was left unresolved because no explicit export-aware moduleResolution is available.`, `${configPath ?? packagePath}:missing-export-module-resolution`);
+      return null;
+    }
+    if (config.resolvePackageJsonExports === false) {
       this.note(`${importer}: package self-reference ${JSON.stringify(specifier)} was left unresolved because ${config.configPath} disables package.json exports.`, `${config.configPath}:exports-disabled`);
       return null;
     }
-    if (config?.moduleResolution && !PACKAGE_EXPORT_MODULE_RESOLUTIONS.has(config.moduleResolution)) {
+    if (!PACKAGE_EXPORT_MODULE_RESOLUTIONS.has(config.moduleResolution)) {
       this.note(`${importer}: package self-reference ${JSON.stringify(specifier)} was left unresolved under unsupported moduleResolution ${JSON.stringify(config.moduleResolution)}.`, `${config.configPath}:unsupported-module-resolution`);
       return null;
     }
-    const activeConditions = config?.moduleResolution && PACKAGE_EXPORT_MODULE_RESOLUTIONS.has(config.moduleResolution)
-      ? new Set(config.customConditions ?? [])
-      : new Set<string>();
+    const activeConditions = new Set(config.customConditions ?? []);
     const selected = this.selectConditionTarget(entry.value, activeConditions, { branches: 0 });
     if (selected === null) return null;
     if (selected === "unsupported") {
@@ -801,7 +896,7 @@ export class BoundedStaticModuleResolver {
       this.note(`${packagePath}: higher-precedence package self-export candidate ${hidden} exists outside the bounded Git inventory.`);
       return null;
     }
-    const targetOwner = this.nearestMetadataPath(target, "package.json");
+    const targetOwner = await this.nearestMetadataPath(target, "package.json");
     if (targetOwner !== packagePath) {
       this.note(`${packagePath}: package self-export target ${target} crosses the nested package boundary at ${targetOwner ?? "repository root"}.`);
       return null;

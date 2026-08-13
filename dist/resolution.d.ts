@@ -28,6 +28,7 @@ export declare class BoundedStaticModuleResolver {
     private readonly configOwnerCache;
     private readonly packageOwnerCache;
     private readonly targetSafetyCache;
+    private readonly fileExistenceCache;
     private readonly evidenceKeys;
     private readonly diagnosticKeys;
     private loadedConfigs;
@@ -47,6 +48,7 @@ export declare class BoundedStaticModuleResolver {
     private applicableConfig;
     private loadConfig;
     private rejectConfig;
+    private configIncludesImporter;
     private resolveExtends;
     private parsePaths;
     private matchCompilerPath;
