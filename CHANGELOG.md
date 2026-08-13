@@ -4,6 +4,8 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-13
+
 ### Changed
 
 - Added a concise, bounded GitHub Actions job summary that distinguishes observed passing targets, other target outcomes, static-only relationships, and unsupported relationships without changing evidence semantics. The summary is default-on, disableable, permission-free, escaped, and omits source, symbols, commands, check output, observer payloads, and absolute repository paths.
