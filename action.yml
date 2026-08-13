@@ -6,7 +6,7 @@ branding:
   color: blue
 inputs:
   base:
-    description: Override the base commit/ref for merge-base comparison. When omitted on pull_request events, ProofDiff auto-resolves the exact PR base SHA; other events keep working-tree mode.
+    description: Override the base commit/ref for merge-base comparison. When omitted on pull_request, ProofDiff auto-resolves the exact PR base SHA; other events keep working-tree mode except pull_request_target, which fails closed.
     required: false
   run-checks:
     description: Explicitly run repository code through discovered checks. Keep false for untrusted changes.
