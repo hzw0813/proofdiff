@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "generatedAt": "2000-01-01T00:00:00.000Z",
   "proofdiff": {
-    "commit": "342ee543c06c7ad90e82e525fe8fee0afe8f4b98",
+    "commit": "311158441acf8c1e9d7527d9ff912cc79fc5fcab",
     "version": "0.1.0"
   },
   "cases": [
@@ -40,6 +40,19 @@
         "checkStatuses": {
           "js:test:test": "not-run"
         },
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "typescript-paths-unsupported-probing-unresolved",
+      "purpose": "NodeNext ESM extensionless lookup and an incorrect .mjs-to-.ts substitution cannot create static relationships.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {},
         "repositoryCodeExecuted": false
       }
     },

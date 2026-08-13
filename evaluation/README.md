@@ -6,6 +6,7 @@ The preserved external product observation is commit `a9b721ca7500da4b316c737dbb
 
 The decision that separates static test-like relationships, runner-qualified targets, and per-target observations is recorded in [`TARGET_QUALIFICATION_DECISION.md`](TARGET_QUALIFICATION_DECISION.md).
 The subsequent bounded compiler-path/package-self-export decision is recorded in [`STATIC_MODULE_RESOLUTION_DECISION.md`](STATIC_MODULE_RESOLUTION_DECISION.md).
+The independent post-substitution probing review and corrected before/after evidence are recorded in [`TYPESCRIPT_PATHS_PROBING_BLOCKER_DECISION.md`](TYPESCRIPT_PATHS_PROBING_BLOCKER_DECISION.md) and [`TYPESCRIPT_PATHS_PROBING_BLOCKER_FINDINGS.md`](TYPESCRIPT_PATHS_PROBING_BLOCKER_FINDINGS.md).
 
 ## Evaluation questions
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-08-12T17:11:50.199Z",
+  "generatedAt": "2026-08-13T06:09:07.316Z",
   "proofdiff": {
-    "commit": "342ee543c06c7ad90e82e525fe8fee0afe8f4b98",
+    "commit": "311158441acf8c1e9d7527d9ff912cc79fc5fcab",
     "version": "0.1.0"
   },
   "environment": {
@@ -20,7 +20,7 @@
       "commit": "bc26cf03f81292325236a1188063dac8e7a4de0f",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 183,
+      "durationMs": 184,
       "inventory": {
         "trackedFiles": 15,
         "manifestTrackedFiles": 15,
@@ -113,7 +113,7 @@
       "commit": "e4ffc205328db294d550c5855d2573b33f5e9d62",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 499,
+      "durationMs": 531,
       "inventory": {
         "trackedFiles": 393,
         "manifestTrackedFiles": 393,
@@ -289,7 +289,7 @@
       "commit": "2d90846af918af9602e088812d63a035d47cdbe4",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 499,
+      "durationMs": 539,
       "inventory": {
         "trackedFiles": 584,
         "manifestTrackedFiles": 584,
@@ -307,8 +307,13 @@
         },
         "parserFallbacks": 0,
         "fallbackPathGroups": {},
-        "diagnosticCount": 0,
-        "diagnosticSamples": [],
+        "diagnosticCount": 4,
+        "diagnosticSamples": [
+          "packages/docs/app/(doc)/layout.tsx: did not resolve \"@/app/layout.config\" through compiler paths: mapped target packages/docs/app/layout.config has an unsupported explicit extension",
+          "packages/docs/app/blog/layout.tsx: did not resolve \"@/app/layout.config\" through compiler paths: mapped target packages/docs/app/layout.config has an unsupported explicit extension",
+          "packages/docs/app/layout.config.tsx: did not resolve \"@/public/logo/logo-white.png\" through compiler paths: mapped target packages/docs/public/logo/logo-white.png has an unsupported explicit extension",
+          "packages/docs/app/layout.config.tsx: did not resolve \"@/public/logo/logo.png\" through compiler paths: mapped target packages/docs/public/logo/logo.png has an unsupported explicit extension"
+        ],
         "changedFileParser": {
           "parser": "@babel/parser",
           "confidence": "high",
@@ -425,6 +430,10 @@
         "targetedDefinitions": []
       },
       "reportNotes": [
+        "packages/docs/app/(doc)/layout.tsx: did not resolve \"@/app/layout.config\" through compiler paths: mapped target packages/docs/app/layout.config has an unsupported explicit extension",
+        "packages/docs/app/blog/layout.tsx: did not resolve \"@/app/layout.config\" through compiler paths: mapped target packages/docs/app/layout.config has an unsupported explicit extension",
+        "packages/docs/app/layout.config.tsx: did not resolve \"@/public/logo/logo-white.png\" through compiler paths: mapped target packages/docs/public/logo/logo-white.png has an unsupported explicit extension",
+        "packages/docs/app/layout.config.tsx: did not resolve \"@/public/logo/logo.png\" through compiler paths: mapped target packages/docs/public/logo/logo.png has an unsupported explicit extension",
         "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
       ],
       "trust": {
@@ -438,7 +447,7 @@
       "commit": "667c13954daff2d1bec8a866702da8934b9ce539",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 1085,
+      "durationMs": 1052,
       "inventory": {
         "trackedFiles": 3068,
         "manifestTrackedFiles": 3068,
@@ -466,7 +475,7 @@
           "test/e2e/fixtures": 1,
           "test/unit/vitest-environment-custom": 1
         },
-        "diagnosticCount": 29,
+        "diagnosticCount": 31,
         "diagnosticSamples": [
           "docs/.vitepress/blog.data.ts: did not resolve \"vitepress\" through compiler paths: standalone baseUrl precedence is outside the supported subset",
           "packages/browser/context.d.ts: package self-reference \"@vitest/browser/internal/vendor-types\" has no safely selectable supported export branch in packages/browser/package.json.",
@@ -1103,6 +1112,8 @@
         "test/e2e/dts/exact-optional-property-node/tsconfig.json: only a single repository-relative string extends value is supported.",
         "test/e2e/dts/fixture-extend/tsconfig.json: only a single repository-relative string extends value is supported.",
         "test/e2e/dts/no-dispose/tsconfig.json: only a single repository-relative string extends value is supported.",
+        "test/e2e/test/failures.test.ts: did not resolve \"vitest/package.json\" through compiler paths: mapped target packages/vitest/dist/package.json has an unsupported explicit extension",
+        "test/e2e/test/reporters/merge-reports.test.ts: did not resolve \"vitest/package.json\" through compiler paths: mapped target packages/vitest/dist/package.json has an unsupported explicit extension",
         "test/ui/fixtures/browser-preview/basic.test.ts: did not resolve \"vitest\" through compiler paths: standalone baseUrl precedence is outside the supported subset",
         "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent."
       ],
@@ -1117,7 +1128,7 @@
       "commit": "dc1e7a8416937edefe04cf836ee202a6fc03bedd",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 1313,
+      "durationMs": 1630,
       "inventory": {
         "trackedFiles": 2358,
         "manifestTrackedFiles": 2358,
@@ -1242,7 +1253,7 @@
       "commit": "2a8a38b051fc248865730bf3511bf2e2ea325e81",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 592,
+      "durationMs": 550,
       "inventory": {
         "trackedFiles": 236,
         "manifestTrackedFiles": 236,
@@ -1380,7 +1391,7 @@
       "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 465,
+      "durationMs": 505,
       "inventory": {
         "trackedFiles": 125,
         "manifestTrackedFiles": 125,
@@ -1511,7 +1522,7 @@
       "commit": "5fd2be03b1f8b5eef48d507d001ebf0a82e875a1",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 1658,
+      "durationMs": 1666,
       "inventory": {
         "trackedFiles": 665,
         "manifestTrackedFiles": 665,
@@ -1693,7 +1704,7 @@
       "commit": "b465fdbfe175304d9b977da137b2c178ae1091d3",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 2153,
+      "durationMs": 2155,
       "inventory": {
         "trackedFiles": 81368,
         "manifestTrackedFiles": 81368,
@@ -1720,16 +1731,16 @@
         "diagnosticSamples": [
           "Skipped src/compiler/checker.ts: unreadable, binary, or larger than 1 MB.",
           "Skipped src/lib/dom.generated.d.ts: unreadable, binary, or larger than 1 MB.",
-          "tests/baselines/reference/APISample_WatchWithOwnWatchHost.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/APISample_linter.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/2dArrays.js: AST parsing failed: Unexpected token (8:10)",
-          "tests/baselines/reference/APISample_compile.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/APISample_jsdoc.js: AST parsing failed: Unexpected token (5:10)",
           "tests/baselines/reference/APISample_WatchWithDefaults.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/2dArrays.js: AST parsing failed: Unexpected token (8:10)",
+          "tests/baselines/reference/APISample_Watch.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_linter.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_compile.js: AST parsing failed: Unexpected token (5:10)",
           "tests/baselines/reference/APISample_parseConfig.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/AmbientModuleAndAmbientWithSameNameAndCommonRoot.js: AST parsing failed: Unexpected token, expected \"{\" (5:11)",
+          "tests/baselines/reference/APISample_transform.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/AmbientModuleAndAmbientFunctionWithTheSameNameAndCommonRoot.js: AST parsing failed: Unexpected token (5:21)",
           "tests/baselines/reference/AmbientModuleAndNonAmbientClassWithSameNameAndCommonRoot.js: AST parsing failed: Unexpected token, expected \"{\" (5:11)",
-          "tests/baselines/reference/AmbientModuleAndAmbientFunctionWithTheSameNameAndCommonRoot.js: AST parsing failed: Unexpected token (5:21)"
+          "tests/baselines/reference/APISample_jsdoc.js: AST parsing failed: Unexpected token (5:10)"
         ],
         "changedFileParser": {
           "parser": "@babel/parser",
@@ -2063,7 +2074,7 @@
       "commit": "b465fdbfe175304d9b977da137b2c178ae1091d3",
       "changeType": "real-repository-structure+synthetic-no-op",
       "evaluationMode": "static-only",
-      "durationMs": 2133,
+      "durationMs": 2087,
       "inventory": {
         "trackedFiles": 81368,
         "manifestTrackedFiles": 81368,
@@ -2091,14 +2102,14 @@
           "Skipped src/compiler/checker.ts: unreadable, binary, or larger than 1 MB.",
           "Skipped src/lib/dom.generated.d.ts: unreadable, binary, or larger than 1 MB.",
           "tests/baselines/reference/2dArrays.js: AST parsing failed: Unexpected token (8:10)",
-          "tests/baselines/reference/APISample_compile.js: AST parsing failed: Unexpected token (5:10)",
           "tests/baselines/reference/APISample_WatchWithDefaults.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_Watch.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_compile.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_jsdoc.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_linter.js: AST parsing failed: Unexpected token (5:10)",
           "tests/baselines/reference/APISample_parseConfig.js: AST parsing failed: Unexpected token (5:10)",
           "tests/baselines/reference/APISample_transform.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/APISample_linter.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/APISample_jsdoc.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/APISample_Watch.js: AST parsing failed: Unexpected token (5:10)",
-          "tests/baselines/reference/APISample_WatchWithOwnWatchHost.js: AST parsing failed: Unexpected token (5:10)",
+          "tests/baselines/reference/APISample_watcher.js: AST parsing failed: Unexpected token (5:10)",
           "tests/baselines/reference/AmbientModuleAndAmbientFunctionWithTheSameNameAndCommonRoot.js: AST parsing failed: Unexpected token (5:21)"
         ],
         "changedFileParser": null,
