@@ -4,12 +4,13 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-08-13
+## [0.3.0] - 2026-08-14
 
 ### Changed
 
 - Added an additive deterministic per-file `evidenceBoundary` that reports the strongest observed evidence, the exact stage and reason where stronger evidence stopped, whether ProofDiff failed closed, and a bounded next action. Terminal, GitHub summary, HTML, and JSON now expose the same distinction without changing the historical `verified` meaning or JSON `schemaVersion: "1.0"`.
 - GitHub Action `pull_request` runs can now omit `base`: ProofDiff auto-resolves the exact PR base commit SHA from GitHub's event payload, while explicit `base` still wins and other non-PR events preserve working-tree fallback. Missing or malformed PR metadata fails closed instead of silently analyzing an empty clean working tree; omitted `base` on `pull_request_target` also fails closed because its default checkout normally points at the base revision rather than the PR change.
+- Added explicitly supplied LCOV coverage-artifact evidence behind paired `--coverage-lcov` and `--coverage-commit` inputs. ProofDiff accepts the artifact only when the user-declared commit resolves exactly to the selected committed diff target, rejects working-tree/staged and mismatched bindings, parses LCOV as bounded data, caps changed-line reconstruction at 50,000 current lines per file, and fails closed on malformed or oversized inputs. This evidence is reported on a separate additive coverage axis: it does not advance the primary `evidenceBoundary`, alter the historical `verified` meaning, or claim independent artifact provenance, changed-symbol execution, test relevance, assertion relevance, branch coverage, or correctness.
 
 ## [0.2.0] - 2026-08-13
 
