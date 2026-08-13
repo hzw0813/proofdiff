@@ -195,6 +195,7 @@ if (candidates.external && candidates.controlled) {
   const expectedCandidateControls = [
     "relative-targeted-pass",
     "typescript-alias-static-found",
+    "typescript-paths-unsupported-probing-unresolved",
     "package-self-export-static-found",
     "directory-support-file-targeted-pass",
     "root-test-js-qualified-pass",
