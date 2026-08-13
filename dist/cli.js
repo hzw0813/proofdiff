@@ -24,7 +24,7 @@ Verification:
   --check <id|kind>     Run only a check id or test/typecheck/lint (repeatable)
   --timeout <seconds>   Per-check timeout, 1–1800 seconds (default: 120)
 
-Stronger runtime evidence:
+Coverage artifact evidence:
   --coverage-lcov <file>   Read an existing LCOV artifact as bounded data
   --coverage-commit <ref>  User-declared artifact commit; must match the selected diff target
 
@@ -228,7 +228,7 @@ main().catch((error) => {
         return;
     }
     if (error instanceof CoverageError) {
-        process.stderr.write(`proofdiff: ${error.message}\nCoverage evidence was not accepted; no stronger runtime conclusion was produced.\n`);
+        process.stderr.write(`proofdiff: ${error.message}\nCoverage evidence was not accepted; no coverage-artifact evidence was produced.\n`);
         process.exitCode = 2;
         return;
     }

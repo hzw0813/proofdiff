@@ -13,6 +13,7 @@ import { normalizeRepoPath } from "./util.js";
 const MAX_COVERAGE_BYTES = 16 * 1024 * 1024;
 const MAX_COVERAGE_FILES = 10_000;
 const MAX_COVERAGE_LINES = 250_000;
+const MAX_CHANGED_LINES = 50_000;
 const MAX_REPORTED_LINES = 50;
 
 export class CoverageError extends Error {
@@ -81,14 +82,29 @@ async function parseLcov(root: string, file: string): Promise<ParsedCoverage> {
   return { files, lineRecords };
 }
 
-function changedCurrentLines(file: ChangedFile): { lines: number[]; exact: boolean } {
+type ChangedLineFailure = "line-limit" | "diff-mismatch";
+
+function changedCurrentLines(file: ChangedFile): { lines: number[]; exact: boolean; failure?: ChangedLineFailure } {
   if (file.binary || file.change === "deleted" || file.additions === 0) return { lines: [], exact: true };
+  if (file.additions > MAX_CHANGED_LINES) return { lines: [], exact: false, failure: "line-limit" };
+
   const lines = new Set<number>();
+  let expandedLines = 0;
   for (const hunk of file.hunks) {
-    for (let line = hunk.newRange.start; line <= hunk.newRange.end; line += 1) lines.add(line);
+    const { start, end } = hunk.newRange;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) {
+      return { lines: [], exact: false, failure: "diff-mismatch" };
+    }
+    const span = end - start + 1;
+    if (!Number.isSafeInteger(span) || span > MAX_CHANGED_LINES - expandedLines) {
+      return { lines: [], exact: false, failure: "line-limit" };
+    }
+    expandedLines += span;
+    for (let line = start; line <= end; line += 1) lines.add(line);
   }
   const sorted = [...lines].sort((a, b) => a - b);
-  return { lines: sorted, exact: sorted.length === file.additions };
+  const exact = sorted.length === file.additions;
+  return exact ? { lines: sorted, exact } : { lines: sorted, exact, failure: "diff-mismatch" };
 }
 
 function evaluateFile(file: ChangedFile, coverage: Map<number, number> | undefined): CoverageFileEvidence {
@@ -116,7 +132,9 @@ function evaluateFile(file: ChangedFile, coverage: Map<number, number> | undefin
       unmeasuredChangedLines: file.additions,
       uncoveredLineNumbers: [],
       unmeasuredLineNumbers: changed.lines.slice(0, MAX_REPORTED_LINES),
-      detail: "Changed-line ranges could not be reconstructed exactly from the zero-context diff, so ProofDiff failed closed instead of guessing coverage.",
+      detail: changed.failure === "line-limit"
+        ? `Changed-line reconstruction exceeds the ${MAX_CHANGED_LINES} current-line limit, so ProofDiff failed closed instead of expanding an unbounded coverage surface.`
+        : "Changed-line ranges could not be reconstructed exactly from the zero-context diff, so ProofDiff failed closed instead of guessing coverage.",
     };
   }
   if (changed.lines.length === 0) {
@@ -253,10 +271,10 @@ export function attachCoverageEvidence(item: FileAssessment, coverage: CoverageF
     evidence.push({
       kind: "limitation",
       label: "Changed lines measured with zero hits",
-      detail: `${coverage.detail} This describes only the supplied coverage run and does not prove the code can never execute.`,
+      detail: `${coverage.detail} This describes only the supplied coverage artifact and does not prove the code can never execute.`,
       confidence: "high",
     });
-    limitations.push("The supplied declared-commit-matched coverage run measured changed lines but recorded no execution hits for them.");
+    limitations.push("The supplied declared-commit-matched coverage artifact measured changed lines but recorded no execution hits for them.");
   } else if (coverage.state === "unmeasured") {
     evidence.push({
       kind: "limitation",

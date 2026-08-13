@@ -64,7 +64,7 @@ test("partial changed-line coverage is not generalized to the rest of the change
   assert.deepEqual(item?.evidenceBoundary, baselineReport.assessments[0]?.evidenceBoundary);
 });
 
-test("zero-hit changed lines remain negative evidence for only the supplied coverage run", async (context) => {
+test("zero-hit changed lines remain negative evidence for only the supplied coverage artifact", async (context) => {
   const { root, base, head } = await committedChange();
   context.after(() => rm(root, { recursive: true, force: true }));
   await writeFiles(root, {
@@ -115,6 +115,33 @@ test("malformed LCOV fails closed instead of producing partial trusted evidence"
     analyzeRepository({ repo: root, base, coverageLcov: "coverage/lcov.info", coverageCommit: head }),
     CoverageError,
   );
+});
+
+test("changed-line reconstruction is bounded and fails closed for oversized changes", async (context) => {
+  const root = await initializeRepository({ "notes.txt": "seed\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const base = git(root, "rev-parse", "HEAD").trim();
+  const oversized = Array.from({ length: 50_001 }, (_, index) => `line-${index + 1}`).join("\n") + "\n";
+  await writeFiles(root, { "notes.txt": oversized });
+  git(root, "add", "notes.txt");
+  git(root, "commit", "-qm", "oversized change");
+  const head = git(root, "rev-parse", "HEAD").trim();
+  await writeFiles(root, {
+    "coverage/lcov.info": "SF:notes.txt\nDA:1,1\nend_of_record\n",
+  });
+
+  const report = await analyzeRepository({
+    repo: root,
+    base,
+    coverageLcov: "coverage/lcov.info",
+    coverageCommit: head,
+  });
+  const item = report.assessments.find((assessment) => assessment.file.path === "notes.txt");
+  assert.equal(report.coverage?.accepted, true);
+  assert.equal(item?.coverage?.state, "unmeasured");
+  assert.equal(item?.coverage?.coveredChangedLines, 0);
+  assert.match(item?.coverage?.detail ?? "", /50000 current-line limit/);
+  assert.ok(item?.evidence.every((entry) => entry.kind !== "coverage-artifact"));
 });
 
 test("coverage options are paired for library callers as well as the CLI", async (context) => {
