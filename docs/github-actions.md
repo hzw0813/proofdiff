@@ -28,6 +28,10 @@ jobs:
           path: proofdiff-report.html
 ```
 
+The released `v0.2.0` Action still requires the explicit `base` input shown above for pull-request analysis. Current `main` adds a safer next-release default: on `pull_request`, omitted `base` is auto-resolved from the exact `pull_request.base.sha` in GitHub's event payload. An explicit `base` always wins. If PR metadata is missing or malformed, the Action fails with an actionable error instead of silently falling back to an empty clean-working-tree diff. Other non-PR events preserve the historical working-tree fallback when `base` is omitted.
+
+Omitted `base` on `pull_request_target` fails closed instead of auto-resolving. GitHub's default checkout for `pull_request_target` normally points at the base repository revision, so combining that checkout with the PR base could misleadingly produce a zero diff. Prefer `pull_request` for untrusted changes. If you intentionally use `pull_request_target`, explicitly check out the trusted revision you intend to analyze and set `base` yourself.
+
 The released Action writes a **ProofDiff · Change Evidence** job summary by default. The summary shows the overall state, a bounded per-file distinction between observed passing targets, other target outcomes, static-only relationships, and no supported relationship, plus bounded analysis notes and a trust-aware next step. This uses GitHub's native `GITHUB_STEP_SUMMARY` file: it does not call the GitHub API, request write permission, or create a pull-request comment. Set `job-summary: false` to disable it.
 
 The summary is intentionally concise. Keep the upload step to retain the self-contained HTML report with full evidence, qualifications, observations, limitations, and bounded check output. The artifact step uses `if: always()` so a genuine verification failure does not hide its report.

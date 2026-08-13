@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, cp, mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +58,9 @@ try {
   assert.match(actionDefinition, /package-manager-cache: "false"/);
   assert.match(actionDefinition, /working-directory: \$\{\{ github\.action_path \}\}/);
   assert.match(actionDefinition, /run: npm ci --ignore-scripts --omit=dev/);
+  assert.match(actionDefinition, /auto-resolves the exact PR base SHA/);
+  assert.match(actionDefinition, /pull_request_target, which fails closed/);
+  assert.match(actionDefinition, /resolve-action-base\.mjs/);
   assert.match(actionDefinition, /job-summary:/);
   assert.match(actionDefinition, /default: "true"/);
   assert.match(actionDefinition, /--github-summary "\$GITHUB_STEP_SUMMARY"/);
@@ -79,10 +82,53 @@ try {
   await run("git", ["commit", "-qm", "change"], fixtureRoot);
   await mkdir(outputRoot, { recursive: true });
 
+  const resolver = path.join(actionRoot, "scripts", "resolve-action-base.mjs");
+  const prEvent = path.join(temporaryRoot, "pull-request-event.json");
+  await writeFile(prEvent, `${JSON.stringify({ pull_request: { base: { sha: base } } })}\n`, "utf8");
+  const autoResolved = await run(process.execPath, [resolver], fixtureRoot, {
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request", GITHUB_EVENT_PATH: prEvent },
+  });
+  assert.equal(autoResolved.stdout.trim(), base);
+
+  const explicitResolved = await run(process.execPath, [resolver], fixtureRoot, {
+    env: { ...process.env, PROOFDIFF_BASE: base, GITHUB_EVENT_NAME: "pull_request_target", GITHUB_EVENT_PATH: path.join(temporaryRoot, "missing-event.json") },
+  });
+  assert.equal(explicitResolved.stdout.trim(), base, "explicit base must win without reading event metadata");
+
+  const pushResolved = await run(process.execPath, [resolver], fixtureRoot, {
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "push", GITHUB_EVENT_PATH: path.join(temporaryRoot, "missing-event.json") },
+  });
+  assert.equal(pushResolved.stdout.trim(), "", "non-PR events must preserve working-tree fallback");
+
+  const pullRequestTarget = await run(process.execPath, [resolver], fixtureRoot, {
+    expectedCode: 2,
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request_target", GITHUB_EVENT_PATH: prEvent },
+  });
+  assert.match(pullRequestTarget.stderr, /will not auto-select a pull-request diff on pull_request_target/);
+  assert.match(pullRequestTarget.stderr, /Use pull_request for untrusted changes/);
+
+  const missingBaseEvent = path.join(temporaryRoot, "missing-base-event.json");
+  await writeFile(missingBaseEvent, `${JSON.stringify({ pull_request: { base: {} } })}\n`, "utf8");
+  const missingBase = await run(process.execPath, [resolver], fixtureRoot, {
+    expectedCode: 2,
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request", GITHUB_EVENT_PATH: missingBaseEvent },
+  });
+  assert.match(missingBase.stderr, /cannot auto-resolve a trustworthy pull-request base commit SHA/);
+  assert.match(missingBase.stderr, /Set the Action 'base' input explicitly/);
+
+  const hostileEvent = path.join(temporaryRoot, "hostile-event.json");
+  await writeFile(hostileEvent, `${JSON.stringify({ pull_request: { base: { sha: "--help\n$(touch-pwned)" } } })}\n`, "utf8");
+  const hostileBase = await run(process.execPath, [resolver], fixtureRoot, {
+    expectedCode: 2,
+    env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request", GITHUB_EVENT_PATH: hostileEvent },
+  });
+  assert.match(hostileBase.stderr, /cannot auto-resolve a trustworthy pull-request base commit SHA/);
+  assert.equal(await exists(path.join(fixtureRoot, "touch-pwned")), false);
+
   const cli = path.join(actionRoot, "dist", "cli.js");
   const staticHtml = path.join(outputRoot, "static.html");
   const staticSummary = path.join(outputRoot, "static-summary.md");
-  const staticRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--fail-on", "failed", "--no-color", "--html", staticHtml, "--github-summary", staticSummary], fixtureRoot);
+  const staticRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", autoResolved.stdout.trim(), "--fail-on", "failed", "--no-color", "--html", staticHtml, "--github-summary", staticSummary], fixtureRoot);
   assert.match(staticRun.stdout, /UNKNOWN/);
   assert.match(staticRun.stdout, /No repository code was executed/);
   assert.match(await readFile(staticHtml, "utf8"), /Content-Security-Policy/);
@@ -105,7 +151,7 @@ try {
   assert.match(trustedSummaryContent, /Observed passing target: <code>test\/checkout\.test\.js<\/code>/);
   assert.match(trustedSummaryContent, /does not show that changed code ran or that behavior is correct/);
 
-  process.stdout.write("GitHub Action smoke passed: production-only install, static default, trusted checks, base diff, HTML output, and bounded job summaries.\n");
+  process.stdout.write("GitHub Action smoke passed: production-only install, safe PR base auto-resolution, static default, trusted checks, base diff, HTML output, and bounded job summaries.\n");
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }
