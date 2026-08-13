@@ -124,5 +124,7 @@ Focused semantic coverage asserts:
   link. The documented upload remains the deep-inspection path.
 - The job summary does not add runners, relationships, runtime observations, or
   coverage. Unsupported evidence stays unsupported.
+- Released tag `v0.1.0` predates the summary; users need a subsequent release or
+  reviewed immutable post-merge SHA before the Action behavior is available.
 - Local report self-exclusion and richer terminal next-step guidance remain
   separate first-run work.
