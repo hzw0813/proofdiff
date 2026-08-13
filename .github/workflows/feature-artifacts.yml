@@ -1,0 +1,39 @@
+name: Feature artifacts
+
+on:
+  push:
+    branches: [feature/actionable-unknowns]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:coverage
+      - run: npm run test:action
+      - run: npm run dogfood
+      - run: npm run evaluation:controlled
+      - run: npm run evaluation:external
+      - run: npm run demo
+      - run: npm pack --dry-run
+      - name: Collect generated outputs
+        shell: bash
+        run: |
+          mkdir -p feature-artifacts
+          cp -R dist feature-artifacts/dist
+          cp -R examples feature-artifacts/examples
+      - uses: actions/upload-artifact@v7
+        with:
+          name: actionable-unknowns-generated
+          path: feature-artifacts
+          if-no-files-found: error
