@@ -6,6 +6,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Changed
 
+- Added a concise, bounded GitHub Actions job summary that distinguishes observed passing targets, other target outcomes, static-only relationships, and unsupported relationships without changing evidence semantics. The summary is default-on, disableable, permission-free, escaped, and omits source, symbols, commands, check output, observer payloads, and absolute repository paths.
 - Added bounded, data-only resolution for exact/single-wildcard TypeScript `paths` mappings and exact repository-local package self-exports. Post-`paths` lookup uses TypeScript's explicit-extension substitution families and permits extensionless file/index lookup only under explicit Bundler or Node10 resolution; ambiguous NodeNext context, directory package metadata, non-default suffix precedence, malformed, cyclic, excessive, external, nested-boundary, and unsupported cases remain unresolved. Successful non-relative edges retain inspectable graph evidence.
 - Tightened static resolver ownership after adversarial review: compiler configs must include the importer, hidden package/config metadata blocks ancestry claims, package self-exports require an explicit export-aware mode, and unmodeled versioned conditions fail closed.
 - Preserved the static/runtime boundary: alias and export relationships cannot qualify runner targets or create execution evidence, and JSON `schemaVersion: "1.0"` is unchanged.

@@ -19,7 +19,7 @@ check discovery → target qualification → per-target observation
 - `src/checks.ts` discovers a deliberately narrow set of conventional root checks. It independently qualifies impacted paths from Node, pytest, or unittest rules/configuration, retains the qualification basis, and constructs explicit invocations. Owned runner observers write exact per-target counts to a separate bounded control pipe; malformed or unmatched records are rejected. Execution is impossible unless the API caller opts in or the CLI receives `--run-checks`.
 - `src/process.ts` starts commands without a shell, bounds stdout/stderr and the observer control pipe separately, enforces timeouts, and terminates process trees.
 - `src/evidence.ts` applies the documented status model and calculates a transparent review-priority score. Evidence items include their source, confidence, and limitations.
-- `src/report/` renders terminal and self-contained HTML reports from the same typed report object.
+- `src/report/` renders terminal, self-contained HTML, and bounded GitHub job-summary reports from the same typed report object. The GitHub renderer is a presentation projection only and cannot add evidence.
 - `src/analyze.ts` orchestrates the pipeline and exposes the public API.
 
 ## Design decisions

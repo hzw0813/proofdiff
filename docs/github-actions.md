@@ -22,10 +22,15 @@ jobs:
           fail-on: failed
           html: proofdiff-report.html
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: proofdiff-report
           path: proofdiff-report.html
 ```
+
+The unreleased Action source writes a **ProofDiff · Change Evidence** job summary by default; released tag `v0.1.0` predates this feature. After it is released, the summary will show the overall state, a bounded per-file distinction between observed passing targets, other target outcomes, static-only relationships, and no supported relationship, plus bounded analysis notes and a trust-aware next step. This uses GitHub's native `GITHUB_STEP_SUMMARY` file: it does not call the GitHub API, request write permission, or create a pull-request comment. Set `job-summary: false` to disable it.
+
+The summary is intentionally concise. Keep the upload step to retain the self-contained HTML report with full evidence, qualifications, observations, limitations, and bounded check output. The artifact step uses `if: always()` so a genuine verification failure does not hide its report.
 
 Use the released `v0.1.0` tag for normal stable integration. For an immutable security-sensitive pin, use the reviewed release commit:
 

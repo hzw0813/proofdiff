@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { rm } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
+import { renderGithubSummary } from "../src/report/github.js";
 import { initializeRepository, writeFiles } from "./helpers.js";
 
 const baseline = {
@@ -348,6 +349,16 @@ test("a partially localized targeted batch fails closed for an ambiguous related
   ]);
   assert.equal(assessment?.status, "verification-failed");
   assert.ok(assessment?.evidence.some((item) => item.kind === "failing-check" && item.checkId === targeted.id));
+  assert.ok(assessment);
+  const valueReport = structuredClone(report);
+  valueReport.assessments = [assessment];
+  valueReport.summary.filesChanged = 1;
+  valueReport.summary.counts = { verified: 0, "partially-verified": 0, unverified: 0, unknown: 0, "verification-failed": 1 };
+  const valueSummary = renderGithubSummary(valueReport);
+  assert.match(valueSummary, /failed without complete attribution/);
+  assert.match(valueSummary, /tests\/test_import\.py: not-observed/);
+  assert.match(valueSummary, /Independently passing target: <code>tests\/test_pass\.py<\/code>/);
+  assert.doesNotMatch(valueSummary, /Attributed failed target: <code>tests\/test_pass\.py/);
 });
 
 test("mixed targeted batches attribute pass, zero, and failure to exact paths", async (context) => {
@@ -380,6 +391,43 @@ test("mixed targeted batches attribute pass, zero, and failure to exact paths", 
     ["test/fail.test.js", "failed"],
     ["test/pass.test.js", "passed"],
   ]);
+});
+
+test("GitHub summary categorizes malformed compiler configuration before suggesting runtime evidence", async (context) => {
+  const root = await initializeRepository({
+    "tsconfig.json": '{"compilerOptions":{"paths":{"@value":["./src/value.ts"]}},"secret":SUPER_SECRET_12345}',
+    "src/value.ts": "export const value = 1;\n",
+    "test/value.test.ts": "import { value } from '@value'; export const observed = value;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/value.ts": "export const value = 2;\n" });
+  const report = await analyzeRepository({ repo: root });
+  assert.ok(report.notes.some((note) => /malformed compiler configuration was rejected/.test(note)));
+  const summary = renderGithubSummary(report);
+  assert.match(summary, /Compiler configuration could not be parsed; static alias resolution was unavailable/);
+  assert.match(summary, /Inspect and, where appropriate, fix the static-analysis limitation/);
+  assert.doesNotMatch(summary, /SUPER_SECRET|malformed compiler configuration was rejected|`run-checks: true`/);
+});
+
+test("GitHub summary prioritizes an actionable structural limitation over generic notes", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ workspaces: ["packages/*"], scripts: { test: "node --test" } }),
+    "tsconfig.json": '{"compilerOptions":{"paths":{"@value":["./src/value.ts"]}},"secret":SUPER_SECRET_12345}',
+    "src/value.ts": "export const value = 1;\n",
+    "test/value.test.ts": "import { value } from '@value'; export const observed = value;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/value.ts": "export const value = 2;\n",
+    "dist/generated.js": "export const generated = true;\n",
+  });
+  const report = await analyzeRepository({ repo: root });
+  const summary = renderGithubSummary(report);
+  const categoryIndex = summary.indexOf("Compiler configuration could not be parsed");
+  assert.ok(categoryIndex > 0);
+  assert.ok(categoryIndex < summary.indexOf("Workspace package detected"));
+  assert.match(summary, /Inspect and, where appropriate, fix the static-analysis limitation/);
+  assert.doesNotMatch(summary, /SUPER_SECRET|`run-checks: true`/);
 });
 
 test("working-tree analysis warns without hiding Git-visible generated files", async (context) => {

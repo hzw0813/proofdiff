@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeRepository } from "../dist/analyze.js";
+import { renderGithubSummary } from "../dist/report/github.js";
 import { renderHtmlReport } from "../dist/report/html.js";
 import { renderTerminalReport } from "../dist/report/terminal.js";
 
@@ -77,9 +78,11 @@ async function generateScenario(scenario) {
     const json = `${JSON.stringify(report, null, 2)}\n`;
     const terminal = `${renderTerminalReport(report, { color: false, width: 100 }).trimStart()}\n`;
     const baseName = scenario.primary ? "demo-report" : path.join("scenarios", scenario.id);
+    const githubSummary = renderGithubSummary(report, { htmlPath: `${path.basename(baseName)}.html` });
     await writeFile(path.join(examplesRoot, `${baseName}.html`), html);
     await writeFile(path.join(examplesRoot, `${baseName}.json`), json);
     await writeFile(path.join(examplesRoot, scenario.primary ? "demo-terminal.txt" : `${baseName}.txt`), terminal);
+    await writeFile(path.join(examplesRoot, scenario.primary ? "demo-github-summary.md" : `${baseName}.github.md`), githubSummary);
     return { ...scenario, report, terminal, reportLink: `${baseName}.html` };
   } finally {
     await rm(work, { recursive: true, force: true });

@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "node:process";
 import { analyzeRepository, VERSION } from "./analyze.js";
 import { GitError } from "./git.js";
+import { renderGithubSummary } from "./report/github.js";
 import { renderHtmlReport } from "./report/html.js";
 import { renderTerminalReport } from "./report/terminal.js";
 const help = `ProofDiff ${VERSION} — evidence-based review of code changes
@@ -27,6 +28,7 @@ Reports and CI:
   --json                Alias for --format json
   --output <file>       Write primary output to a file instead of stdout
   --html <file>         Also write a self-contained interactive HTML report
+  --github-summary <file>  Write a concise GitHub Actions job summary
   --fail-on <policy>    never, failed, unverified, partial, or high-risk
                         Default: failed
   --no-color            Disable ANSI color
@@ -112,6 +114,11 @@ function parseArgs(args) {
             index += 1;
             continue;
         }
+        if (arg === "--github-summary") {
+            options.githubSummary = valueAfter(args, index, arg);
+            index += 1;
+            continue;
+        }
         if (arg === "--timeout") {
             const seconds = Number(valueAfter(args, index, arg));
             if (!Number.isFinite(seconds) || seconds < 1 || seconds > 1_800)
@@ -187,6 +194,9 @@ async function main() {
         await writeOutput(parsed.html, renderHtmlReport(report));
         if (parsed.format === "terminal")
             process.stdout.write(`HTML report: ${path.resolve(parsed.html)}\n`);
+    }
+    if (parsed.githubSummary) {
+        await writeOutput(parsed.githubSummary, renderGithubSummary(report, parsed.html ? { htmlPath: parsed.html } : {}));
     }
     if (policyFailed(report, parsed.failOn))
         process.exitCode = 1;

@@ -9,7 +9,7 @@ Run `npm run demo` to create every report below from disposable Git repositories
 | Failing check | Tax rate changes from 20% to 2% | Verification failed | Both the repository test command and the explicitly targeted related test fail. The changed file is critical risk. |
 | Unsupported change | Rego policy adds a support-role allowance | Unknown | No adapter or check applies. ProofDiff keeps file-level risk useful without implying language understanding. |
 
-Generated artifacts live in `examples/`; fixture inputs live in `fixtures/demo/` and `fixtures/scenarios/`. `examples/demo-gallery.html` is the visual index, while every scenario also has terminal, JSON, and self-contained HTML reports.
+Generated artifacts live in `examples/`; fixture inputs live in `fixtures/demo/` and `fixtures/scenarios/`. `examples/demo-gallery.html` is the visual index, while every scenario also has terminal, JSON, self-contained HTML, and bounded GitHub job-summary reports.
 
 The gallery landing hero is generated from the opaque-test-script result. It reads the real passing check, `src/access.js` assessment, `test/access.test.js` relationship, and zero-qualified-target-pass/one-partial counts from that report. Generation fails if the scenario stops matching those facts, so the first-screen contrast cannot silently drift into a hand-authored claim. The headline asks which related targets produced tests; ProofDiff does not claim that changed symbols or lines ran.
 

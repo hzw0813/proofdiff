@@ -20,7 +20,7 @@ ProofDiff's safe default performs these local operations:
 - writes reports only to paths explicitly requested by the user;
 - performs no network requests and sends no telemetry.
 
-User-controlled revisions cannot begin with `-` or contain control/whitespace characters. ProofDiff's process launcher disables Node's shell mode. Git and parser operations are always started directly; on Windows, explicitly selected npm, pnpm, and Yarn checks use `cmd.exe` only to start the standard `.cmd` package-manager shim with fixed arguments. Package managers may then interpret their own configuration only within the documented boundaries. Filenames and report content are HTML-escaped; terminal control characters from untrusted report fields and check output are removed.
+User-controlled revisions cannot begin with `-` or contain control/whitespace characters. ProofDiff's process launcher disables Node's shell mode. Git and parser operations are always started directly; on Windows, explicitly selected npm, pnpm, and Yarn checks use `cmd.exe` only to start the standard `.cmd` package-manager shim with fixed arguments. Package managers may then interpret their own configuration only within the documented boundaries. Filenames and report content are HTML-escaped; terminal control characters from untrusted report fields and check output are removed. GitHub job summaries HTML-escape repository-controlled paths, project analysis notes into fixed source-free categories (malformed/non-applicable compiler configuration, unsupported/ambiguous local resolution, unavailable source analysis, and explicit bounds), and omit source text, parser excerpts, symbols, commands, check output, observer payloads, and absolute repository paths. Malformed `package.json` produces a fixed parse note rather than copying the parser's source excerpt. Unclassified diagnostics are represented only by a count and cause the summary to recommend inspecting static limitations before runtime evidence. The Action writes only to GitHub's per-step summary file and does not require a write-capable token or call the GitHub API.
 
 ## Repository check execution
 
@@ -41,7 +41,7 @@ These measures are defense in depth, **not a sandbox**. A command can still read
 
 ## Data handling
 
-Reports contain repository paths, symbol names, relationships, target-qualification reasons, per-target counts, check commands, and bounded check output. Owned inline observer source is abbreviated in the HTML command display but remains present in machine-readable JSON for reproducibility. Treat reports as repository-sensitive artifacts. The HTML report is self-contained, loads no remote resources, and has a restrictive Content Security Policy, but anyone receiving it can read its contents.
+Terminal, JSON, and HTML reports can contain repository paths, symbol names, relationships, target-qualification reasons, per-target counts, check commands, and bounded check output. Owned inline observer source is abbreviated in the HTML command display but remains present in machine-readable JSON for reproducibility. Treat reports as repository-sensitive artifacts. The HTML report is self-contained, loads no remote resources, and has a restrictive Content Security Policy, but anyone receiving it can read its contents. The shorter GitHub job summary still contains changed and test-target paths; users with access to the workflow run can read them.
 
 No telemetry, analytics, update checks, remote APIs, or source-code uploads exist in ProofDiff.
 

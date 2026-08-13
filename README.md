@@ -68,6 +68,8 @@ Impact and test-like relationships are explicitly labeled static estimates. Qual
 
 The released composite Action is available at `hzw0813/proofdiff@v0.1.0`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. See the [complete workflow and trust guidance](docs/github-actions.md).
 
+The next release writes a concise, bounded **ProofDiff · Change Evidence** job summary by default, so reviewers can see changed-file evidence without opening logs. It uses the same report as terminal/JSON/HTML output, requires no write token, and does not create PR comments. Full provenance remains in the log and optional HTML artifact.
+
 ## Useful commands
 
 ```bash
@@ -76,6 +78,7 @@ proofdiff --staged                # staged changes only
 proofdiff --base origin/main      # merge-base comparison
 proofdiff --range v1.0.0..HEAD    # explicit commit range
 proofdiff --json                  # stable machine-readable schema
+proofdiff --github-summary summary.md  # bounded GitHub-flavored Markdown
 proofdiff --fail-on partial       # require a qualified per-target pass for every changed file
 ```
 

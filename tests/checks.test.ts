@@ -15,6 +15,15 @@ test("repository scripts are discovered but execution is a separate operation", 
   assert.deepEqual(packageManagerInvocation("bun", ["run", "test"], "win32"), { command: "bun", args: ["run", "test"] });
 });
 
+test("malformed package metadata does not copy repository content into analysis notes", async (context) => {
+  const root = await initializeRepository({ "package.json": '{"scripts":{},"bad": SUPER_SECRET_12345}' });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const { checks, notes } = await discoverChecks(root);
+  assert.deepEqual(checks, []);
+  assert.deepEqual(notes, ["Could not parse package.json; check discovery skipped its scripts."]);
+  assert.doesNotMatch(notes.join(" "), /SUPER_SECRET|Unexpected token/);
+});
+
 test("check output redacts common secret formats", async (context) => {
   const command = "node -e \"console.log('API_TOKEN=super-sensitive-value');console.log('api_token=lowercase-secret-value');console.log('Authorization: Basic dXNlcjpjb3JyZWN0LWhvcnNl');console.log('https://alice:correct-horse@example.test/path');console.log('trailing   ')\"";
   const root = await initializeRepository({ "package.json": JSON.stringify({ scripts: { test: command } }) });
