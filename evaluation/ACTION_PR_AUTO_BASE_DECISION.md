@@ -10,16 +10,17 @@ The documented workflow avoids this by explicitly passing `${{ github.event.pull
 
 ## Decision
 
-For GitHub `pull_request` and `pull_request_target` events only, when the user does not supply `base`, resolve the exact pull-request base commit SHA from `GITHUB_EVENT_PATH` and pass it to ProofDiff as `--base`.
+For GitHub `pull_request` events, when the user does not supply `base`, resolve the exact pull-request base commit SHA from `GITHUB_EVENT_PATH` and pass it to ProofDiff as `--base`.
 
 Rules:
 
 1. An explicit Action `base` input always wins.
-2. PR auto-resolution accepts only a bounded hexadecimal commit id from `pull_request.base.sha`.
-3. If a PR event lacks a trustworthy base SHA, fail with an actionable error instead of silently falling back to a clean working-tree diff.
-4. Non-PR events preserve the historical behavior: omitted `base` means working-tree mode.
-5. The resolver only parses GitHub event JSON. It does not execute repository code, call the network, mutate the checkout, or request additional permissions.
-6. CLI semantics are unchanged.
+2. `pull_request` auto-resolution accepts only a bounded hexadecimal commit id from `pull_request.base.sha`.
+3. If a `pull_request` event lacks a trustworthy base SHA, fail with an actionable error instead of silently falling back to a clean working-tree diff.
+4. Omitted `base` on `pull_request_target` fails closed. The default checkout for that event normally points at the base repository revision, so auto-selecting the PR base would still produce a misleading zero diff. The error tells users to prefer `pull_request` for untrusted changes, or explicitly check out the intended trusted revision and set `base`.
+5. Other non-PR events preserve the historical behavior: omitted `base` means working-tree mode.
+6. The resolver only parses GitHub event JSON. It does not execute repository code, call the network, mutate the checkout, or request additional permissions.
+7. CLI semantics are unchanged.
 
 ## Why this outranks coverage ingestion
 
@@ -29,11 +30,11 @@ Coverage provenance remains a later candidate because stale or mismatched artifa
 
 ## Compatibility
 
-Existing workflows that pass `base` are unchanged. Existing non-PR workflows that omit `base` are unchanged. The behavioral change is limited to omitted `base` on PR-family events, where the Action now selects the PR base rather than an empty working-tree diff.
+Existing workflows that pass `base` are unchanged. Existing non-PR workflows that omit `base` are unchanged. Omitted `base` on `pull_request` now selects the PR base rather than an empty working-tree diff. Omitted `base` on `pull_request_target` intentionally becomes an error because the historical fallback was not a trustworthy PR-change selection.
 
 ## Validation plan
 
-- resolver tests for explicit override, PR auto-resolution, malformed/missing PR metadata, malicious-looking SHA input, and non-PR fallback;
+- resolver tests for explicit override, PR auto-resolution, malformed/missing PR metadata, malicious-looking SHA input, non-PR fallback, and `pull_request_target` fail-closed behavior;
 - source Action smoke with a simulated PR event and a real committed fixture diff;
 - full test matrix and `npm pack --dry-run`;
-- adversarial review focused on event-data trust, shell injection, compatibility, and false diff selection.
+- adversarial review focused on event-data trust, shell injection, checkout semantics, compatibility, and false diff selection.
