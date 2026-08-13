@@ -6,7 +6,7 @@ import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, 
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
 import { compareCodeUnits, stableSort } from "./util.js";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
 
 const statusRank: Record<VerificationStatus, number> = {
   "verification-failed": 5,
