@@ -70,11 +70,11 @@ const controls = [
     }
   },
   {
-    id: "typescript-alias-unresolved",
-    purpose: "A clear tsconfig paths relationship remains a labeled miss rather than being converted into a success.",
+    id: "typescript-alias-static-found",
+    purpose: "A clear tsconfig paths mapping creates a static relationship without creating runtime evidence.",
     files: {
       "package.json": JSON.stringify({ name: "alias-control", private: true, type: "module", scripts: { test: "vitest run" } }, null, 2),
-      "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@app/*": ["src/*"] } } }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", baseUrl: ".", paths: { "@app/*": ["src/*"] } } }, null, 2),
       "src/math.ts": "export function add(a: number, b: number) { return a + b; }\n",
       "test/math.test.ts": "import { add } from '@app/math'; export const observed = add(1, 2);\n"
     },
@@ -83,7 +83,85 @@ const controls = [
     verify(report) {
       const assessment = report.assessments[0];
       return assessment?.file.language === "typescript"
-        && assessment.relatedTests.length === 0
+        && assessment.status === "unknown"
+        && assessment.relatedTests.includes("test/math.test.ts")
+        && assessment.executedTests.length === 0
+        && report.trust.repositoryCodeExecuted === false;
+    }
+  },
+  {
+    id: "typescript-paths-unsupported-probing-unresolved",
+    purpose: "NodeNext ESM extensionless lookup and an incorrect .mjs-to-.ts substitution cannot create static relationships.",
+    files: {
+      "package.json": JSON.stringify({ name: "paths-negative-control", private: true, type: "module" }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: {
+        module: "NodeNext",
+        moduleResolution: "NodeNext",
+        paths: {
+          "@app/extensionless": ["./src/extensionless"],
+          "@app/wrong-mjs": ["./src/wrong-mjs.mjs"]
+        }
+      } }, null, 2),
+      "src/extensionless.ts": "export const extensionless = true;\n",
+      "src/wrong-mjs.ts": "export const wrongMjs = true;\n",
+      "test/paths.test.ts": "import { extensionless } from '@app/extensionless'; import { wrongMjs } from '@app/wrong-mjs'; export const observed = extensionless && wrongMjs;\n"
+    },
+    changes: {
+      "src/extensionless.ts": "export const extensionless = true;\n// controlled NodeNext mutation\n",
+      "src/wrong-mjs.ts": "export const wrongMjs = true;\n// controlled MJS mutation\n"
+    },
+    runChecks: false,
+    verify(report) {
+      return report.assessments.length === 2
+        && report.assessments.every((assessment) => assessment.status === "unknown")
+        && report.assessments.every((assessment) => !assessment.relatedTests.includes("test/paths.test.ts"))
+        && report.assessments.every((assessment) => assessment.executedTests.length === 0)
+        && report.trust.repositoryCodeExecuted === false;
+    }
+  },
+  {
+    id: "package-self-export-static-found",
+    purpose: "An exact package self-export with an explicit source condition creates only a static relationship.",
+    files: {
+      "package.json": JSON.stringify({ name: "self-control", private: true, type: "module", exports: { "./math": { "@self/source": "./src/math.ts", import: "./dist/math.js" } }, scripts: { test: "vitest run" } }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "nodenext", customConditions: ["@self/source"] } }, null, 2),
+      "src/math.ts": "export function add(a: number, b: number) { return a + b; }\n",
+      "test/math.test.ts": "import { add } from 'self-control/math'; export const observed = add(1, 2);\n"
+    },
+    changes: { "src/math.ts": "export function add(a: number, b: number) { return a + b; }\n// controlled self-export mutation\n" },
+    runChecks: false,
+    verify(report) {
+      const assessment = report.assessments[0];
+      return assessment?.status === "unknown"
+        && assessment.relatedTests.includes("test/math.test.ts")
+        && assessment.executedTests.length === 0
+        && report.trust.repositoryCodeExecuted === false;
+    }
+  },
+  {
+    id: "typescript-metadata-ownership-unresolved",
+    purpose: "An ignored nearer package boundary and a nearest compiler config that excludes the importer cannot create static relationships.",
+    files: {
+      ".gitignore": "nested/package.json\n",
+      "package.json": JSON.stringify({ name: "root-control", private: true, type: "module", exports: { "./root": "./src/root.js" } }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext" }, include: ["nested/test/**/*.ts", "src/**/*.ts"] }, null, 2),
+      "src/root.ts": "export const root = true;\n",
+      "nested/package.json": JSON.stringify({ name: "nested-control", private: true, type: "module" }, null, 2),
+      "nested/tsconfig.json": JSON.stringify({ compilerOptions: { module: "ESNext", moduleResolution: "Bundler", baseUrl: ".", paths: { "@wrong": ["src/wrong.ts"] } }, files: ["src/other.ts"] }, null, 2),
+      "nested/src/other.ts": "export {};\n",
+      "nested/src/wrong.ts": "export const wrong = true;\n",
+      "nested/test/ownership.test.ts": "import { root } from 'root-control/root'; import { wrong } from '@wrong'; export const observed = root && wrong;\n"
+    },
+    changes: {
+      "src/root.ts": "export const root = true;\n// controlled hidden package mutation\n",
+      "nested/src/wrong.ts": "export const wrong = true;\n// controlled project membership mutation\n"
+    },
+    runChecks: false,
+    verify(report) {
+      return report.assessments.length === 2
+        && report.assessments.every((assessment) => assessment.status === "unknown")
+        && report.assessments.every((assessment) => !assessment.relatedTests.includes("nested/test/ownership.test.ts"))
+        && report.assessments.every((assessment) => assessment.executedTests.length === 0)
         && report.trust.repositoryCodeExecuted === false;
     }
   },

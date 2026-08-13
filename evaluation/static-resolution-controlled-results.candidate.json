@@ -1,0 +1,305 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2000-01-01T00:00:00.000Z",
+  "proofdiff": {
+    "commit": "7750e9e9d2ab3688fe4a640d5f6c8dec1f3f195a",
+    "version": "0.1.0"
+  },
+  "cases": [
+    {
+      "id": "relative-targeted-pass",
+      "purpose": "A direct relative test relationship is found, explicitly targeted, and passes.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/value.test.js"
+        ],
+        "executedTests": [
+          "test/value.test.js"
+        ],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "typescript-alias-static-found",
+      "purpose": "A clear tsconfig paths mapping creates a static relationship without creating runtime evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [
+          "test/math.test.ts"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "not-run"
+        },
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "typescript-paths-unsupported-probing-unresolved",
+      "purpose": "NodeNext ESM extensionless lookup and an incorrect .mjs-to-.ts substitution cannot create static relationships.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {},
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "package-self-export-static-found",
+      "purpose": "An exact package self-export with an explicit source condition creates only a static relationship.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [
+          "test/math.test.ts"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "not-run"
+        },
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "typescript-metadata-ownership-unresolved",
+      "purpose": "An ignored nearer package boundary and a nearest compiler config that excludes the importer cannot create static relationships.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "typescript",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {},
+        "repositoryCodeExecuted": false
+      }
+    },
+    {
+      "id": "directory-support-file-targeted-pass",
+      "purpose": "A support module under tests/ remains statically test-like but cannot produce runnable evidence without runner qualification.",
+      "verdict": "passed",
+      "observed": {
+        "status": "partially-verified",
+        "language": "javascript",
+        "relatedTests": [
+          "tests/fixtures/helper.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "root-test-js-qualified-pass",
+      "purpose": "The documented root test.js shape is statically related, runner-qualified, and observed passing.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test.js"
+        ],
+        "executedTests": [
+          "test.js"
+        ],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "explicit-custom-node-path",
+      "purpose": "An exact file in the discovered node --test command qualifies a custom path convention without broad heuristics.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verified",
+        "language": "javascript",
+        "relatedTests": [
+          "quality/check.js"
+        ],
+        "executedTests": [
+          "quality/check.js"
+        ],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "opaque-passing-command",
+      "purpose": "A passing repository test command that excludes the related test remains partial and non-targeted.",
+      "verdict": "passed",
+      "observed": {
+        "status": "partially-verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/access.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "targeted-verification-failure",
+      "purpose": "A related test that executes and fails produces verification-failed evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verification-failed",
+        "language": "javascript",
+        "relatedTests": [
+          "test/tax.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "failed",
+          "js:test:test:targeted": "failed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "node-zero-test-target",
+      "purpose": "A qualified Node target that declares no tests is observed as zero-test and cannot become executed evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "partially-verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/value.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "node-filtered-zero-target",
+      "purpose": "A Node name filter that selects zero tests is observed per target and cannot become executed evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "partially-verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/value.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "node-all-skipped-target",
+      "purpose": "An all-skipped Node target stays partial despite a successful runner process.",
+      "verdict": "passed",
+      "observed": {
+        "status": "partially-verified",
+        "language": "javascript",
+        "relatedTests": [
+          "test/value.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "passed",
+          "js:test:test:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "unittest-positive-target",
+      "purpose": "unittest TestResult.testsRun produces a positive per-file passing observation.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verified",
+        "language": "python",
+        "relatedTests": [
+          "tests/test_value.py"
+        ],
+        "executedTests": [
+          "tests/test_value.py"
+        ],
+        "checkStatuses": {
+          "python:test:unittest": "passed",
+          "python:test:unittest:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "unittest-zero-target",
+      "purpose": "A unittest target with zero TestResult.testsRun does not become executed evidence.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unverified",
+        "language": "python",
+        "relatedTests": [
+          "tests/test_value.py"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "python:test:unittest": "failed",
+          "python:test:unittest:targeted": "passed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "mixed-batch-attribution",
+      "purpose": "A batched Node command attributes a pass, zero-test, and failure only to their exact related paths.",
+      "verdict": "passed",
+      "observed": {
+        "status": "verification-failed",
+        "language": "javascript",
+        "relatedTests": [
+          "test/fail.test.js"
+        ],
+        "executedTests": [],
+        "checkStatuses": {
+          "js:test:test": "failed",
+          "js:test:test:targeted": "failed"
+        },
+        "repositoryCodeExecuted": true
+      }
+    },
+    {
+      "id": "unsupported-ambiguous-file",
+      "purpose": "An unsupported file remains unknown and is not forced into a binary relationship judgment.",
+      "verdict": "passed",
+      "observed": {
+        "status": "unknown",
+        "language": "unknown",
+        "relatedTests": [],
+        "executedTests": [],
+        "checkStatuses": {},
+        "repositoryCodeExecuted": false
+      }
+    }
+  ]
+}

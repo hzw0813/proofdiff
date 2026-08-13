@@ -1,6 +1,6 @@
 import path from "node:path";
 import { runProcess, safeExecutablePath } from "./process.js";
-import { isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
+import { compareCodeUnits, isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 export class GitError extends Error {
     name = "GitError";
@@ -256,7 +256,7 @@ export async function changedFiles(root, diffArgs, includeUntracked, knownUntrac
             deletedSymbolHints: deletedSymbolHints(patch),
         });
     }
-    return files.sort((a, b) => a.path.localeCompare(b.path));
+    return files.sort((a, b) => compareCodeUnits(a.path, b.path));
 }
 export async function listUntrackedFiles(root) {
     return (await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]))

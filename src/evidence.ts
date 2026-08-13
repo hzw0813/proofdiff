@@ -2,7 +2,7 @@ import path from "node:path";
 import type { CallInfo, ChangedFile, CheckResult, EvidenceItem, FileAssessment, RiskLevel, SourceAnalysis, VerificationStatus } from "./types.js";
 import type { RepositoryGraph } from "./graph.js";
 import { impactedFiles, symbolsChanged } from "./graph.js";
-import { clamp, isTestLikePath, unique } from "./util.js";
+import { clamp, compareCodeUnits, isTestLikePath, unique } from "./util.js";
 
 function checkApplies(check: CheckResult, file: ChangedFile, relatedTests: string[]): boolean {
   if (check.targetFiles && !check.targetFiles.some((target) => relatedTests.includes(target))) return false;
@@ -122,7 +122,7 @@ function callsInChangedLines(file: ChangedFile, analysis: SourceAnalysis | undef
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => a.line - b.line || a.name.localeCompare(b.name));
+  }).sort((a, b) => a.line - b.line || compareCodeUnits(a.name, b.name));
   return { calls: matching.slice(0, limit), truncated: matching.length > limit };
 }
 

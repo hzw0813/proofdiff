@@ -194,7 +194,10 @@ if (candidates.external && candidates.controlled) {
   assert.ok(candidateExternal.cases.every((item) => item.assessment.status === "unknown"));
   const expectedCandidateControls = [
     "relative-targeted-pass",
-    "typescript-alias-unresolved",
+    "typescript-alias-static-found",
+    "typescript-paths-unsupported-probing-unresolved",
+    "package-self-export-static-found",
+    "typescript-metadata-ownership-unresolved",
     "directory-support-file-targeted-pass",
     "root-test-js-qualified-pass",
     "explicit-custom-node-path",

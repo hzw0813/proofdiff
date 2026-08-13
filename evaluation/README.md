@@ -5,6 +5,8 @@ This evaluation asks a narrow engineering question: **which mechanisms most ofte
 The preserved external product observation is commit `a9b721ca7500da4b316c737dbb159ded6e6d3577` (`proofdiff@0.1.0`) in `results.json` and `controlled-results.json`. The evidence-boundary implementation starts from clean `main` at `8871fdcecceda59e0cf16a525dcccf8af65b4393`; candidate artifacts name their evaluated commit separately. The preserved baseline files and schemas are never overwritten by ordinary candidate commands. The harness observes ProofDiff; it must not patch or reconfigure the product under evaluation.
 
 The decision that separates static test-like relationships, runner-qualified targets, and per-target observations is recorded in [`TARGET_QUALIFICATION_DECISION.md`](TARGET_QUALIFICATION_DECISION.md).
+The subsequent bounded compiler-path/package-self-export decision is recorded in [`STATIC_MODULE_RESOLUTION_DECISION.md`](STATIC_MODULE_RESOLUTION_DECISION.md).
+The independent post-substitution probing review and corrected before/after evidence are recorded in [`TYPESCRIPT_PATHS_PROBING_BLOCKER_DECISION.md`](TYPESCRIPT_PATHS_PROBING_BLOCKER_DECISION.md) and [`TYPESCRIPT_PATHS_PROBING_BLOCKER_FINDINGS.md`](TYPESCRIPT_PATHS_PROBING_BLOCKER_FINDINGS.md).
 
 ## Evaluation questions
 
