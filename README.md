@@ -38,7 +38,7 @@ npx proofdiff --run-checks --html proofdiff-report.html
 
 ## Why ProofDiff?
 
-AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, statically related test-like paths, runner-qualified targets, per-target observations, checks, and the gaps that remain. It never treats directory placement or process exit alone as test execution, turns a passing target into changed-symbol coverage, or claims that a change is safe.
+AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, statically related test-like paths, runner-qualified targets, per-target observations, checks, and the gaps that remain. Each file also carries an evidence boundary showing the strongest evidence actually observed, where stronger evidence stopped, whether ProofDiff failed closed, and a bounded next action. It never treats directory placement or process exit alone as test execution, turns a passing target into changed-symbol coverage, or claims that a change is safe.
 
 ```text
 PARTIAL  ·  highest risk HIGH  ·  2 files  ·  2 symbols
@@ -62,11 +62,11 @@ RELATED TEST FILE PASSED src/discount.js  LOW 10
 | **Unknown** | No applicable check ran, or analysis could not reach a conclusion. |
 | **Verification failed** | An applicable check failed, errored, or timed out. |
 
-Impact and test-like relationships are explicitly labeled static estimates. Qualification reasons and per-target counts are inspectable in JSON and HTML details.
+Impact and test-like relationships are explicitly labeled static estimates. Qualification reasons and per-target counts are inspectable in JSON and HTML details. The additive `evidenceBoundary` object explains the strongest observed evidence, stop stage/reason, fail-closed state, and safe next action without changing `schemaVersion: "1.0"`.
 
 ## Use it in GitHub Actions
 
-The released composite Action is available at `hzw0813/proofdiff@v0.2.0`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. See the [complete workflow and trust guidance](docs/github-actions.md).
+The released composite Action is available at `hzw0813/proofdiff@v0.3.0`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. On `pull_request`, the Action can now auto-resolve the exact PR base SHA when `base` is omitted; explicit `base` still wins. See the [complete workflow and trust guidance](docs/github-actions.md).
 
 The released Action writes a concise, bounded **ProofDiff · Change Evidence** job summary by default, so reviewers can see changed-file evidence without opening logs. It uses the same report as terminal/JSON/HTML output, requires no write token, and does not create PR comments. Full provenance remains in the log and optional HTML artifact.
 

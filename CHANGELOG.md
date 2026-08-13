@@ -4,8 +4,11 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-13
+
 ### Changed
 
+- Added an additive deterministic per-file `evidenceBoundary` that reports the strongest observed evidence, the exact stage and reason where stronger evidence stopped, whether ProofDiff failed closed, and a bounded next action. Terminal, GitHub summary, HTML, and JSON now expose the same distinction without changing the historical `verified` meaning or JSON `schemaVersion: "1.0"`.
 - GitHub Action `pull_request` runs can now omit `base`: ProofDiff auto-resolves the exact PR base commit SHA from GitHub's event payload, while explicit `base` still wins and other non-PR events preserve working-tree fallback. Missing or malformed PR metadata fails closed instead of silently analyzing an empty clean working tree; omitted `base` on `pull_request_target` also fails closed because its default checkout normally points at the base revision rather than the PR change.
 
 ## [0.2.0] - 2026-08-13

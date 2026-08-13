@@ -1,6 +1,6 @@
 {
   "name": "proofdiff",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Deterministic evidence for code changes: what changed, what verification ran, and what remains unverified.",
   "type": "module",
   "bin": {
