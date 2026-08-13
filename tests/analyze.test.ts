@@ -393,6 +393,22 @@ test("mixed targeted batches attribute pass, zero, and failure to exact paths", 
   ]);
 });
 
+test("GitHub summary categorizes malformed compiler configuration before suggesting runtime evidence", async (context) => {
+  const root = await initializeRepository({
+    "tsconfig.json": '{"compilerOptions":{"paths":{"@value":["./src/value.ts"]}},"secret":SUPER_SECRET_12345}',
+    "src/value.ts": "export const value = 1;\n",
+    "test/value.test.ts": "import { value } from '@value'; export const observed = value;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/value.ts": "export const value = 2;\n" });
+  const report = await analyzeRepository({ repo: root });
+  assert.ok(report.notes.some((note) => /malformed compiler configuration was rejected/.test(note)));
+  const summary = renderGithubSummary(report);
+  assert.match(summary, /Compiler configuration could not be parsed; static alias resolution was unavailable/);
+  assert.match(summary, /Inspect and, where appropriate, fix the static-analysis limitation/);
+  assert.doesNotMatch(summary, /SUPER_SECRET|malformed compiler configuration was rejected|`run-checks: true`/);
+});
+
 test("working-tree analysis warns without hiding Git-visible generated files", async (context) => {
   const root = await initializeRepository({ "README.md": "# fixture\n" });
   context.after(() => rm(root, { recursive: true, force: true }));

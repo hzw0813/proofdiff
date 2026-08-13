@@ -178,8 +178,8 @@ test("GitHub summary preserves bounded analysis limitations and static-only guid
   const summary = renderGithubSummary(limited);
   assert.match(summary, /Repository source analysis was limited to the first 5,000 tracked\/unignored files/);
   assert.match(summary, /3 additional static-analysis diagnostics are available only in the detailed report/);
-  assert.match(summary, /Keep static-only analysis for untrusted changes/);
-  assert.match(summary, /`run-checks: true` only in a secret-free isolated job/);
+  assert.match(summary, /Inspect and, where appropriate, fix the static-analysis limitation/);
+  assert.doesNotMatch(summary, /`run-checks: true`/);
 });
 
 test("GitHub summary does not recommend rerunning checks when execution was already requested but unsupported", () => {

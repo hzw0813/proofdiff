@@ -103,8 +103,11 @@ Focused semantic coverage asserts:
   redacted, or bounded;
 - the GitHub renderer never includes symbols, source, commands, or check output.
 - malformed metadata parse errors use a fixed report note, while the summary
-  projects only fixed safe note categories and reduces all other diagnostics to
-  a count; parser source excerpts cannot enter the job summary.
+  projects fixed source-free categories for malformed/non-applicable compiler
+  configuration, unsupported/ambiguous local resolution, unavailable source
+  analysis, and explicit bounds. Other diagnostics reduce to a count; parser
+  source excerpts cannot enter the job summary, and any static limitation takes
+  precedence over suggesting runtime execution.
 
 ## Compatibility and trust effect
 

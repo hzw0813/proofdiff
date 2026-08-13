@@ -35,10 +35,32 @@ function safeSummaryNotes(notes) {
     if (notes.some((note) => note.startsWith("Working-tree selection includes "))) {
         safe.push("Working-tree selection includes Git-visible files under a common generated directory; inspect Git status and ignore rules if unintended.");
     }
-    const omitted = notes.length - safe.length;
+    const categoryRules = [
+        {
+            pattern: /malformed compiler configuration/i,
+            message: "Compiler configuration could not be parsed; static alias resolution was unavailable.",
+        },
+        {
+            pattern: /compiler configuration .* does not include the importer|ancestor project selection is unknown|extends target .* unsupported/i,
+            message: "Compiler configuration did not establish that it applies to every importer; some static alias relationships may be unavailable.",
+        },
+        {
+            pattern: /did not resolve .* through compiler paths|package self-reference .* no safely selectable|standalone baseUrl|wildcard mappings|mapped target|paths target|candidate expansion|higher-precedence candidate/i,
+            message: "Repository-local module resolution encountered an unsupported or ambiguous case; some static relationships may be unavailable.",
+        },
+        {
+            pattern: /^Skipped .*unreadable, binary, or larger than 1 MB/i,
+            message: "Some source files could not be structurally analyzed because they were unreadable, binary, or larger than 1 MB.",
+        },
+    ];
+    const categories = categoryRules.filter((category) => notes.some((note) => category.pattern.test(note)));
+    safe.push(...categories.map((category) => category.message));
+    const categorized = notes.filter((note) => categoryRules.some((category) => category.pattern.test(note))).length;
+    const knownCount = notes.filter((note) => exact.has(note) || note.startsWith("Working-tree selection includes ")).length;
+    const omitted = Math.max(0, notes.length - knownCount - categorized);
     if (omitted > 0)
         safe.push(`${omitted} additional static-analysis ${omitted === 1 ? "diagnostic is" : "diagnostics are"} available only in the detailed report.`);
-    return safe;
+    return { notes: safe, hasStaticLimitation: categories.length > 0 || omitted > 0 };
 }
 function pathList(paths, limit) {
     const displayed = paths.slice(0, limit).map(inlineCode).join(", ");
@@ -119,13 +141,13 @@ export function renderGithubSummary(report, options = {}) {
     if (report.assessments.length > maxFiles) {
         output.push(`_${report.assessments.length - maxFiles} more changed ${report.assessments.length - maxFiles === 1 ? "file is" : "files are"} omitted from this bounded summary._`, "");
     }
-    const summaryNotes = safeSummaryNotes(report.notes);
-    if (summaryNotes.length > 0) {
+    const noteProjection = safeSummaryNotes(report.notes);
+    if (noteProjection.notes.length > 0) {
         output.push("### Analysis notes", "");
-        for (const note of summaryNotes.slice(0, 3))
+        for (const note of noteProjection.notes.slice(0, 3))
             output.push(`- ${note}`);
-        if (summaryNotes.length > 3)
-            output.push(`- _${summaryNotes.length - 3} more notes are available in the detailed report._`);
+        if (noteProjection.notes.length > 3)
+            output.push(`- _${noteProjection.notes.length - 3} more notes are available in the detailed report._`);
         output.push("");
     }
     if (report.summary.overallStatus === "verification-failed") {
@@ -133,6 +155,9 @@ export function renderGithubSummary(report, options = {}) {
     }
     else if (report.notes.some((note) => note.startsWith("Check execution was requested"))) {
         output.push("**Next step:** Check discovery found nothing it could run. Inspect the supported conventions and detailed limitations; do not treat this unknown state as a pass.", "");
+    }
+    else if (noteProjection.hasStaticLimitation) {
+        output.push("**Next step:** Inspect and, where appropriate, fix the static-analysis limitation before seeking stronger runtime evidence.", "");
     }
     else if (!report.trust.repositoryCodeExecuted && report.summary.filesChanged > 0) {
         output.push("**Next step:** Keep static-only analysis for untrusted changes. After review, use `run-checks: true` only in a secret-free isolated job if you want ProofDiff to seek runner observations.", "");
