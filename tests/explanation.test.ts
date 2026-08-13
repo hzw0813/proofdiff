@@ -118,6 +118,30 @@ test("an unattributed targeted process failure is classified at the failure-attr
   assert.equal(boundary.nextAction?.kind, "inspect-failure");
 });
 
+test("an inconclusive observation from a passing targeted process does not invent failure attribution", () => {
+  const inconclusive = targetedCheck("not-observed", "passed");
+  const opaqueFailure: CheckResult = {
+    id: "js:lint:opaque",
+    label: "lint",
+    kind: "lint",
+    command: "npm",
+    args: ["run", "lint"],
+    origin: "package.json",
+    executesRepositoryCode: true,
+    status: "failed",
+    exitCode: 1,
+    durationMs: 1,
+    output: "",
+    outputTruncated: false,
+    explanation: "Opaque lint failure.",
+  };
+  const boundary = explainEvidenceBoundary(assessment({ status: "verification-failed" }), [inconclusive, opaqueFailure]);
+  assert.equal(boundary.strongestEvidence, "verification-failure");
+  assert.equal(boundary.stage, "target-invocation");
+  assert.equal(boundary.reason, "check-failed");
+  assert.equal(boundary.proofdiffFailClosed, false);
+});
+
 test("an opaque passing command cannot cross the runner-qualification boundary", () => {
   const check: CheckResult = {
     id: "js:test:opaque",
