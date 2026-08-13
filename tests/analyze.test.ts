@@ -409,6 +409,27 @@ test("GitHub summary categorizes malformed compiler configuration before suggest
   assert.doesNotMatch(summary, /SUPER_SECRET|malformed compiler configuration was rejected|`run-checks: true`/);
 });
 
+test("GitHub summary prioritizes an actionable structural limitation over generic notes", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ workspaces: ["packages/*"], scripts: { test: "node --test" } }),
+    "tsconfig.json": '{"compilerOptions":{"paths":{"@value":["./src/value.ts"]}},"secret":SUPER_SECRET_12345}',
+    "src/value.ts": "export const value = 1;\n",
+    "test/value.test.ts": "import { value } from '@value'; export const observed = value;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/value.ts": "export const value = 2;\n",
+    "dist/generated.js": "export const generated = true;\n",
+  });
+  const report = await analyzeRepository({ repo: root });
+  const summary = renderGithubSummary(report);
+  const categoryIndex = summary.indexOf("Compiler configuration could not be parsed");
+  assert.ok(categoryIndex > 0);
+  assert.ok(categoryIndex < summary.indexOf("Workspace package detected"));
+  assert.match(summary, /Inspect and, where appropriate, fix the static-analysis limitation/);
+  assert.doesNotMatch(summary, /SUPER_SECRET|`run-checks: true`/);
+});
+
 test("working-tree analysis warns without hiding Git-visible generated files", async (context) => {
   const root = await initializeRepository({ "README.md": "# fixture\n" });
   context.after(() => rm(root, { recursive: true, force: true }));

@@ -28,19 +28,16 @@ function safeSummaryNotes(notes) {
         "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
         "Runner-qualified targeted test execution was limited to the first 100 statically impacted paths.",
     ]);
-    const exact = new Set([
+    const exactPriority = [
         "Could not parse package.json; check discovery skipped its scripts.",
-        "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
         "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
         "Runner-qualified targeted test execution was limited to the first 100 statically impacted paths.",
+        "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
+        "Check execution was requested, but no supported checks were discovered.",
         "No changes matched the selected diff.",
         "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.",
-        "Check execution was requested, but no supported checks were discovered.",
-    ]);
-    const safe = notes.filter((note) => exact.has(note));
-    if (notes.some((note) => note.startsWith("Working-tree selection includes "))) {
-        safe.push("Working-tree selection includes Git-visible files under a common generated directory; inspect Git status and ignore rules if unintended.");
-    }
+    ];
+    const exact = new Set(exactPriority);
     const categoryRules = [
         {
             pattern: /malformed compiler configuration/i,
@@ -60,7 +57,11 @@ function safeSummaryNotes(notes) {
         },
     ];
     const categories = categoryRules.filter((category) => notes.some((note) => category.pattern.test(note)));
-    safe.push(...categories.map((category) => category.message));
+    const safe = categories.map((category) => category.message);
+    safe.push(...exactPriority.filter((candidate) => notes.includes(candidate)));
+    if (notes.some((note) => note.startsWith("Working-tree selection includes "))) {
+        safe.push("Working-tree selection includes Git-visible files under a common generated directory; inspect Git status and ignore rules if unintended.");
+    }
     const categorized = notes.filter((note) => categoryRules.some((category) => category.pattern.test(note))).length;
     const knownCount = notes.filter((note) => exact.has(note) || note.startsWith("Working-tree selection includes ")).length;
     const omitted = Math.max(0, notes.length - knownCount - categorized);
