@@ -9,6 +9,8 @@
 
 - ❔ **Unknown** · <code>policy/access.rego</code> · HIGH risk
   - No supported related test-like path was established.
+  - Evidence boundary: <code>static-relationship</code> · <code>unsupported-semantics</code>. ProofDiff could not establish first-class structural semantics for this changed file, so stronger relationship claims were not made. ProofDiff intentionally failed closed at this boundary.
+  - Next action: <code>inspect-static-limitations</code> — Inspect the file-level and static-analysis limitations; add or connect explicit verification rather than inferring that no tests exist.
 
 ### Analysis notes
 

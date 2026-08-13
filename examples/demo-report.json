@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0",
-  "proofdiffVersion": "0.1.0",
+  "proofdiffVersion": "0.2.0",
   "generatedAt": "2026-08-12T00:00:00.000Z",
   "repository": {
     "root": "/demo/acme-checkout",
     "name": "acme-checkout",
     "head": "b39d3dbbd762",
-    "branch": "main",
+    "branch": "master",
     "dirty": true
   },
   "selection": {
@@ -106,12 +106,30 @@
           "label": "python3 ast structural analysis",
           "detail": "Parser confidence: high. Structural findings are evidence about code shape, not correctness.",
           "confidence": "high"
+        },
+        {
+          "kind": "limitation",
+          "label": "Evidence boundary · static-relationship · no-related-test",
+          "detail": "ProofDiff established no supported related test-like path for this change. Next action: Inspect static-analysis limitations and test relationships; absence of a discovered relationship is not proof that no relevant test exists.",
+          "confidence": "high"
         }
       ],
       "limitations": [
         "Deleted symbol names were inferred from removed declaration lines; ranges and full structure are unavailable.",
         "No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically."
-      ]
+      ],
+      "evidenceBoundary": {
+        "strongestEvidence": "change-observed",
+        "stage": "static-relationship",
+        "reason": "no-related-test",
+        "detail": "ProofDiff established no supported related test-like path for this change.",
+        "proofdiffFailClosed": false,
+        "nextAction": {
+          "kind": "inspect-static-limitations",
+          "detail": "Inspect static-analysis limitations and test relationships; absence of a discovered relationship is not proof that no relevant test exists.",
+          "requiresRepositoryCodeExecution": false
+        }
+      }
     },
     {
       "file": {
@@ -217,11 +235,25 @@
           "label": "@babel/parser structural analysis",
           "detail": "Parser confidence: high. Structural findings are evidence about code shape, not correctness.",
           "confidence": "high"
+        },
+        {
+          "kind": "limitation",
+          "label": "Evidence boundary · changed-code-execution · changed-code-execution-unobserved",
+          "detail": "A runner-qualified related test file passed, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed. ProofDiff intentionally failed closed at this boundary.",
+          "confidence": "high"
         }
       ],
       "limitations": [
         "Qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed."
-      ]
+      ],
+      "evidenceBoundary": {
+        "strongestEvidence": "related-test-file-passed",
+        "stage": "changed-code-execution",
+        "reason": "changed-code-execution-unobserved",
+        "detail": "A runner-qualified related test file passed, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.",
+        "proofdiffFailClosed": true,
+        "nextAction": null
+      }
     }
   ],
   "checks": [
@@ -240,8 +272,8 @@
       "targetRunner": "node-test",
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 158,
-      "output": "✔ gold customers receive the documented discount (0.380542ms)\n✔ unknown tiers pay the full subtotal (0.055375ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43.204084",
+      "durationMs": 165,
+      "output": "✔ gold customers receive the documented discount (0.587715ms)\n✔ unknown tiers pay the full subtotal (0.115103ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 53.684302",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     },
@@ -273,8 +305,8 @@
       ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 67,
-      "output": "✔ gold customers receive the documented discount (0.315125ms)\n✔ unknown tiers pay the full subtotal (0.052458ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.40275",
+      "durationMs": 79,
+      "output": "✔ gold customers receive the documented discount (0.598531ms)\n✔ unknown tiers pay the full subtotal (0.115173ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 50.309165",
       "outputTruncated": false,
       "explanation": "The command exited successfully. Target observations: 1 passed, 0 failed, 0 skipped, 0 zero-test, 0 unavailable.",
       "targetObservations": [

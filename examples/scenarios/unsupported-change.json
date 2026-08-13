@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0",
-  "proofdiffVersion": "0.1.0",
+  "proofdiffVersion": "0.2.0",
   "generatedAt": "2026-08-12T00:00:00.000Z",
   "repository": {
     "root": "/demo/policy-engine",
     "name": "policy-engine",
     "head": "87f1bc06c60f",
-    "branch": "main",
+    "branch": "master",
     "dirty": true
   },
   "selection": {
@@ -66,11 +66,30 @@
         "No first-class language adapter applies.",
         "Security-sensitive path name warrants focused human review."
       ],
-      "evidence": [],
+      "evidence": [
+        {
+          "kind": "limitation",
+          "label": "Evidence boundary · static-relationship · unsupported-semantics",
+          "detail": "ProofDiff could not establish first-class structural semantics for this changed file, so stronger relationship claims were not made. ProofDiff intentionally failed closed at this boundary. Next action: Inspect the file-level and static-analysis limitations; add or connect explicit verification rather than inferring that no tests exist.",
+          "confidence": "high"
+        }
+      ],
       "limitations": [
         "Only file-level analysis is available for this file type.",
         "No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically."
-      ]
+      ],
+      "evidenceBoundary": {
+        "strongestEvidence": "change-observed",
+        "stage": "static-relationship",
+        "reason": "unsupported-semantics",
+        "detail": "ProofDiff could not establish first-class structural semantics for this changed file, so stronger relationship claims were not made.",
+        "proofdiffFailClosed": true,
+        "nextAction": {
+          "kind": "inspect-static-limitations",
+          "detail": "Inspect the file-level and static-analysis limitations; add or connect explicit verification rather than inferring that no tests exist.",
+          "requiresRepositoryCodeExecution": false
+        }
+      }
     }
   ],
   "checks": [],

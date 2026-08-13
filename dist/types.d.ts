@@ -98,6 +98,23 @@ export interface EvidenceItem {
     confidence: Confidence;
     checkId?: string;
 }
+export type StrongestEvidence = "change-observed" | "static-relationship" | "passing-check" | "related-test-file-passed" | "verification-failure";
+export type EvidenceBoundaryStage = "static-relationship" | "runner-qualification" | "target-invocation" | "runtime-observation" | "failure-attribution" | "changed-code-execution";
+export type EvidenceStopReason = "no-related-test" | "unsupported-semantics" | "runner-unqualified" | "checks-not-run" | "target-not-invoked" | "no-applicable-check" | "opaque-passing-check" | "zero-tests" | "all-skipped" | "observer-inconclusive" | "failure-unattributed" | "target-failed" | "check-failed" | "changed-code-execution-unobserved";
+export type EvidenceNextActionKind = "inspect-static-limitations" | "review-run-checks" | "add-supported-check" | "qualify-related-test" | "inspect-target-selection" | "inspect-observer" | "inspect-failure";
+export interface EvidenceNextAction {
+    kind: EvidenceNextActionKind;
+    detail: string;
+    requiresRepositoryCodeExecution: boolean;
+}
+export interface EvidenceBoundary {
+    strongestEvidence: StrongestEvidence;
+    stage: EvidenceBoundaryStage;
+    reason: EvidenceStopReason;
+    detail: string;
+    proofdiffFailClosed: boolean;
+    nextAction: EvidenceNextAction | null;
+}
 export type RiskLevel = "critical" | "high" | "medium" | "low";
 export interface FileAssessment {
     file: ChangedFile;
@@ -112,6 +129,7 @@ export interface FileAssessment {
         checkId: string;
     }>;
     status: VerificationStatus;
+    evidenceBoundary?: EvidenceBoundary;
     risk: RiskLevel;
     riskScore: number;
     reasons: string[];

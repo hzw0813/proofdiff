@@ -9,6 +9,8 @@
 
 - ⚠️ **Partially verified** · <code>src/access.js</code> · MEDIUM risk
   - Static relationship only: <code>test/access.test.js</code>. No passing target observation was recorded.
+  - Evidence boundary: <code>runner-qualification</code> · <code>opaque-passing-check</code>. A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner. ProofDiff intentionally failed closed at this boundary.
+  - Next action: <code>qualify-related-test</code> — Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file.
 
 **Next step:** Inspect the files without passing target observations and the detailed limitations before deciding whether more verification is needed.
 

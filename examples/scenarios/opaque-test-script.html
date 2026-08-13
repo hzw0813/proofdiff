@@ -48,14 +48,14 @@
     <details>
       <summary>Inspect evidence and reasoning</summary>
       <div class="detail-grid">
-        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence passing-check"><span>test: test</span><p>Repository test command passed, but ProofDiff did not observe which test files it executed.</p><small>high confidence · passing check</small></li><li class="evidence related-test"><span>1 statically related test-like path</span><p>Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li></ul></div>
+        <div class="wide"><h4>Evidence</h4><ul class="evidence-list"><li class="evidence passing-check"><span>test: test</span><p>Repository test command passed, but ProofDiff did not observe which test files it executed.</p><small>high confidence · passing check</small></li><li class="evidence related-test"><span>1 statically related test-like path</span><p>Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.</p><small>medium confidence · related test</small></li><li class="evidence static-relationship"><span>1 impacted file</span><p>Reachable through resolved reverse import relationships. This is an impact estimate, not proof of runtime behavior.</p><small>medium confidence · static relationship</small></li><li class="evidence inference"><span>@babel/parser structural analysis</span><p>Parser confidence: high. Structural findings are evidence about code shape, not correctness.</p><small>high confidence · inference</small></li><li class="evidence limitation"><span>Evidence boundary · runner-qualification · opaque-passing-check</span><p>A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner. ProofDiff intentionally failed closed at this boundary. Next action: Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file.</p><small>high confidence · limitation</small></li></ul></div>
         <div><h4>Why review this</h4><ul><li>Evidence exists but is not connected to a related passing test.</li><li>Security-sensitive path name warrants focused human review.</li></ul></div>
         <div><h4>Targeted test outcomes</h4><p class="muted">None observed. Related-file presence alone cannot produce “Related test file passed.”</p></div><div><h4>Statically related test-like paths <span class="count">1</span></h4><ul class="paths"><li>test/access.test.js</li></ul></div><div><h4>Calls in changed lines</h4><p class="muted">No parser-observed call site intersects the changed lines.</p></div><div><h4>Estimated impact <span class="count">1</span></h4><ul class="paths"><li>test/access.test.js</li></ul></div><div class="limitations"><h4>Limits</h4><ul><li>Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.</li><li>1 statically related test-like path was not qualified by a recognized runner convention or configuration.</li></ul></div>
       </div>
     </details>
   </article></div>
   </section>
-  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status passed">passed</span><strong>test: test</strong><span>142 ms</span></summary><div><p>The command exited successfully. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✔ service boots (0.279833ms)
+  <section><div class="section-head"><div><h2>Verification checks</h2><p>Commands, outcomes, and bounded output from this run.</p></div></div><div class="checks panel"><details class="check"><summary><span class="check-status passed">passed</span><strong>test: test</strong><span>163 ms</span></summary><div><p>The command exited successfully. package.json script &quot;test&quot;.</p><code>npm run test --silent</code><pre>✔ service boots (0.655998ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 1
@@ -63,9 +63,9 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 34.74775</pre></div></details></div></section>
+ℹ duration_ms 48.408343</pre></div></details></div></section>
   <p class="method"><strong>How to read this:</strong> The JSON status <code>verified</code> is displayed as “Related test file passed.” It requires a static relationship, runner qualification, explicit target supply, and at least one non-skipped passing test observed for that exact path—not changed-symbol or changed-line execution, mathematical proof, or a guarantee of safety.</p>
-  <footer>Generated locally by ProofDiff 0.1.0 · no telemetry · schema 1.0</footer>
+  <footer>Generated locally by ProofDiff 0.2.0 · no telemetry · schema 1.0</footer>
 </main>
 <script>
   (() => {
