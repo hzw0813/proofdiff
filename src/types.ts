@@ -110,7 +110,7 @@ export interface CheckResult extends CheckDefinition {
 }
 
 export interface EvidenceItem {
-  kind: "passing-check" | "failing-check" | "executed-test" | "related-test" | "static-relationship" | "inference" | "limitation";
+  kind: "passing-check" | "failing-check" | "executed-test" | "coverage-artifact" | "related-test" | "static-relationship" | "inference" | "limitation";
   label: string;
   detail: string;
   confidence: Confidence;
@@ -130,7 +130,9 @@ export type EvidenceBoundaryStage =
   | "target-invocation"
   | "runtime-observation"
   | "failure-attribution"
-  | "changed-code-execution";
+  | "changed-code-execution"
+  | "changed-line-coverage"
+  | "relevant-assertion";
 
 export type EvidenceStopReason =
   | "no-related-test"
@@ -172,6 +174,33 @@ export interface EvidenceBoundary {
   nextAction: EvidenceNextAction | null;
 }
 
+export type CoverageState = "all-covered" | "partially-covered" | "uncovered" | "unmeasured" | "not-applicable";
+
+export interface CoverageFileEvidence {
+  state: CoverageState;
+  changedLines: number;
+  measuredChangedLines: number;
+  coveredChangedLines: number;
+  uncoveredChangedLines: number;
+  unmeasuredChangedLines: number;
+  uncoveredLineNumbers: number[];
+  unmeasuredLineNumbers: number[];
+  detail: string;
+}
+
+export interface CoverageArtifactSummary {
+  format: "lcov";
+  artifact: string;
+  suppliedCommit: string;
+  resolvedCommit: string;
+  targetCommit: string | null;
+  commitBinding: "declared-commit-matched" | "commit-mismatch" | "uncommitted-selection";
+  accepted: boolean;
+  filesParsed: number;
+  lineRecords: number;
+  detail: string;
+}
+
 export type RiskLevel = "critical" | "high" | "medium" | "low";
 
 export interface FileAssessment {
@@ -188,6 +217,7 @@ export interface FileAssessment {
   }>;
   status: VerificationStatus;
   evidenceBoundary?: EvidenceBoundary;
+  coverage?: CoverageFileEvidence;
   risk: RiskLevel;
   riskScore: number;
   reasons: string[];
@@ -230,6 +260,7 @@ export interface AnalysisReport {
   checks: CheckResult[];
   discoveredChecks: CheckDefinition[];
   notes: string[];
+  coverage?: CoverageArtifactSummary;
   trust: {
     repositoryCodeExecuted: boolean;
     statement: string;
@@ -245,5 +276,7 @@ export interface AnalyzeOptions {
   selectedChecks?: string[];
   timeoutMs?: number;
   maxOutputBytes?: number;
+  coverageLcov?: string;
+  coverageCommit?: string;
   now?: () => Date;
 }

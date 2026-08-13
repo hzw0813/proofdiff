@@ -17,6 +17,7 @@ ProofDiff's safe default performs these local operations:
 - parses JavaScript/TypeScript as data with Babel;
 - parses bounded repository-owned `tsconfig.json` JSONC and `package.json` JSON as data for a narrow static-resolution subset, rejecting metadata symlinks, traversal, `node_modules`, unsupported/ambiguous mappings, and targets outside the repository or owning package;
 - parses Python source with `python -I -S` and `ast.parse`, without importing it;
+- when explicitly supplied, parses LCOV as bounded data only after the user-declared coverage commit resolves to the selected committed diff target; this verifies commit equality but does not independently attest that the artifact was produced by that commit. LCOV source paths outside the repository and ambiguous cross-platform absolute paths are ignored rather than guessed;
 - writes reports only to paths explicitly requested by the user;
 - performs no network requests and sends no telemetry.
 

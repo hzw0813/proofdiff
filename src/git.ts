@@ -107,6 +107,23 @@ async function assertRevision(root: string, value: string): Promise<void> {
   if (result.exitCode !== 0) throw new GitError(`Unknown commit or ref: ${value}`);
 }
 
+export async function resolveRevisionCommit(root: string, value: string): Promise<string> {
+  await assertRevision(root, value);
+  const resolved = (await git(root, ["rev-parse", "--verify", "--end-of-options", `${value}^{commit}`])).trim().toLowerCase();
+  if (!/^[0-9a-f]{40,64}$/.test(resolved)) throw new GitError(`Git returned an invalid commit for: ${value}`);
+  return resolved;
+}
+
+export async function diffTargetCommit(root: string, selection: DiffSelection): Promise<string | null> {
+  if (selection.mode === "base") return await resolveRevisionCommit(root, "HEAD");
+  if (selection.mode === "range" && selection.value) {
+    const match = selection.value.match(/^(.+?)(\.\.\.?)(.+)$/);
+    if (!match?.[3]) return null;
+    return await resolveRevisionCommit(root, match[3]);
+  }
+  return null;
+}
+
 export async function selectDiff(root: string, options: { base?: string; range?: string; staged?: boolean }): Promise<{ selection: DiffSelection; args: string[] }> {
   const selected = Number(options.base !== undefined) + Number(options.range !== undefined) + Number(options.staged === true);
   if (selected > 1) throw new GitError("Choose only one of --base, --range, or --staged.");

@@ -30,7 +30,9 @@ Terminal, JSON, HTML, and GitHub job-summary output are projections of this same
 
 The `verified` machine value is retained for schema compatibility; it is not a runtime-coverage claim. A file labeled **Related test file passed** can still contain bugs, missing assertions, unexecuted symbols, lines, or branches, environmental differences, flaky behavior, or threats outside the discovered graph.
 
-ProofDiff currently stops at the fourth level in this evidence ladder:
+ProofDiff can consume an explicitly supplied LCOV artifact with a declared commit that matches the selected target to add artifact-reported changed-line coverage evidence without executing repository code itself. This is additive evidence and does not change the historical `verified` status algorithm above. The artifact is accepted only when its supplied commit resolves exactly to the committed target of the selected diff. Working-tree/staged selections, commit mismatches, malformed artifacts, ambiguous/out-of-repository paths, and parser bounds fail closed.
+
+The evidence ladder is:
 
 1. changed file observed;
 2. statically related test-like path identified;
@@ -41,7 +43,7 @@ ProofDiff currently stops at the fourth level in this evidence ladder:
 7. relevant assertions exercised;
 8. behavior shown correct.
 
-Levels 5–8 are not observed today. Successful file-scoped test execution must not be interpreted as evidence for them.
+ProofDiff's primary evidence boundary follows this ladder and currently stops at level 4. Supplied LCOV is reported on a separate additive coverage-evidence axis and does not advance the primary boundary or imply that earlier ladder levels were satisfied. When the user-declared coverage commit matches the selected target commit, ProofDiff can report which changed current lines the artifact says received hits. ProofDiff does not independently attest the artifact's provenance, and LCOV does not establish symbol identity, branch execution, test relevance, assertion relevance, or correctness. Partial coverage is reported as partial rather than generalized.
 
 Runner semantics are deliberately narrow:
 
@@ -53,7 +55,7 @@ Observer records travel over a separate bounded control pipe. Missing, malformed
 
 ## Current limitations
 
-- ProofDiff does not ingest runtime code coverage.
+- Coverage ingestion is currently limited to explicitly supplied LCOV plus a user-declared commit that must resolve to the selected target. ProofDiff verifies that equality but does not independently attest artifact provenance. It does not run coverage tools, merge artifacts from different commits, remap source maps, guess CI workspace prefixes, or claim branch/assertion coverage.
 - Compiler resolution is intentionally partial: NodeNext-family extensionless paths, directory package metadata, non-default `moduleSuffixes`, Classic lookup, package or array `extends`, project references, standalone `baseUrl`, `${configDir}`, multiple-wildcard mappings, installed packages, and arbitrary bundler aliases are not resolved.
 - Package resolution is intentionally partial: only the importing package's exact self-exports under an explicit export-aware compiler mode are considered. Hidden package boundaries, versioned or unmodeled conditions, export patterns/arrays, package imports, workspace dependencies, third-party packages, and `node_modules` are not resolved. Compiler aliases also require bounded evidence that the selected config includes the importer.
 - Python namespace packages and dynamic imports may be missed.

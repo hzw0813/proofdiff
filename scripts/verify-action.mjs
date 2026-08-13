@@ -63,6 +63,11 @@ try {
   assert.match(actionDefinition, /resolve-action-base\.mjs/);
   assert.match(actionDefinition, /job-summary:/);
   assert.match(actionDefinition, /default: "true"/);
+  assert.match(actionDefinition, /coverage-lcov:/);
+  assert.match(actionDefinition, /coverage-commit:/);
+  assert.match(actionDefinition, /PROOFDIFF_COVERAGE_LCOV: \$\{\{ inputs\['coverage-lcov'\] \}\}/);
+  assert.match(actionDefinition, /PROOFDIFF_COVERAGE_COMMIT: \$\{\{ inputs\['coverage-commit'\] \}\}/);
+  assert.match(actionDefinition, /args\+=\(--coverage-lcov "\$PROOFDIFF_COVERAGE_LCOV" --coverage-commit "\$PROOFDIFF_COVERAGE_COMMIT"\)/);
   assert.match(actionDefinition, /--github-summary "\$GITHUB_STEP_SUMMARY"/);
   assert.match(actionDefinition, /node "\$GITHUB_ACTION_PATH\/dist\/cli\.js" "\$\{args\[@\]\}"/);
 
@@ -80,6 +85,7 @@ try {
   await cp(path.join(projectRoot, "fixtures", "demo", "after"), fixtureRoot, { recursive: true, force: true });
   await run("git", ["add", "."], fixtureRoot);
   await run("git", ["commit", "-qm", "change"], fixtureRoot);
+  const head = (await run("git", ["rev-parse", "HEAD"], fixtureRoot)).stdout.trim();
   await mkdir(outputRoot, { recursive: true });
 
   const resolver = path.join(actionRoot, "scripts", "resolve-action-base.mjs");
@@ -139,6 +145,14 @@ try {
   assert.match(staticSummaryContent, /Static relationship only: <code>test\/checkout\.test\.js<\/code>/);
   assert.doesNotMatch(staticSummaryContent, new RegExp(fixtureRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
+  const coverageFile = path.join(outputRoot, "lcov.info");
+  await writeFile(coverageFile, "TN:\nSF:src/discount.js\nDA:2,1\nDA:3,1\nDA:4,1\nend_of_record\n", "utf8");
+  const coverageRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--coverage-lcov", coverageFile, "--coverage-commit", head, "--fail-on", "failed", "--no-color"], fixtureRoot);
+  assert.match(coverageRun.stdout, /Coverage input: ACCEPTED/);
+  assert.match(coverageRun.stdout, /3\/3 changed lines reported with hits by the supplied artifact/);
+  assert.match(coverageRun.stdout, /ProofDiff did not execute code to produce it/);
+  assert.doesNotMatch(coverageRun.stdout, /changed lines recorded as executed|line-execution evidence/);
+
   const trustedHtml = path.join(outputRoot, "trusted.html");
   const trustedSummary = path.join(outputRoot, "trusted-summary.md");
   const trustedRun = await run(process.execPath, [cli, "--repo", fixtureRoot, "--base", base, "--run-checks", "--fail-on", "failed", "--no-color", "--html", trustedHtml, "--github-summary", trustedSummary], fixtureRoot);
@@ -151,7 +165,7 @@ try {
   assert.match(trustedSummaryContent, /Observed passing target: <code>test\/checkout\.test\.js<\/code>/);
   assert.match(trustedSummaryContent, /does not show that changed code ran or that behavior is correct/);
 
-  process.stdout.write("GitHub Action smoke passed: production-only install, safe PR base auto-resolution, static default, trusted checks, base diff, HTML output, and bounded job summaries.\n");
+  process.stdout.write("GitHub Action smoke passed: production-only install, safe PR base auto-resolution, static default, declared-commit-matched coverage input, trusted checks, base diff, HTML output, and bounded job summaries.\n");
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }

@@ -92,14 +92,14 @@ export interface CheckResult extends CheckDefinition {
     targetObservations?: TestTargetObservation[];
 }
 export interface EvidenceItem {
-    kind: "passing-check" | "failing-check" | "executed-test" | "related-test" | "static-relationship" | "inference" | "limitation";
+    kind: "passing-check" | "failing-check" | "executed-test" | "coverage-artifact" | "related-test" | "static-relationship" | "inference" | "limitation";
     label: string;
     detail: string;
     confidence: Confidence;
     checkId?: string;
 }
 export type StrongestEvidence = "change-observed" | "static-relationship" | "passing-check" | "related-test-file-passed" | "verification-failure";
-export type EvidenceBoundaryStage = "static-relationship" | "runner-qualification" | "target-invocation" | "runtime-observation" | "failure-attribution" | "changed-code-execution";
+export type EvidenceBoundaryStage = "static-relationship" | "runner-qualification" | "target-invocation" | "runtime-observation" | "failure-attribution" | "changed-code-execution" | "changed-line-coverage" | "relevant-assertion";
 export type EvidenceStopReason = "no-related-test" | "unsupported-semantics" | "runner-unqualified" | "checks-not-run" | "target-not-invoked" | "no-applicable-check" | "opaque-passing-check" | "zero-tests" | "all-skipped" | "observer-inconclusive" | "failure-unattributed" | "target-failed" | "check-failed" | "changed-code-execution-unobserved";
 export type EvidenceNextActionKind = "inspect-static-limitations" | "review-run-checks" | "add-supported-check" | "qualify-related-test" | "inspect-target-selection" | "inspect-observer" | "inspect-failure";
 export interface EvidenceNextAction {
@@ -114,6 +114,30 @@ export interface EvidenceBoundary {
     detail: string;
     proofdiffFailClosed: boolean;
     nextAction: EvidenceNextAction | null;
+}
+export type CoverageState = "all-covered" | "partially-covered" | "uncovered" | "unmeasured" | "not-applicable";
+export interface CoverageFileEvidence {
+    state: CoverageState;
+    changedLines: number;
+    measuredChangedLines: number;
+    coveredChangedLines: number;
+    uncoveredChangedLines: number;
+    unmeasuredChangedLines: number;
+    uncoveredLineNumbers: number[];
+    unmeasuredLineNumbers: number[];
+    detail: string;
+}
+export interface CoverageArtifactSummary {
+    format: "lcov";
+    artifact: string;
+    suppliedCommit: string;
+    resolvedCommit: string;
+    targetCommit: string | null;
+    commitBinding: "declared-commit-matched" | "commit-mismatch" | "uncommitted-selection";
+    accepted: boolean;
+    filesParsed: number;
+    lineRecords: number;
+    detail: string;
 }
 export type RiskLevel = "critical" | "high" | "medium" | "low";
 export interface FileAssessment {
@@ -130,6 +154,7 @@ export interface FileAssessment {
     }>;
     status: VerificationStatus;
     evidenceBoundary?: EvidenceBoundary;
+    coverage?: CoverageFileEvidence;
     risk: RiskLevel;
     riskScore: number;
     reasons: string[];
@@ -168,6 +193,7 @@ export interface AnalysisReport {
     checks: CheckResult[];
     discoveredChecks: CheckDefinition[];
     notes: string[];
+    coverage?: CoverageArtifactSummary;
     trust: {
         repositoryCodeExecuted: boolean;
         statement: string;
@@ -182,6 +208,8 @@ export interface AnalyzeOptions {
     selectedChecks?: string[];
     timeoutMs?: number;
     maxOutputBytes?: number;
+    coverageLcov?: string;
+    coverageCommit?: string;
     now?: () => Date;
 }
 //# sourceMappingURL=types.d.ts.map

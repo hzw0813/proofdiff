@@ -16,6 +16,12 @@ inputs:
     description: Failure policy (never, failed, unverified, partial, high-risk).
     required: false
     default: failed
+  coverage-lcov:
+    description: Existing LCOV artifact to read as bounded data. Must be paired with coverage-commit.
+    required: false
+  coverage-commit:
+    description: User-declared commit for the LCOV artifact. ProofDiff verifies it matches the selected committed diff target but does not independently attest artifact provenance.
+    required: false
   html:
     description: HTML report output path. Leave empty to disable.
     required: false
@@ -43,12 +49,19 @@ runs:
         PROOFDIFF_RUN_CHECKS: ${{ inputs['run-checks'] }}
         PROOFDIFF_FAIL_ON: ${{ inputs['fail-on'] }}
         PROOFDIFF_HTML: ${{ inputs.html }}
+        PROOFDIFF_COVERAGE_LCOV: ${{ inputs['coverage-lcov'] }}
+        PROOFDIFF_COVERAGE_COMMIT: ${{ inputs['coverage-commit'] }}
         PROOFDIFF_JOB_SUMMARY: ${{ inputs['job-summary'] }}
       run: |
         args=(--repo "$GITHUB_WORKSPACE" --fail-on "$PROOFDIFF_FAIL_ON" --no-color)
         resolved_base="$(node "$GITHUB_ACTION_PATH/scripts/resolve-action-base.mjs")"
         if [[ -n "$resolved_base" ]]; then args+=(--base "$resolved_base"); fi
         if [[ "$PROOFDIFF_RUN_CHECKS" == "true" ]]; then args+=(--run-checks); fi
+        if [[ ( -n "$PROOFDIFF_COVERAGE_LCOV" && -z "$PROOFDIFF_COVERAGE_COMMIT" ) || ( -z "$PROOFDIFF_COVERAGE_LCOV" && -n "$PROOFDIFF_COVERAGE_COMMIT" ) ]]; then
+          echo "proofdiff: coverage-lcov and coverage-commit must be supplied together." >&2
+          exit 2
+        fi
+        if [[ -n "$PROOFDIFF_COVERAGE_LCOV" ]]; then args+=(--coverage-lcov "$PROOFDIFF_COVERAGE_LCOV" --coverage-commit "$PROOFDIFF_COVERAGE_COMMIT"); fi
         if [[ -n "$PROOFDIFF_HTML" ]]; then args+=(--html "$PROOFDIFF_HTML"); fi
         if [[ "$PROOFDIFF_JOB_SUMMARY" == "true" ]]; then
           args+=(--github-summary "$GITHUB_STEP_SUMMARY")
