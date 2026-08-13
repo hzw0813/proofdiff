@@ -87,6 +87,12 @@ export function renderTerminalReport(report: AnalysisReport, options: TerminalRe
     else if (executed) output.push(`  ${colors.green("Evidence:")} ${safe(executed.label)} — ${safe(executed.detail)}`);
     else if (passing) output.push(`  ${colors.green("Evidence:")} ${safe(passing.label)} — ${safe(passing.detail)}`);
     else output.push(`  ${colors.gray("Evidence:")} none observed; status is not a safety claim.`);
+    if (assessment.evidenceBoundary) {
+      const boundary = assessment.evidenceBoundary;
+      const failClosed = boundary.proofdiffFailClosed ? " · fail-closed" : "";
+      output.push(`  ${colors.cyan("Boundary:")} ${safe(`${boundary.stage} · ${boundary.reason}${failClosed} — ${boundary.detail}`)}`);
+      if (boundary.nextAction) output.push(`  ${colors.yellow("Next:")} ${safe(boundary.nextAction.detail)}`);
+    }
     if (assessment.executedTests.length > 0) {
       output.push(`  ${colors.green("Executed tests:")} ${truncate(safe(assessment.executedTests.slice(0, 4).join(", ")), width - 19)}${assessment.executedTests.length > 4 ? ` (+${assessment.executedTests.length - 4})` : ""}`);
     } else if (assessment.testExecutions.length > 0) {
