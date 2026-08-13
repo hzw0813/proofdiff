@@ -48,7 +48,8 @@ write permission. The summary includes:
 - a bounded per-file line for the exact existing status;
 - passing target observations, attributed failures, zero/skipped/unavailable
   observations, static-only relationships, or no supported relationship;
-- up to three bounded analysis notes and a context-aware next step;
+- every fixed source-free actionable limitation, followed by ordinary bounded
+  context and a context-aware next step;
 - the explicit boundary that a target pass is not changed-code execution or
   correctness;
 - direction to logs and the configured HTML artifact for full provenance.
@@ -58,6 +59,12 @@ allow no more than 50 files and 10 paths per file, and individual untrusted text
 fields are truncated. Repository-controlled text is escaped and bidirectional
 format controls are removed. Absolute HTML-report paths are reduced to their
 basename.
+
+Ordinary context keeps a three-note display cap. The fixed actionable set has a
+separate worst-case cap of eight messages: four diagnostic categories and four
+explicit structural limitations. This prevents the ordinary cap from hiding
+the reason an `Unknown` result is incomplete while keeping arbitrary diagnostic
+content out of the summary.
 
 The summary excludes source text, symbol names, commands, check output,
 qualification explanations, observer payloads, repository roots, and absolute
@@ -108,6 +115,13 @@ Focused semantic coverage asserts:
   analysis, and explicit bounds. Other diagnostics reduce to a count; parser
   source excerpts cannot enter the job summary, and any static limitation takes
   precedence over suggesting runtime execution.
+
+An independent adversarial review reproduced and drove fixes for partial
+failure-attribution wording, parser-excerpt privacy, actionable unknown-reason
+suppression, and note-priority saturation. The reviewer accepted final renderer
+head `2472fc70273affc8bb8ca5a58c5a215d534170b3`: all fixed actionable categories
+remain visible, arbitrary diagnostics remain content-hidden, and the concise
+surface remains bounded.
 
 ## Compatibility and trust effect
 
