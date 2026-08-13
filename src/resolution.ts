@@ -59,6 +59,7 @@ interface CompilerConfig {
   projectExcludes?: ProjectPattern[];
   allowJs?: boolean;
   outDir?: string;
+  declarationDir?: string;
 }
 
 interface ProjectPattern {
@@ -515,6 +516,7 @@ export class BoundedStaticModuleResolver {
       ...(parent?.projectExcludes === undefined ? {} : { projectExcludes: [...parent.projectExcludes] }),
       ...(parent?.allowJs === undefined ? {} : { allowJs: parent.allowJs }),
       ...(parent?.outDir === undefined ? {} : { outDir: parent.outDir }),
+      ...(parent?.declarationDir === undefined ? {} : { declarationDir: parent.declarationDir }),
     };
 
     if (Object.hasOwn(parsed, "files")) {
@@ -561,6 +563,12 @@ export class BoundedStaticModuleResolver {
       const resolved = joinRepositoryPath(path.posix.dirname(configPath), options.outDir);
       if (resolved === null) return this.rejectConfig(configPath, "outDir must remain inside the repository");
       config.outDir = resolved;
+    }
+    if (options && Object.hasOwn(options, "declarationDir")) {
+      if (typeof options.declarationDir !== "string" || options.declarationDir.includes("${")) return this.rejectConfig(configPath, "declarationDir must be a repository-relative string");
+      const resolved = joinRepositoryPath(path.posix.dirname(configPath), options.declarationDir);
+      if (resolved === null) return this.rejectConfig(configPath, "declarationDir must remain inside the repository");
+      config.declarationDir = resolved;
     }
     if (options && Object.hasOwn(options, "paths")) {
       const paths = this.parsePaths(configPath, options.paths);
@@ -612,7 +620,8 @@ export class BoundedStaticModuleResolver {
     const included = config.projectIncludes?.some((pattern) => pattern.expression.test(importer)) ?? isWithin(path.posix.dirname(config.configPath) === "." ? "" : path.posix.dirname(config.configPath), importer);
     if (!included) return false;
     const defaultExcluded = importer.split("/").some((segment) => ["node_modules", "bower_components", "jspm_packages"].includes(segment))
-      || (config.outDir !== undefined && isWithin(config.outDir, importer));
+      || (config.outDir !== undefined && isWithin(config.outDir, importer))
+      || (config.declarationDir !== undefined && isWithin(config.declarationDir, importer));
     if (defaultExcluded || config.projectExcludes?.some((pattern) => pattern.expression.test(importer))) return false;
     return true;
   }

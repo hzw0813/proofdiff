@@ -49,7 +49,7 @@ Before selecting a conditional export, an unmodeled `types@...` condition blocks
 
 The nearest compiler configuration is applicable only when its supported project-membership declarations include the importer. Explicit `files` is exact; supported `include`/`exclude` patterns are bounded and repository-relative. An importer excluded from the nearest project does not fall through to an ancestor mapping because ProofDiff does not know which project invocation governs that file.
 
-The independent re-review extended that invariant: project selectors inherit from their defining configuration unless individually overridden; explicit `files` and matched `include` entries form a union; `exclude` applies to included files; JavaScript-family importers require effective `allowJs: true`; and default membership excludes the effective `outDir` plus standard dependency directories. These paths and patterns retain the configuration that defined them. Unsupported or non-member importers fail closed.
+The independent re-review extended that invariant: project selectors inherit from their defining configuration unless individually overridden; explicit `files` and matched `include` entries form a union; `exclude` applies to included files; JavaScript-family importers require effective `allowJs: true`; and default membership excludes the effective `outDir`, `declarationDir`, and standard dependency directories. These paths and patterns retain the configuration that defined them. Unsupported or non-member importers fail closed.
 
 The selected export target still must satisfy all existing exact-key, condition, explicit-extension, precedence, package-boundary, containment, symlink, inventory, and expansion checks.
 

@@ -346,6 +346,14 @@ test("compiler paths reject missing evidence, preserve case, normalize Windows t
   assert.equal(defaultOutputExclusion.graph.staticResolutions.length, 0);
   assert.equal(hasEdge(defaultOutputExclusion.graph, "dist/test/consumer.test.ts", "src/value.ts"), false);
 
+  const defaultDeclarationExclusion = await fixtureGraph(context, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { moduleResolution: "Bundler", paths: { "@value": ["./src/value.ts"] }, declaration: true, declarationDir: "types" } }),
+    "src/value.ts": "export const value = true;\n",
+    "types/test/consumer.test.ts": "import { value } from '@value'; void value;\n",
+  });
+  assert.equal(defaultDeclarationExclusion.graph.staticResolutions.length, 0);
+  assert.equal(hasEdge(defaultDeclarationExclusion.graph, "types/test/consumer.test.ts", "src/value.ts"), false);
+
   const missingAndBaseUrlOnly = await fixtureGraph(context, {
     "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: "src", paths: { "@missing": ["missing.ts"] } } }),
     "src/looks-bare.ts": "export {};\n",
