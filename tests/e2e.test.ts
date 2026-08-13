@@ -33,9 +33,11 @@ test("CLI returns actionable usage errors and CI failure codes", async (context)
   const root = await initializeRepository({ "package.json": JSON.stringify({ scripts: { test: "node -e \"process.exit(1)\"" } }), "a.js": "export const a = 1;\n" });
   context.after(() => rm(root, { recursive: true, force: true }));
   await writeFiles(root, { "a.js": "export const a = 2;\n" });
-  const failed = runCli(["--repo", root, "--run-checks", "--no-color"]);
+  const summaryPath = path.join(root, "failed-summary.md");
+  const failed = runCli(["--repo", root, "--run-checks", "--github-summary", summaryPath, "--no-color"]);
   assert.equal(failed.status, 1);
   assert.match(failed.stdout, /FAILED/);
+  assert.match(await readFile(summaryPath, "utf8"), /\*\*Verification failed\*\*/);
   const invalid = runCli(["--repo", root, "--check", "test"]);
   assert.equal(invalid.status, 2);
   assert.match(invalid.stderr, /requires --run-checks/);
