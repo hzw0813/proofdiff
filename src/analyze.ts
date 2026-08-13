@@ -67,7 +67,22 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
   const assessments = stableSort(
     files.map((file) => {
       const assessment = assessFile(file, graph, checks);
-      return { ...assessment, evidenceBoundary: explainEvidenceBoundary(assessment, checks) };
+      const evidenceBoundary = explainEvidenceBoundary(assessment, checks);
+      const failClosed = evidenceBoundary.proofdiffFailClosed ? " ProofDiff intentionally failed closed at this boundary." : "";
+      const nextAction = evidenceBoundary.nextAction ? ` Next action: ${evidenceBoundary.nextAction.detail}` : "";
+      return {
+        ...assessment,
+        evidenceBoundary,
+        evidence: [
+          ...assessment.evidence,
+          {
+            kind: "limitation" as const,
+            label: `Evidence boundary · ${evidenceBoundary.stage} · ${evidenceBoundary.reason}`,
+            detail: `${evidenceBoundary.detail}${failClosed}${nextAction}`,
+            confidence: "high" as const,
+          },
+        ],
+      };
     }),
     (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path),
   );
