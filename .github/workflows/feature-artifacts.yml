@@ -37,3 +37,33 @@ jobs:
           name: actionable-unknowns-generated
           path: feature-artifacts
           if-no-files-found: error
+
+  commit-generated:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/actionable-unknowns
+      - uses: actions/download-artifact@v8
+        with:
+          name: actionable-unknowns-generated
+          path: generated
+      - name: Apply generated outputs without executing repository code
+        shell: bash
+        run: |
+          rm -rf dist examples
+          cp -R generated/dist dist
+          cp -R generated/examples examples
+          cp generated/controlled-results.candidate.json evaluation/controlled-results.candidate.json
+          git add dist examples evaluation/controlled-results.candidate.json
+          if git diff --cached --quiet; then
+            echo "Generated outputs already match the branch."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh actionable unknowns generated outputs"
+          git push origin HEAD:feature/actionable-unknowns
