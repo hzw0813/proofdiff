@@ -32,7 +32,7 @@ function inlineCode(value: string): string {
   return `<code>${escapeHtml(bounded)}</code>`;
 }
 
-function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitation: boolean } {
+function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitation: boolean; requiredVisibleCount: number } {
   const staticLimitationNotes = new Set([
     "Could not parse package.json; check discovery skipped its scripts.",
     "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
@@ -70,6 +70,7 @@ function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitati
   const categories = categoryRules.filter((category) => notes.some((note) => category.pattern.test(note)));
   const safe = categories.map((category) => category.message);
   safe.push(...exactPriority.filter((candidate) => notes.includes(candidate)));
+  const requiredVisibleCount = categories.length + exactPriority.slice(0, 4).filter((candidate) => notes.includes(candidate)).length;
   if (notes.some((note) => note.startsWith("Working-tree selection includes "))) {
     safe.push("Working-tree selection includes Git-visible files under a common generated directory; inspect Git status and ignore rules if unintended.");
   }
@@ -77,7 +78,7 @@ function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitati
   const knownCount = notes.filter((note) => exact.has(note) || note.startsWith("Working-tree selection includes ")).length;
   const omitted = Math.max(0, notes.length - knownCount - categorized);
   if (omitted > 0) safe.push(`${omitted} additional static-analysis ${omitted === 1 ? "diagnostic is" : "diagnostics are"} available only in the detailed report.`);
-  return { notes: safe, hasStaticLimitation: notes.some((note) => staticLimitationNotes.has(note)) || categories.length > 0 || omitted > 0 };
+  return { notes: safe, hasStaticLimitation: notes.some((note) => staticLimitationNotes.has(note)) || categories.length > 0 || omitted > 0, requiredVisibleCount };
 }
 
 function pathList(paths: string[], limit: number): string {
@@ -162,9 +163,10 @@ export function renderGithubSummary(report: AnalysisReport, options: GithubSumma
 
   const noteProjection = safeSummaryNotes(report.notes);
   if (noteProjection.notes.length > 0) {
+    const visibleNoteCount = Math.max(3, noteProjection.requiredVisibleCount);
     output.push("### Analysis notes", "");
-    for (const note of noteProjection.notes.slice(0, 3)) output.push(`- ${note}`);
-    if (noteProjection.notes.length > 3) output.push(`- _${noteProjection.notes.length - 3} more notes are available in the detailed report._`);
+    for (const note of noteProjection.notes.slice(0, visibleNoteCount)) output.push(`- ${note}`);
+    if (noteProjection.notes.length > visibleNoteCount) output.push(`- _${noteProjection.notes.length - visibleNoteCount} more notes are available in the detailed report._`);
     output.push("");
   }
 

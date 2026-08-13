@@ -185,6 +185,23 @@ test("GitHub summary hides unclassified diagnostic content while preserving its 
   assert.doesNotMatch(summary, /SUPER_SECRET|\/tmp\/<repo>|`run-checks: true`/);
 });
 
+test("GitHub summary never drops a fixed actionable category behind its ordinary note cap", () => {
+  const many = structuredClone(report);
+  many.notes = [
+    "tsconfig.json: malformed compiler configuration was rejected.",
+    "src/a.ts: nearest compiler configuration tsconfig.json does not include the importer.",
+    "src/b.ts: did not resolve '@b' through compiler paths.",
+    "Skipped src/large.ts: unreadable, binary, or larger than 1 MB.",
+    "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.",
+  ];
+  const summary = renderGithubSummary(many);
+  assert.match(summary, /Compiler configuration could not be parsed/);
+  assert.match(summary, /did not establish that it applies/);
+  assert.match(summary, /unsupported or ambiguous case/);
+  assert.match(summary, /could not be structurally analyzed/);
+  assert.match(summary, /1 more notes are available in the detailed report/);
+});
+
 test("GitHub summary does not recommend rerunning checks when execution was already requested but unsupported", () => {
   const unsupported = structuredClone(report);
   unsupported.notes = ["Check execution was requested, but no supported checks were discovered."];
