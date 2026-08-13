@@ -285,8 +285,8 @@ export async function discoverChecks(root: string): Promise<{ checks: CheckDefin
         });
       }
       if (manifest.workspaces !== undefined) notes.push("Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.");
-    } catch (error) {
-      notes.push(`Could not parse package.json: ${error instanceof Error ? error.message : String(error)}`);
+    } catch {
+      notes.push("Could not parse package.json; check discovery skipped its scripts.");
     }
   }
 

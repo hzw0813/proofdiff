@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { rm } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
+import { renderGithubSummary } from "../src/report/github.js";
 import { initializeRepository, writeFiles } from "./helpers.js";
 
 const baseline = {
@@ -348,6 +349,16 @@ test("a partially localized targeted batch fails closed for an ambiguous related
   ]);
   assert.equal(assessment?.status, "verification-failed");
   assert.ok(assessment?.evidence.some((item) => item.kind === "failing-check" && item.checkId === targeted.id));
+  assert.ok(assessment);
+  const valueReport = structuredClone(report);
+  valueReport.assessments = [assessment];
+  valueReport.summary.filesChanged = 1;
+  valueReport.summary.counts = { verified: 0, "partially-verified": 0, unverified: 0, unknown: 0, "verification-failed": 1 };
+  const valueSummary = renderGithubSummary(valueReport);
+  assert.match(valueSummary, /failed without complete attribution/);
+  assert.match(valueSummary, /tests\/test_import\.py: not-observed/);
+  assert.match(valueSummary, /Independently passing target: <code>tests\/test_pass\.py<\/code>/);
+  assert.doesNotMatch(valueSummary, /Attributed failed target: <code>tests\/test_pass\.py/);
 });
 
 test("mixed targeted batches attribute pass, zero, and failure to exact paths", async (context) => {

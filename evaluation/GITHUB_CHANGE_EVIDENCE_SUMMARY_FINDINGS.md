@@ -94,12 +94,17 @@ Focused semantic coverage asserts:
 - zero-test, skipped, and unavailable observations remain non-strengthening;
 - attributed and unattributed relevant failures remain visible;
 - a mixed pass plus failure does not let the pass erase the failure;
+- a partially localized process failure separately names attributed failures,
+  unavailable related targets, and independently passing targets;
 - an execution request with no supported checks does not recommend merely
   enabling execution again;
 - hostile HTML/Markdown, newlines, control characters, bidirectional controls,
   excessive paths, notes, and absolute repository paths are escaped, removed,
   redacted, or bounded;
 - the GitHub renderer never includes symbols, source, commands, or check output.
+- malformed metadata parse errors use a fixed report note, while the summary
+  projects only fixed safe note categories and reduces all other diagnostics to
+  a count; parser source excerpts cannot enter the job summary.
 
 ## Compatibility and trust effect
 

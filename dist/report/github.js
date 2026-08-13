@@ -21,16 +21,24 @@ function inlineCode(value) {
     const bounded = singleLine.length > 240 ? `${singleLine.slice(0, 239)}…` : singleLine;
     return `<code>${escapeHtml(bounded)}</code>`;
 }
-function summaryText(value, repositoryRoot) {
-    let sanitized = sanitizeControlCharacters(value)
-        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
-        .replace(/[\r\n\t]+/g, " ");
-    for (const root of new Set([repositoryRoot, repositoryRoot.replaceAll("\\", "/"), repositoryRoot.replaceAll("/", "\\")])) {
-        if (root.length > 1)
-            sanitized = sanitized.replaceAll(root, "<repository>");
+function safeSummaryNotes(notes) {
+    const exact = new Set([
+        "Could not parse package.json; check discovery skipped its scripts.",
+        "Workspace package detected; root scripts are discovered, but package-level scripts are not inferred automatically.",
+        "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
+        "Runner-qualified targeted test execution was limited to the first 100 statically impacted paths.",
+        "No changes matched the selected diff.",
+        "Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.",
+        "Check execution was requested, but no supported checks were discovered.",
+    ]);
+    const safe = notes.filter((note) => exact.has(note));
+    if (notes.some((note) => note.startsWith("Working-tree selection includes "))) {
+        safe.push("Working-tree selection includes Git-visible files under a common generated directory; inspect Git status and ignore rules if unintended.");
     }
-    const bounded = sanitized.length > 320 ? `${sanitized.slice(0, 319)}…` : sanitized;
-    return escapeHtml(bounded);
+    const omitted = notes.length - safe.length;
+    if (omitted > 0)
+        safe.push(`${omitted} additional static-analysis ${omitted === 1 ? "diagnostic is" : "diagnostics are"} available only in the detailed report.`);
+    return safe;
 }
 function pathList(paths, limit) {
     const displayed = paths.slice(0, limit).map(inlineCode).join(", ");
@@ -38,14 +46,25 @@ function pathList(paths, limit) {
 }
 function targetEvidence(item, maxPaths) {
     if (item.status === "verification-failed") {
-        const outcomes = item.testExecutions.map((execution) => `${execution.path} (${execution.status})`);
-        const attributed = outcomes.length > 0
-            ? `Target ${outcomes.length === 1 ? "outcome" : "outcomes"}: ${pathList(outcomes, maxPaths)}.`
-            : "An applicable check failed, errored, or timed out; no exact target outcome was available.";
-        const alsoPassed = item.executedTests.length > 0
-            ? ` A passing target was also observed: ${pathList(item.executedTests, maxPaths)}; it does not erase the relevant failure.`
-            : "";
-        return `${attributed}${alsoPassed}`;
+        const failedTargets = item.testExecutions.filter((execution) => execution.status !== "passed").map((execution) => `${execution.path} (${execution.status})`);
+        const ambiguousTargets = item.evidence
+            .filter((entry) => entry.kind === "limitation" && entry.checkId !== undefined)
+            .map((entry) => entry.label);
+        const unattributed = item.evidence.some((entry) => entry.kind === "failing-check" && /did not reliably attribute|failed closed/i.test(entry.detail));
+        const details = [];
+        if (failedTargets.length > 0)
+            details.push(`Attributed failed ${failedTargets.length === 1 ? "target" : "targets"}: ${pathList(failedTargets, maxPaths)}.`);
+        if (unattributed) {
+            details.push(ambiguousTargets.length > 0
+                ? `The targeted process also failed without complete attribution; ambiguous related ${ambiguousTargets.length === 1 ? "target" : "targets"}: ${pathList(ambiguousTargets, maxPaths)}.`
+                : "The targeted process also failed without complete target attribution, so ProofDiff failed closed.");
+        }
+        else if (failedTargets.length === 0) {
+            details.push("An applicable check failed, errored, or timed out; no exact failed target outcome was available.");
+        }
+        if (item.executedTests.length > 0)
+            details.push(`Independently passing ${item.executedTests.length === 1 ? "target" : "targets"}: ${pathList(item.executedTests, maxPaths)}; ${item.executedTests.length === 1 ? "it does" : "they do"} not erase the relevant failure.`);
+        return details.join(" ");
     }
     if (item.executedTests.length > 0) {
         return `Observed passing ${item.executedTests.length === 1 ? "target" : "targets"}: ${pathList(item.executedTests, maxPaths)}. At least one non-skipped test was observed for each named target.`;
@@ -100,12 +119,13 @@ export function renderGithubSummary(report, options = {}) {
     if (report.assessments.length > maxFiles) {
         output.push(`_${report.assessments.length - maxFiles} more changed ${report.assessments.length - maxFiles === 1 ? "file is" : "files are"} omitted from this bounded summary._`, "");
     }
-    if (report.notes.length > 0) {
+    const summaryNotes = safeSummaryNotes(report.notes);
+    if (summaryNotes.length > 0) {
         output.push("### Analysis notes", "");
-        for (const note of report.notes.slice(0, 3))
-            output.push(`- ${summaryText(note, report.repository.root)}`);
-        if (report.notes.length > 3)
-            output.push(`- _${report.notes.length - 3} more notes are available in the detailed report._`);
+        for (const note of summaryNotes.slice(0, 3))
+            output.push(`- ${note}`);
+        if (summaryNotes.length > 3)
+            output.push(`- _${summaryNotes.length - 3} more notes are available in the detailed report._`);
         output.push("");
     }
     if (report.summary.overallStatus === "verification-failed") {

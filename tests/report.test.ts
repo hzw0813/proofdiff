@@ -106,7 +106,7 @@ test("GitHub summary distinguishes observed, static-only, failed, and unknown ev
   const hostile = structuredClone(report.assessments[0]!);
   hostile.file.path = `src/</code><script>alert(1)</script>\n\u202Eunknown.ts${"x".repeat(300)}`;
   github.assessments = [observed, staticOnly, failed, hostile];
-  github.notes = [`Analysis stopped at /tmp/<repo>/src and \u202Eneeds review.${"n".repeat(400)}`];
+  github.notes = [`Analysis stopped at /tmp/<repo>/src and \u202Econtains SUPER_SECRET_12345.${"n".repeat(400)}`];
   github.summary = {
     ...github.summary,
     filesChanged: 4,
@@ -119,8 +119,8 @@ test("GitHub summary distinguishes observed, static-only, failed, and unknown ev
   assert.match(summary, /^## ProofDiff · Change Evidence/);
   assert.match(summary, /Observed passing target: <code>test\/observed\.test\.ts<\/code>/);
   assert.match(summary, /Static relationship only: <code>test\/static\.test\.ts<\/code>\. No passing target observation was recorded/);
-  assert.match(summary, /Target outcome: <code>test\/failing\.test\.ts \(failed\)<\/code>/);
-  assert.match(summary, /passing target was also observed: <code>test\/also-passed\.test\.ts<\/code>; it does not erase the relevant failure/);
+  assert.match(summary, /Attributed failed target: <code>test\/failing\.test\.ts \(failed\)<\/code>/);
+  assert.match(summary, /Independently passing target: <code>test\/also-passed\.test\.ts<\/code>; it does not erase the relevant failure/);
   assert.match(summary, /No supported related test-like path was established/);
   assert.match(summary, /does not show that changed code ran or that behavior is correct/);
   assert.match(summary, /configured HTML report <code>proofdiff-report\.html<\/code>/);
@@ -130,8 +130,8 @@ test("GitHub summary distinguishes observed, static-only, failed, and unknown ev
   assert.match(summary, /…<\/code>/);
   assert.doesNotMatch(summary, /\/tmp\/<repo>/);
   assert.match(summary, /Analysis notes/);
-  assert.match(summary, /Analysis stopped at &lt;repository&gt;\/src and needs review/);
-  assert.match(summary, /…/);
+  assert.match(summary, /1 additional static-analysis diagnostic is available only in the detailed report/);
+  assert.doesNotMatch(summary, /SUPER_SECRET|Analysis stopped/);
   assert.match(summary, /Next step:.*relevant failure and full provenance/);
   assert.doesNotMatch(summary, /function · run/);
 });
@@ -162,7 +162,7 @@ test("GitHub summary exposes an unattributed applicable failure without inventin
   failed.summary.overallStatus = "verification-failed";
   failed.summary.counts = { verified: 0, "partially-verified": 0, unverified: 0, unknown: 0, "verification-failed": 1 };
   const summary = renderGithubSummary(failed, { htmlPath: "/private/runner/work/repo/proofdiff-report.html" });
-  assert.match(summary, /An applicable check failed, errored, or timed out; no exact target outcome was available/);
+  assert.match(summary, /An applicable check failed, errored, or timed out; no exact failed target outcome was available/);
   assert.match(summary, /configured HTML report <code>proofdiff-report\.html<\/code>/);
   assert.doesNotMatch(summary, /private\/runner/);
 });
@@ -177,7 +177,7 @@ test("GitHub summary preserves bounded analysis limitations and static-only guid
   ];
   const summary = renderGithubSummary(limited);
   assert.match(summary, /Repository source analysis was limited to the first 5,000 tracked\/unignored files/);
-  assert.match(summary, /1 more notes are available in the detailed report/);
+  assert.match(summary, /3 additional static-analysis diagnostics are available only in the detailed report/);
   assert.match(summary, /Keep static-only analysis for untrusted changes/);
   assert.match(summary, /`run-checks: true` only in a secret-free isolated job/);
 });

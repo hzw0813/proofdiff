@@ -8,7 +8,7 @@
 ### Changed files
 
 - ❌ **Verification failed** · <code>src/tax.js</code> · CRITICAL risk
-  - Target outcome: <code>test/tax.test.js (failed)</code>.
+  - Attributed failed target: <code>test/tax.test.js (failed)</code>.
 
 **Next step:** Inspect the relevant failure and full provenance; a passing target elsewhere does not erase it.
 
