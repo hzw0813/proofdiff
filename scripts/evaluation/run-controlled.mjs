@@ -139,6 +139,33 @@ const controls = [
     }
   },
   {
+    id: "typescript-metadata-ownership-unresolved",
+    purpose: "An ignored nearer package boundary and a nearest compiler config that excludes the importer cannot create static relationships.",
+    files: {
+      ".gitignore": "nested/package.json\n",
+      "package.json": JSON.stringify({ name: "root-control", private: true, type: "module", exports: { "./root": "./src/root.js" } }, null, 2),
+      "tsconfig.json": JSON.stringify({ compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext" }, include: ["nested/test/**/*.ts", "src/**/*.ts"] }, null, 2),
+      "src/root.ts": "export const root = true;\n",
+      "nested/package.json": JSON.stringify({ name: "nested-control", private: true, type: "module" }, null, 2),
+      "nested/tsconfig.json": JSON.stringify({ compilerOptions: { module: "ESNext", moduleResolution: "Bundler", baseUrl: ".", paths: { "@wrong": ["src/wrong.ts"] } }, files: ["src/other.ts"] }, null, 2),
+      "nested/src/other.ts": "export {};\n",
+      "nested/src/wrong.ts": "export const wrong = true;\n",
+      "nested/test/ownership.test.ts": "import { root } from 'root-control/root'; import { wrong } from '@wrong'; export const observed = root && wrong;\n"
+    },
+    changes: {
+      "src/root.ts": "export const root = true;\n// controlled hidden package mutation\n",
+      "nested/src/wrong.ts": "export const wrong = true;\n// controlled project membership mutation\n"
+    },
+    runChecks: false,
+    verify(report) {
+      return report.assessments.length === 2
+        && report.assessments.every((assessment) => assessment.status === "unknown")
+        && report.assessments.every((assessment) => !assessment.relatedTests.includes("nested/test/ownership.test.ts"))
+        && report.assessments.every((assessment) => assessment.executedTests.length === 0)
+        && report.trust.repositoryCodeExecuted === false;
+    }
+  },
+  {
     id: "directory-support-file-targeted-pass",
     purpose: "A support module under tests/ remains statically test-like but cannot produce runnable evidence without runner qualification.",
     files: {
