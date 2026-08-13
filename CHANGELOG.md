@@ -4,6 +4,10 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+### Changed
+
+- GitHub Action pull-request runs can now omit `base`: ProofDiff auto-resolves the exact PR base commit SHA from GitHub's event payload, while explicit `base` still wins and non-PR events preserve working-tree fallback. Missing or malformed PR metadata fails closed instead of silently analyzing an empty clean working tree.
+
 ## [0.2.0] - 2026-08-13
 
 ### Changed
