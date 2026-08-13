@@ -106,6 +106,7 @@ test("GitHub summary distinguishes observed, static-only, failed, and unknown ev
   const hostile = structuredClone(report.assessments[0]!);
   hostile.file.path = `src/</code><script>alert(1)</script>\n\u202Eunknown.ts${"x".repeat(300)}`;
   github.assessments = [observed, staticOnly, failed, hostile];
+  github.notes = [`Analysis stopped at /tmp/<repo>/src and \u202Eneeds review.${"n".repeat(400)}`];
   github.summary = {
     ...github.summary,
     filesChanged: 4,
@@ -128,6 +129,10 @@ test("GitHub summary distinguishes observed, static-only, failed, and unknown ev
   assert.doesNotMatch(summary, /\u202E/);
   assert.match(summary, /…<\/code>/);
   assert.doesNotMatch(summary, /\/tmp\/<repo>/);
+  assert.match(summary, /Analysis notes/);
+  assert.match(summary, /Analysis stopped at &lt;repository&gt;\/src and needs review/);
+  assert.match(summary, /…/);
+  assert.match(summary, /Next step:.*relevant failure and full provenance/);
   assert.doesNotMatch(summary, /function · run/);
 });
 
@@ -160,6 +165,30 @@ test("GitHub summary exposes an unattributed applicable failure without inventin
   assert.match(summary, /An applicable check failed, errored, or timed out; no exact target outcome was available/);
   assert.match(summary, /configured HTML report <code>proofdiff-report\.html<\/code>/);
   assert.doesNotMatch(summary, /private\/runner/);
+});
+
+test("GitHub summary preserves bounded analysis limitations and static-only guidance", () => {
+  const limited = structuredClone(report);
+  limited.notes = [
+    "Repository source analysis was limited to the first 5,000 tracked/unignored files.",
+    "Checks were discovered but not executed.",
+    "Third note.",
+    "Fourth note.",
+  ];
+  const summary = renderGithubSummary(limited);
+  assert.match(summary, /Repository source analysis was limited to the first 5,000 tracked\/unignored files/);
+  assert.match(summary, /1 more notes are available in the detailed report/);
+  assert.match(summary, /Keep static-only analysis for untrusted changes/);
+  assert.match(summary, /`run-checks: true` only in a secret-free isolated job/);
+});
+
+test("GitHub summary does not recommend rerunning checks when execution was already requested but unsupported", () => {
+  const unsupported = structuredClone(report);
+  unsupported.notes = ["Check execution was requested, but no supported checks were discovered."];
+  const summary = renderGithubSummary(unsupported);
+  assert.match(summary, /Check discovery found nothing it could run/);
+  assert.match(summary, /do not treat this unknown state as a pass/);
+  assert.doesNotMatch(summary, /use `run-checks: true`/);
 });
 
 test("GitHub summary bounds changed-file and related-path detail", () => {

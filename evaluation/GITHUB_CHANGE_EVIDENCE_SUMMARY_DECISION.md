@@ -82,6 +82,8 @@ The summary will:
 - distinguish observed passing targets, other target outcomes, static-only
   related paths, and no supported relationship;
 - state that a related target pass is not changed-code execution or correctness;
+- retain a bounded set of analysis notes and a trust-aware next step so an
+  `Unknown` result does not lose its reason in the concise surface;
 - cap file and path detail while directing users to logs and the configured HTML
   report for full provenance;
 - escape repository-controlled text before Markdown rendering;

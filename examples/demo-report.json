@@ -240,8 +240,8 @@
       "targetRunner": "node-test",
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 158,
-      "output": "✔ gold customers receive the documented discount (0.380542ms)\n✔ unknown tiers pay the full subtotal (0.055375ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43.204084",
+      "durationMs": 143,
+      "output": "✔ gold customers receive the documented discount (0.302709ms)\n✔ unknown tiers pay the full subtotal (0.05075ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 40.767625",
       "outputTruncated": false,
       "explanation": "The command exited successfully."
     },
@@ -273,8 +273,8 @@
       ],
       "status": "passed",
       "exitCode": 0,
-      "durationMs": 67,
-      "output": "✔ gold customers receive the documented discount (0.315125ms)\n✔ unknown tiers pay the full subtotal (0.052458ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37.40275",
+      "durationMs": 65,
+      "output": "✔ gold customers receive the documented discount (0.311333ms)\n✔ unknown tiers pay the full subtotal (0.051708ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 36.704375",
       "outputTruncated": false,
       "explanation": "The command exited successfully. Target observations: 1 passed, 0 failed, 0 skipped, 0 zero-test, 0 unavailable.",
       "targetObservations": [

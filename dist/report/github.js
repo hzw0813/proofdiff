@@ -15,8 +15,22 @@ const statusIcons = {
     "verification-failed": "❌",
 };
 function inlineCode(value) {
-    const singleLine = sanitizeControlCharacters(value).replace(/[\r\n\t]+/g, " ");
-    return `<code>${escapeHtml(singleLine)}</code>`;
+    const singleLine = sanitizeControlCharacters(value)
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+        .replace(/[\r\n\t]+/g, " ");
+    const bounded = singleLine.length > 240 ? `${singleLine.slice(0, 239)}…` : singleLine;
+    return `<code>${escapeHtml(bounded)}</code>`;
+}
+function summaryText(value, repositoryRoot) {
+    let sanitized = sanitizeControlCharacters(value)
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+        .replace(/[\r\n\t]+/g, " ");
+    for (const root of new Set([repositoryRoot, repositoryRoot.replaceAll("\\", "/"), repositoryRoot.replaceAll("/", "\\")])) {
+        if (root.length > 1)
+            sanitized = sanitized.replaceAll(root, "<repository>");
+    }
+    const bounded = sanitized.length > 320 ? `${sanitized.slice(0, 319)}…` : sanitized;
+    return escapeHtml(bounded);
 }
 function pathList(paths, limit) {
     const displayed = paths.slice(0, limit).map(inlineCode).join(", ");
@@ -85,6 +99,26 @@ export function renderGithubSummary(report, options = {}) {
     }
     if (report.assessments.length > maxFiles) {
         output.push(`_${report.assessments.length - maxFiles} more changed ${report.assessments.length - maxFiles === 1 ? "file is" : "files are"} omitted from this bounded summary._`, "");
+    }
+    if (report.notes.length > 0) {
+        output.push("### Analysis notes", "");
+        for (const note of report.notes.slice(0, 3))
+            output.push(`- ${summaryText(note, report.repository.root)}`);
+        if (report.notes.length > 3)
+            output.push(`- _${report.notes.length - 3} more notes are available in the detailed report._`);
+        output.push("");
+    }
+    if (report.summary.overallStatus === "verification-failed") {
+        output.push("**Next step:** Inspect the relevant failure and full provenance; a passing target elsewhere does not erase it.", "");
+    }
+    else if (report.notes.some((note) => note.startsWith("Check execution was requested"))) {
+        output.push("**Next step:** Check discovery found nothing it could run. Inspect the supported conventions and detailed limitations; do not treat this unknown state as a pass.", "");
+    }
+    else if (!report.trust.repositoryCodeExecuted && report.summary.filesChanged > 0) {
+        output.push("**Next step:** Keep static-only analysis for untrusted changes. After review, use `run-checks: true` only in a secret-free isolated job if you want ProofDiff to seek runner observations.", "");
+    }
+    else if (report.assessments.some((item) => item.status !== "verified")) {
+        output.push("**Next step:** Inspect the files without passing target observations and the detailed limitations before deciding whether more verification is needed.", "");
     }
     output.push("> **Trust boundary:** A related target pass means ProofDiff observed at least one non-skipped test for that exact runner-qualified target. It does not show that changed code ran or that behavior is correct.", "");
     if (options.htmlPath) {
