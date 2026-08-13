@@ -27,8 +27,9 @@ Independent adversarial review then reproduced two more false-edge paths in the 
 
 - a leading versioned `types@>=5.0` condition is potentially active in TypeScript 5.9.3, but ProofDiff skips it and selects a later `default` target;
 - a nearer ignored `package.json` changes the importing file's package identity, but inventory-only ownership skips it and applies an ancestor package's name and exports.
+- a nearer `tsconfig.json` can explicitly exclude the importer from its project through `files`, while ProofDiff treats filesystem ancestry alone as project ownership and applies the wrong `paths` mapping.
 
-In the first fixture, TypeScript resolves `types@>=5.0` to `src/actual.d.ts` while ProofDiff creates an edge to `src/wrong.js`. In the second, TypeScript reports the ancestor package self-name unresolved from the nested package while ProofDiff creates an edge to the ancestor package's `src/root.ts`.
+In the first fixture, TypeScript resolves `types@>=5.0` to `src/actual.d.ts` while ProofDiff creates an edge to `src/wrong.js`. In the second, TypeScript reports the ancestor package self-name unresolved from the nested package while ProofDiff creates an edge to the ancestor package's `src/root.ts`. In the project-membership fixture, the invoked root config resolves `@value` to `src/actual.ts`; a nearer nested config lists only `nested/src/other.ts`, yet ProofDiff applies that config to `nested/test/consumer.test.ts` and creates an edge to `nested/src/wrong.ts`.
 
 ## OPTIONS
 
@@ -38,11 +39,15 @@ In the first fixture, TypeScript resolves `types@>=5.0` to `src/actual.d.ts` whi
 
 For the independent-review findings, fully evaluating version selectors or parsing ignored metadata would widen the resolver unnecessarily. The smallest sound rules are to treat every `types@...` key as potentially active and block a later branch, and to treat any nearer repository-local `package.json` outside the bounded Git inventory as an opaque package boundary.
 
+For compiler project ownership, the resolver will honor bounded, repository-relative `files`, `include`, and `exclude` membership declarations on the nearest config. If the importer is not a proven member of that config, ProofDiff blocks instead of guessing which ancestor or referenced project was invoked.
+
 ## CHOSEN RULE
 
 Package self-export resolution requires an applicable, successfully parsed compiler configuration whose effective `moduleResolution` is explicitly Node16, Node18, Node20, NodeNext, or Bundler. A missing mode, missing config, unsupported mode, invalid config, or `resolvePackageJsonExports: false` creates no edge and produces a bounded diagnostic where applicable.
 
 Before selecting a conditional export, an unmodeled `types@...` condition blocks any later branch. Before choosing package ownership or validating a target boundary, each bounded ancestor path is checked for an existing `package.json` outside the Git inventory; encountering one blocks resolution without reading or executing it.
+
+The nearest compiler configuration is applicable only when its supported project-membership declarations include the importer. Explicit `files` is exact; supported `include`/`exclude` patterns are bounded and repository-relative. An importer excluded from the nearest project does not fall through to an ancestor mapping because ProofDiff does not know which project invocation governs that file.
 
 The selected export target still must satisfy all existing exact-key, condition, explicit-extension, precedence, package-boundary, containment, symlink, inventory, and expansion checks.
 
