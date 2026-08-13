@@ -3,7 +3,7 @@ import { assessFile } from "./evidence.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { compareCodeUnits, stableSort } from "./util.js";
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 const statusRank = {
     "verification-failed": 5,
     unverified: 4,
