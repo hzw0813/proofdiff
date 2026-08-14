@@ -5,7 +5,7 @@ import { impactedFiles, symbolsChanged } from "./graph.js";
 import { clamp, compareCodeUnits, isTestLikePath, unique } from "./util.js";
 
 function checkApplies(check: CheckResult, file: ChangedFile, relatedTests: string[]): boolean {
-  if (check.targetFiles && !check.targetFiles.some((target) => relatedTests.includes(target))) return false;
+  if (check.targetFiles) return check.targetFiles.some((target) => relatedTests.includes(target));
   if (check.id.startsWith("js:")) return file.language === "javascript" || file.language === "typescript";
   if (check.id.startsWith("python:")) return file.language === "python";
   return true;
@@ -117,7 +117,7 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
   if (targetedFailures.length > 0 || unlocalizedTargetedFailures.length > 0 || opaqueFailures.length > 0 || operationalFailures.length > 0) return { status: "verification-failed", evidence, executedTests, testExecutions };
   if (applicable.length === 0) {
     if (executed.length > 0) {
-      evidence.push({ kind: "limitation", label: "No applicable check", detail: "Checks ran, but none could be associated with this file's language.", confidence: "high" });
+      evidence.push({ kind: "limitation", label: "No applicable check", detail: "Checks ran, but none could be associated with this changed file or its related exact targets.", confidence: "high" });
       return { status: "unverified", evidence, executedTests, testExecutions };
     }
     return { status: "unknown", evidence, executedTests, testExecutions };
@@ -140,7 +140,14 @@ function callsInChangedLines(file: ChangedFile, analysis: SourceAnalysis | undef
   return { calls: matching.slice(0, limit), truncated: matching.length > limit };
 }
 
-function riskFor(file: ChangedFile, status: VerificationStatus, relatedTests: string[], impacted: string[], analysis: SourceAnalysis | undefined): { score: number; level: RiskLevel; reasons: string[] } {
+function riskFor(
+  file: ChangedFile,
+  status: VerificationStatus,
+  hasStaticallyRelatedTest: boolean,
+  hasDeclaredTest: boolean,
+  impacted: string[],
+  analysis: SourceAnalysis | undefined,
+): { score: number; level: RiskLevel; reasons: string[] } {
   let score = 10;
   const reasons: string[] = [];
   const changedLines = file.additions + file.deletions;
@@ -150,7 +157,12 @@ function riskFor(file: ChangedFile, status: VerificationStatus, relatedTests: st
   else if (status === "unknown") { score += 22; reasons.push("No verification command was run for this change."); }
   else if (status === "partially-verified") { score += 12; reasons.push("Evidence exists but is not connected to a related passing test."); }
 
-  if (relatedTests.length === 0 && !isTestLikePath(file.path)) { score += 18; reasons.push("No statically related test-like path was found."); }
+  if (!hasStaticallyRelatedTest && !isTestLikePath(file.path)) {
+    score += 18;
+    reasons.push(hasDeclaredTest
+      ? "No statically inferred test-like relationship was found; user-declared relationship provenance does not remove this review signal."
+      : "No statically related test-like path was found.");
+  }
   if (file.change === "deleted") { score += 12; reasons.push("Deleted behavior cannot be parsed from the current worktree."); }
   if (file.binary) { score += 25; reasons.push("Binary content cannot be inspected structurally."); }
   if (file.language === "unknown") { score += 10; reasons.push("No first-class language adapter applies."); }
@@ -183,7 +195,7 @@ export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: Ch
   const relatedTests = unique([...staticallyTestLike, ...qualified, ...declaredTests]).sort();
   const changedCallSites = callsInChangedLines(file, analysis);
   const verification = verificationFor(file, relatedTests, checks, declaredTests);
-  const risk = riskFor(file, verification.status, relatedTests, impact.files, analysis);
+  const risk = riskFor(file, verification.status, staticallyTestLike.length > 0, declaredTests.length > 0, impact.files, analysis);
   const limitations: string[] = [];
   if (!analysis && file.language !== "unknown" && file.change !== "deleted") limitations.push("Source could not be read or analyzed.");
   if (analysis?.diagnostics.length) limitations.push(...analysis.diagnostics);
