@@ -118,10 +118,15 @@ test("immutable selections bind repository-local maps to the selected snapshot",
   const sourceCommit = git(root, "rev-parse", "HEAD").trim();
 
   await writeFiles(root, { "proofdiff.test-map.json": mapFor("src/value.js", ["test/alternate.test.js"]) });
+  const originalMapBlob = git(root, "rev-parse", "HEAD:proofdiff.test-map.json").trim();
+  const replacementMapBlob = git(root, "hash-object", "-w", "proofdiff.test-map.json").trim();
+  git(root, "replace", originalMapBlob, replacementMapBlob);
+  assert.match(git(root, "cat-file", "blob", "HEAD:proofdiff.test-map.json"), /alternate\.test\.js/);
   await assert.rejects(
     () => analyzeRepository({ repo: root, base: baseline, testMap: "proofdiff.test-map.json" }),
     /do not match the selected target commit snapshot/,
   );
+  git(root, "replace", "-d", originalMapBlob);
 
   git(root, "checkout", "--", "proofdiff.test-map.json");
   await writeFiles(root, { "src/value.js": "export const value = 3;\n" });
