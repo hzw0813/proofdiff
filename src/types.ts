@@ -91,7 +91,7 @@ export interface CheckDefinition {
   args: string[];
   origin: string;
   executesRepositoryCode: boolean;
-  targetRunner?: "node-test" | "pytest" | "unittest";
+  targetRunner?: "node-test" | "jest" | "vitest" | "pytest" | "unittest";
   targetRunnerArgs?: string[];
   targetPattern?: string;
   targetPatterns?: string[];

@@ -10,7 +10,7 @@ Static relationships are reproducible but incomplete: file A imports file B; a t
 
 For JavaScript/TypeScript, “resolvable local imports” includes relative paths plus two bounded metadata-backed subsets: exact/single-wildcard compiler `paths` mappings and exact self-references through the importing package's own `name` and `exports`. A matched `paths` target is resolved only through documented explicit-extension substitution, or through extensionless file/index lookup when Bundler or Node10 is explicitly configured. NodeNext-family extensionless lookup is context-sensitive and remains unresolved. ProofDiff records the metadata path, matched key, mechanism, target, and limitation internally. This stronger static evidence does not say that a runtime, bundler, or test runner used the same mapping.
 
-“Test-like path” and “runnable test target” are separate facts. Broad path shapes help find static relationships, including root `test.js` and `unittests/`, but never authorize execution. A recognized runner's documented convention, supported configuration, exact file list, or unambiguous compiled-source mapping must independently qualify a target.
+“Test-like path” and “runnable test target” are separate facts. Broad path shapes help find static relationships, including root `test.js` and `unittests/`, but never authorize execution. A recognized runner's documented convention, supported configuration, exact file list, or a bounded exact-supply rule must independently qualify a target.
 
 Inference ranks review attention: broad changes, missing related tests, deleted code, dependency files, parser fallbacks, and security-sensitive paths raise the score. Risk is not failure probability.
 
@@ -48,10 +48,12 @@ ProofDiff's primary evidence boundary follows this ladder and currently stops at
 Runner semantics are deliberately narrow:
 
 - Node `--test` qualifies documented default file patterns, exact file lists from the discovered command, and existing unambiguous compiled-source mappings. It uses an owned data-URL reporter over `TestsStream` file summaries. Supported name/skip filters are preserved, so filtered-to-zero is observed as zero rather than a pass. Arbitrary paths under `tests/` do not qualify by directory alone.
+- Jest support is limited to recognized root scripts whose command is `jest` with no extra options other than `--ci` and/or `--runInBand`. ProofDiff requires a local `node_modules/jest` package with a bounded package-declared binary, explicitly supplies the qualified test-like files with `--runTestsByPath`, and asks Jest for a temporary JSON result artifact. Only an exact per-file result with parseable test statuses can strengthen evidence. Missing, oversized, malformed, duplicate, or unmatched results fail closed.
+- Vitest support is limited to recognized root scripts `vitest`, `vitest run`, or `vitest --run`. ProofDiff requires a local `node_modules/vitest` package with a bounded package-declared binary, explicitly supplies the qualified test-like files in run mode, and asks Vitest for a temporary JSON result artifact. Only an exact per-file result with parseable test statuses can strengthen evidence. Missing, oversized, malformed, duplicate, or unmatched results fail closed.
 - pytest reads bounded, data-only `pytest.toml`, `.pytest.toml`, `pytest.ini`, `.pytest.ini`, `pyproject.toml` (`[tool.pytest]` and `[tool.pytest.ini_options]`), `tox.ini`, and `setup.cfg` configuration in pytest precedence order. `python_files` defaults to `test_*.py` and `*_test.py`. A fixed in-process plugin records per-file call outcomes; exit 5 is treated as no collection, not a genuine test failure.
 - unittest uses the default `test*.py` discovery convention and detected test root. A fixed `TestResult` observer records per-file successes, failures, errors, skips, and `testsRun`; unsupported custom loaders remain conservative.
 
-Observer records travel over a separate bounded control pipe. Missing, malformed, truncated, duplicate, or unmatched records are rejected. The repository-wide command remains useful opaque evidence, but cannot lend one target's tests to another target in the same batch.
+Node, pytest, and unittest observer records travel over a separate bounded control pipe. Jest and Vitest convert their bounded temporary JSON result artifact into the same control-pipe observation schema. Missing, malformed, truncated, duplicate, or unmatched observations are rejected. The repository-wide command remains useful opaque evidence, but cannot lend one target's tests to another target in the same batch.
 
 ## Current limitations
 
@@ -60,8 +62,9 @@ Observer records travel over a separate bounded control pipe. Missing, malformed
 - Package resolution is intentionally partial: only the importing package's exact self-exports under an explicit export-aware compiler mode are considered. Hidden package boundaries, versioned or unmodeled conditions, export patterns/arrays, package imports, workspace dependencies, third-party packages, and `node_modules` are not resolved. Compiler aliases also require bounded evidence that the selected config includes the importer.
 - Python namespace packages and dynamic imports may be missed.
 - Root project scripts are discovered; monorepo package scripts are only noted.
+- Jest/Vitest exact-target support does not interpret arbitrary shell wrappers, custom runner options/config shapes, workspace package scripts, or package-manager layouts that do not expose the runner as a local `node_modules/<runner>` package. Those cases remain ordinary opaque checks rather than being guessed.
 - Deleted symbols are inferred only from recognizable removed declarations.
 - File-scoped observations prove only that a qualified target produced non-skipped tests with the recorded outcome; they do not prove which changed symbols, lines, branches, assertions, or runtime paths executed.
-- AVA, Vitest, Jest, Mocha, Hereby, custom unittest loaders, coverage, and additional languages/runners remain unsupported. Finding a test through an alias or self-export does not add runner support.
+- Mocha, AVA, Hereby, custom unittest loaders, and additional languages/runners remain unsupported for exact per-target evidence. Finding a test through an alias or self-export does not add runner support.
 
 Each applicable limit is surfaced in the report.
