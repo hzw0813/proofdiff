@@ -8,6 +8,7 @@ import { GitError } from "./git.js";
 import { renderGithubSummary } from "./report/github.js";
 import { renderHtmlReport } from "./report/html.js";
 import { renderTerminalReport } from "./report/terminal.js";
+import { TestMapError } from "./test-map.js";
 const help = `ProofDiff ${VERSION} — evidence-based review of code changes
 
 Usage:
@@ -23,6 +24,11 @@ Verification:
   --run-checks          Explicitly allow discovered repository checks to run
   --check <id|kind>     Run only a check id or test/typecheck/lint (repeatable)
   --timeout <seconds>   Per-check timeout, 1–1800 seconds (default: 120)
+
+Declared relationship evidence:
+  --test-map <file>     Read a bounded JSON source-to-test relationship map
+                       Declarations add relationship provenance only; they do not
+                       bypass runner qualification or imply runtime coverage
 
 Coverage artifact evidence:
   --coverage-lcov <file>   Read an existing LCOV artifact as bounded data
@@ -44,9 +50,10 @@ Other:
   -v, --version         Show version
 
 Trust boundary:
-  Static analysis never executes repository code. --run-checks is explicit consent
-  to run repository-defined commands; output and duration are bounded, but this is
-  not an operating-system sandbox. Analyze untrusted repositories without it.
+  Static analysis and bounded test-map/coverage parsing do not execute repository
+  code. --run-checks is explicit consent to run repository-defined commands; output
+  and duration are bounded, but this is not an operating-system sandbox. Analyze
+  untrusted repositories without it.
 `;
 class UsageError extends Error {
     name = "UsageError";
@@ -111,6 +118,11 @@ function parseArgs(args) {
         }
         if (arg === "--output") {
             options.output = valueAfter(args, index, arg);
+            index += 1;
+            continue;
+        }
+        if (arg === "--test-map") {
+            options.testMap = valueAfter(args, index, arg);
             index += 1;
             continue;
         }
@@ -202,6 +214,7 @@ async function main() {
         runChecks: parsed.runChecks,
         selectedChecks: parsed.selectedChecks,
         timeoutMs: parsed.timeoutMs,
+        ...(parsed.testMap === undefined ? {} : { testMap: parsed.testMap }),
         ...(parsed.coverageLcov === undefined ? {} : { coverageLcov: parsed.coverageLcov }),
         ...(parsed.coverageCommit === undefined ? {} : { coverageCommit: parsed.coverageCommit }),
     });
@@ -224,6 +237,11 @@ async function main() {
 main().catch((error) => {
     if (error instanceof UsageError) {
         process.stderr.write(`proofdiff: ${error.message}\nRun proofdiff --help for usage.\n`);
+        process.exitCode = 2;
+        return;
+    }
+    if (error instanceof TestMapError) {
+        process.stderr.write(`proofdiff: ${error.message}\nTest-map relationship evidence was not accepted; no declared relationship was used.\n`);
         process.exitCode = 2;
         return;
     }
