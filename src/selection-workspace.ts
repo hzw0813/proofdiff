@@ -171,7 +171,7 @@ export async function assertSelectionWorkspaceAligned(root: string, selection: D
   }
 
   const ignoredInputs = options.repositoryCodeWillExecute
-    ? await ignoredFiles(root, [":(glob)**"], IGNORED_EXECUTION_EXCLUSIONS)
+    ? await ignoredFiles(root, ["."], IGNORED_EXECUTION_EXCLUSIONS)
     : await ignoredFiles(root, IGNORED_DISCOVERY_PATHS, IGNORED_DISCOVERY_EXCLUSIONS);
   const unsafeIgnoredInputs = ignoredInputs.filter((file) => !allowedArtifacts.has(file));
   if (unsafeIgnoredInputs.length > 0) {
