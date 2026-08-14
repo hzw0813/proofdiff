@@ -23,6 +23,9 @@ test("a declared relationship can bridge static discovery but cannot bypass exac
   assert.deepEqual(withoutMap.assessments[0]?.relatedTests, []);
   assert.deepEqual(withoutMap.assessments[0]?.executedTests, []);
   assert.equal(withoutMap.assessments[0]?.status, "partially-verified");
+  assert.equal(withoutMap.assessments[0]?.evidenceBoundary?.reason, "no-related-test");
+  assert.match(withoutMap.assessments[0]?.evidenceBoundary?.nextAction?.detail ?? "", /--test-map/);
+  assert.match(withoutMap.assessments[0]?.evidenceBoundary?.nextAction?.detail ?? "", /still requires independent runner qualification and runtime observation/);
   assert.ok(!withoutMap.checks.some((check) => check.id.endsWith(":targeted")));
 
   const staticOnly = await analyzeRepository({ repo: root, testMap: "proofdiff.test-map.json" });
