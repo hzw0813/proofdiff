@@ -17,6 +17,7 @@ function gitEnvironment(): NodeJS.ProcessEnv {
     PATH: safeExecutablePath(),
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_CONFIG_GLOBAL: gitNullDevice(),
+    GIT_NO_REPLACE_OBJECTS: "1",
     GIT_TERMINAL_PROMPT: "0",
     GIT_PAGER: "cat",
     GIT_OPTIONAL_LOCKS: "0",
