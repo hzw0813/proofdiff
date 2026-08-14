@@ -57,7 +57,6 @@ function summarize(assessments: FileAssessment[], checksRun: number, discovered:
 export async function analyzeRepository(options: AnalyzeRepositoryOptions): Promise<AnalysisReport> {
   const root = await findRepository(options.repo);
   const { selection, args } = await selectDiff(root, options);
-  await assertSelectionWorkspaceAligned(root, selection);
   const includeUntracked = selection.mode === "working-tree";
   const untracked = includeUntracked ? await listUntrackedFiles(root) : [];
   const files = await changedFiles(root, args, includeUntracked, untracked);
@@ -89,6 +88,11 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   if (testMapBinding !== undefined && !testMapBinding.matched) {
     throw new TestMapError(`${testMapBinding.detail} Repository-local relationship declarations used for an immutable diff must be bound to that selected snapshot; use the snapshot-matching map or an explicitly trusted map outside the repository.`);
   }
+
+  await assertSelectionWorkspaceAligned(root, selection, {
+    ...(options.coverageLcov === undefined ? {} : { allowedDataArtifacts: [options.coverageLcov] }),
+    repositoryCodeWillExecute: options.runChecks === true,
+  });
 
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
