@@ -63,7 +63,7 @@ jobs:
       - run: npm run test:action
 
   published-action:
-    name: Action smoke / published v0.3.0
+    name: Action smoke / published v0.4.0
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -72,7 +72,7 @@ jobs:
         shell: bash
         run: node -e "require('node:fs').appendFileSync('fixtures/demo/base/src/discount.js', '\n// published Action smoke\n')"
       - name: Run ProofDiff from the published repository
-        uses: hzw0813/proofdiff@v0.3.0
+        uses: hzw0813/proofdiff@v0.4.0
         with:
           fail-on: never
           html: published-action-report.html
