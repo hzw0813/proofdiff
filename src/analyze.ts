@@ -11,7 +11,7 @@ import { loadTestMap, TestMapError, testMapRepositoryPath } from "./test-map.js"
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
 import { compareCodeUnits, stableSort, unique } from "./util.js";
 
-export const VERSION = "0.5.1";
+export const VERSION = "0.5.2";
 
 export interface AnalyzeRepositoryOptions extends AnalyzeOptions {
   testMap?: string;
