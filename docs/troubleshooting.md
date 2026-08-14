@@ -40,7 +40,15 @@ ProofDiff deliberately recognizes a narrow set of conventional root-level test, 
 
 ## A passing test command is only “Partially verified”
 
-A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when the exact statically related path is runner-qualified, explicitly supplied, and produces at least one non-skipped passing test observation with no relevant failure. See [verification-model.md](verification-model.md) for supported runner shapes and limitations.
+A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when the exact statically related path is runner-qualified, explicitly supplied, and produces at least one non-skipped passing test observation with no relevant failure.
+
+Exact per-target pass observations are currently supported for:
+
+- Node.js built-in test runner (`node --test`)
+- pytest
+- Python `unittest`
+
+Jest, Vitest, Mocha, AVA, and other runners are not yet supported for exact per-target pass evidence. A command using one of those runners may still execute successfully as a deterministic repository check, but that process success alone cannot identify which exact related test target produced a non-skipped passing observation. ProofDiff therefore remains partial or unverified instead of strengthening the claim. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
 
 ## A helper under `tests/` is related but not executed
 
