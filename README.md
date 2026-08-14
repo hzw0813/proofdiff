@@ -46,7 +46,7 @@ ProofDiff can discover and run broader repository checks, but **Related test fil
 - pytest
 - Python `unittest`
 
-Recognized Jest/Vitest environment values are preserved in the exact-target runner process. Shell substitution/chaining, duplicate or excessive environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners remain unsupported for exact per-target pass evidence. Their repository commands may still run as deterministic checks, but ProofDiff fails closed instead of upgrading a file when it cannot establish exact target identity and a trustworthy non-skipped passing observation. See the [verification model](docs/verification-model.md) and [troubleshooting guide](docs/troubleshooting.md).
+Recognized Jest/Vitest environment values are preserved in the exact-target runner process. Sensitive propagated environment names are surfaced in targeted-check provenance without exposing their values or changing evidence status. Vitest multi-project output may contain multiple valid suite records for one already-qualified exact physical target; ProofDiff aggregates those exact-path observations, while any failure still fails that target and malformed data still fails closed. Shell substitution/chaining, duplicate or excessive environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners remain unsupported for exact per-target pass evidence. Their repository commands may still run as deterministic checks, but ProofDiff fails closed instead of upgrading a file when it cannot establish exact target identity and a trustworthy non-skipped passing observation. See the [verification model](docs/verification-model.md) and [troubleshooting guide](docs/troubleshooting.md).
 
 ## Why ProofDiff?
 
@@ -78,7 +78,7 @@ Impact and test-like relationships are explicitly labeled static estimates. Qual
 
 ## Use it in GitHub Actions
 
-The released composite Action is available at `hzw0813/proofdiff@v0.4.1`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. On `pull_request`, the Action can auto-resolve the exact PR base SHA when `base` is omitted; explicit `base` still wins. See the [complete workflow and trust guidance](docs/github-actions.md).
+The released composite Action is available at `hzw0813/proofdiff@v0.4.2`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. On `pull_request`, the Action can auto-resolve the exact PR base SHA when `base` is omitted; explicit `base` still wins. See the [complete workflow and trust guidance](docs/github-actions.md).
 
 The released Action writes a concise, bounded **ProofDiff · Change Evidence** job summary by default, so reviewers can see changed-file evidence without opening logs. It uses the same report as terminal/JSON/HTML output, requires no write token, and does not create PR comments. Full provenance remains in the log and optional HTML artifact.
 
