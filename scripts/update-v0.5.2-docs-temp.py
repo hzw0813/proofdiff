@@ -1,0 +1,72 @@
+from pathlib import Path
+
+
+def load(path: str) -> str:
+    return Path(path).read_text()
+
+
+def save(path: str, text: str) -> None:
+    Path(path).write_text(text)
+
+
+def insert_once(text: str, marker: str, addition: str, label: str) -> str:
+    if addition.strip() in text:
+        return text
+    if marker not in text:
+        raise RuntimeError(f"Missing marker for {label}")
+    return text.replace(marker, marker + addition, 1)
+
+
+readme = load("README.md").replace("v0.5.1", "v0.5.2")
+readme_marker = """The released composite Action is available at `hzw0813/proofdiff@v0.5.2`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. On `pull_request`, the Action can auto-resolve the exact PR base SHA when `base` is omitted; explicit `base` still wins. The released Action includes the `test-map` input for bounded declared relationship data. See the [complete workflow and trust guidance](docs/github-actions.md).
+"""
+readme_addition = """
+For immutable `--base`, `--range`, and `--staged` analysis, v0.5.2 conservatively binds filesystem-backed analysis to the selected Git state instead of mixing snapshots. Base/range analysis requires the selected target to be the checked-out `HEAD`; staged analysis requires tracked worktree content to match the index. Git-visible untracked inputs and ignored metadata/test inputs that could affect static discovery fail closed. With `--run-checks`, ignored repository-local runtime inputs are rejected more broadly because repository commands could consume them; bounded dependency/cache directories remain environment inputs. An explicitly supplied LCOV file can be accepted as that exact data artifact under its separate commit-binding checks, but it does not authorize sibling files.
+"""
+readme = insert_once(readme, readme_marker, readme_addition, "README immutable workspace note")
+save("README.md", readme)
+
+actions = load("docs/github-actions.md").replace("v0.5.1", "v0.5.2").replace("8bd756e68edb4d985b90100967e6775c6ed6f859", "d2927b13aedb64403bdf1d6b3fe70f1148d1dce6")
+actions_marker = """ProofDiff validates bounded map structure, exact test-path visibility, and snapshot binding where applicable, but it does not independently determine whether the human-declared relationship is semantically correct. Invalid maps fail the Action rather than being partially applied.
+"""
+actions_addition = """
+## Immutable diff workspace binding
+
+The released `v0.5.2` Action deliberately fails closed when an immutable Git selection would otherwise be analyzed against a different checked-out filesystem state. For `base`/`range`, the selected target commit must be the checked-out `HEAD` and tracked worktree content must match it. For `staged`, tracked worktree content must match the index. Historical `A..B` analysis where `B` is not checked out should run from a checkout or separate worktree at `B`.
+
+Git-visible untracked files outside the immutable selection are rejected. Static-only analysis also rejects ignored root metadata and Python test-like files that current check discovery would read. When `run-checks: true`, ignored repository-local runtime inputs are rejected more broadly because repository-defined commands can consume them; bounded dependency/cache directories such as `node_modules` and virtual environments remain execution environment rather than declaration provenance.
+
+An explicitly supplied LCOV file is a narrow exception to the generic untracked/ignored gate only for that exact data-artifact path, provided the path cannot double as discovery-sensitive metadata or a Python test. It still must satisfy ProofDiff's independent declared-commit and bounded LCOV validation. Sibling files receive no exemption. These restrictions are conservative preconditions around the current filesystem-backed analyzer, not a claim that ProofDiff has a virtualized historical filesystem.
+"""
+actions = insert_once(actions, actions_marker, actions_addition, "GitHub Actions immutable workspace section")
+save("docs/github-actions.md", actions)
+
+model = load("docs/verification-model.md")
+model_marker = """Repository-local declaration data has an additional snapshot trust boundary. For immutable `base` and `range` selections, the current repository-local map must match the selected target commit's bounded JSON declarations; for `staged`, it must match the index. A repository-local map modified by the same immutable selected diff is rejected even when its final JSON would otherwise validate. This prevents the change being evaluated from authoring or substituting the relationship policy that strengthens that same immutable change. A map outside the repository is treated as an explicit external trust input rather than silently bound to repository history. Mutable working-tree analysis still permits a map being edited alongside the code for local iteration, but reports that the declaration is not pre-existing review policy.
+"""
+model_addition = """
+### Immutable selection filesystem boundary
+
+`base`, `range`, and `staged` describe immutable Git selections, but ProofDiff's static graph, check discovery, runner qualification, and optional repository execution currently read the checked-out filesystem. v0.5.2 therefore establishes a conservative precondition rather than silently combining those sources. Base/range targets must resolve to checked-out `HEAD`, tracked content must match that target, and staged analysis requires tracked worktree content to match the index. Git-visible untracked files outside the selected snapshot fail closed. Historical range targets must be checked out, or analyzed in a separate worktree, before filesystem-backed analysis.
+
+For static-only immutable analysis, ignored root metadata and Python test-like files that the current discovery layer would inspect also fail closed. Ignored dependency/generated directories excluded by the static scanner do not become declaration evidence merely because they exist. When `--run-checks` is enabled, the boundary is broader: ignored repository-local runtime inputs fail closed because a repository-defined command could consume them, while bounded dependency/cache directories such as `node_modules`, `.venv`, `venv`, and `__pycache__` remain execution-environment inputs.
+
+Explicit data artifacts retain their own provenance models. In particular, the exact user-supplied LCOV path may be exempted from the generic untracked/ignored workspace gate when it cannot double as discovery-sensitive metadata or a Python test; the artifact still requires its separate declared-commit match and bounded parser validation, and no sibling path inherits that exemption. This workspace binding does not strengthen any evidence status. It prevents snapshot mixing until a future snapshot-aware filesystem design can safely lift the restriction.
+"""
+model = insert_once(model, model_marker, model_addition, "verification model immutable workspace section")
+save("docs/verification-model.md", model)
+
+trouble = load("docs/troubleshooting.md")
+trouble_marker = """For `--base`, fetch enough history for Git to find a merge base. For `--range`, both endpoints must resolve to commits.
+"""
+trouble_addition = """
+## Immutable base/range/staged analysis is rejected for workspace drift
+
+This is a fail-closed provenance check, not a verification failure. ProofDiff currently reads graph/config/test inputs from the checked-out filesystem, so v0.5.2 refuses to combine an immutable diff with another filesystem state. For `--base` and `--range`, make sure the selected target is the checked-out `HEAD` and the tracked worktree is clean relative to it. For `--staged`, make sure there are no unstaged tracked changes so the worktree matches the index. To inspect a historical `A..B` range, check out `B` or create a separate worktree at `B` first.
+
+Git-visible untracked files are also outside an immutable selection. Commit, stage where appropriate, remove, ignore, or isolate them. Static-only analysis additionally rejects ignored metadata/Python tests that check discovery would consume. With `--run-checks`, ignored repository-local inputs are rejected more broadly because repository commands could read them; dependency/cache directories such as `node_modules` and virtual environments remain allowed environment inputs.
+
+If you explicitly pass `--coverage-lcov`, only that exact LCOV artifact may receive the narrow data-artifact exemption from the generic untracked/ignored gate, and only when its path is not discovery-sensitive metadata or a Python test. Its declared commit must still match the selected target. Other files beside it remain ordinary workspace inputs and can still trigger the fail-closed check.
+"""
+trouble = insert_once(trouble, trouble_marker, trouble_addition, "troubleshooting workspace section")
+save("docs/troubleshooting.md", trouble)
