@@ -102,6 +102,46 @@ test("immutable selections reject a test map modified by the same selection", as
   );
 });
 
+test("immutable selections bind repository-local maps to the selected snapshot", async (context) => {
+  const root = await initializeRepository({
+    "src/value.js": "export const value = 1;\n",
+    "test/value.test.js": "export const observed = true;\n",
+    "test/alternate.test.js": "export const alternate = true;\n",
+    "proofdiff.test-map.json": mapFor("src/value.js", ["test/value.test.js"]),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const baseline = git(root, "rev-parse", "HEAD").trim();
+
+  await writeFiles(root, { "src/value.js": "export const value = 2;\n" });
+  git(root, "add", "src/value.js");
+  git(root, "commit", "-qm", "change source only");
+  const sourceCommit = git(root, "rev-parse", "HEAD").trim();
+
+  await writeFiles(root, { "proofdiff.test-map.json": mapFor("src/value.js", ["test/alternate.test.js"]) });
+  await assert.rejects(
+    () => analyzeRepository({ repo: root, base: baseline, testMap: "proofdiff.test-map.json" }),
+    /do not match the selected target commit snapshot/,
+  );
+
+  git(root, "checkout", "--", "proofdiff.test-map.json");
+  await writeFiles(root, { "src/value.js": "export const value = 3;\n" });
+  git(root, "add", "src/value.js");
+  await writeFiles(root, { "proofdiff.test-map.json": mapFor("src/value.js", ["test/alternate.test.js"]) });
+  await assert.rejects(
+    () => analyzeRepository({ repo: root, staged: true, testMap: "proofdiff.test-map.json" }),
+    /do not match the selected index snapshot/,
+  );
+
+  git(root, "reset", "--hard", "HEAD");
+  await writeFiles(root, { "proofdiff.test-map.json": mapFor("src/value.js", ["test/alternate.test.js"]) });
+  git(root, "add", "proofdiff.test-map.json");
+  git(root, "commit", "-qm", "change declaration after source commit");
+  await assert.rejects(
+    () => analyzeRepository({ repo: root, range: `${baseline}..${sourceCommit}`, testMap: "proofdiff.test-map.json" }),
+    /do not match the selected target commit snapshot/,
+  );
+});
+
 test("test-map visibility can use the complete Git inventory independently of a truncated analysis slice", async (context) => {
   const root = await initializeRepository({
     "a-first.js": "export const first = true;\n",
