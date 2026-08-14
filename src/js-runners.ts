@@ -5,21 +5,65 @@ import { isTestLikePath, pathExists, readUtf8File, unique } from "./util.js";
 type SupportedJsRunner = "jest" | "vitest";
 type PackageJson = { scripts?: Record<string, unknown> };
 type RunnerPackageJson = { bin?: string | Record<string, unknown> };
+type RecognizedRunnerScript = {
+  runner: SupportedJsRunner;
+  runnerArgs: string[];
+  runnerEnv: Record<string, string>;
+  usesCrossEnv: boolean;
+};
 
 const JS_TEST_EXTENSION = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const JEST_SAFE_ARGS = new Set(["--ci", "--runInBand"]);
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const ENV_LITERAL_VALUE = /^[A-Za-z0-9_./:@%+,-]*$/;
+const MAX_RUNNER_ENV_ASSIGNMENTS = 4;
+const BLOCKED_ENV_NAMES = new Set(["__proto__", "prototype", "constructor"]);
 
 function normalizedRepositoryPath(value: string): string {
   return value.replaceAll("\\", "/").replace(/^\.\//, "");
 }
 
-function recognizedRunnerScript(command: string): { runner: SupportedJsRunner; runnerArgs: string[] } | null {
+function safeEnvironmentAssignment(token: string): [name: string, value: string] | null {
+  const separator = token.indexOf("=");
+  if (separator <= 0) return null;
+  const name = token.slice(0, separator);
+  const value = token.slice(separator + 1);
+  if (!ENV_NAME.test(name) || BLOCKED_ENV_NAMES.has(name) || !ENV_LITERAL_VALUE.test(value)) return null;
+  return [name, value];
+}
+
+function recognizedRunnerScript(command: string): RecognizedRunnerScript | null {
   const tokens = command.trim().replaceAll(/\s+/g, " ").split(" ").filter(Boolean);
-  if (tokens[0] === "jest" && tokens.slice(1).every((token) => JEST_SAFE_ARGS.has(token))) {
-    return { runner: "jest", runnerArgs: tokens.slice(1) };
+  if (tokens.length === 0) return null;
+
+  let index = 0;
+  let usesCrossEnv = false;
+  if (tokens[index] === "cross-env") {
+    usesCrossEnv = true;
+    index += 1;
   }
-  if (tokens[0] === "vitest" && (tokens.length === 1 || (tokens.length === 2 && (tokens[1] === "run" || tokens[1] === "--run")))) {
-    return { runner: "vitest", runnerArgs: [] };
+
+  const runnerEnv = Object.create(null) as Record<string, string>;
+  let environmentAssignments = 0;
+  while (index < tokens.length) {
+    const assignment = safeEnvironmentAssignment(tokens[index]!);
+    if (assignment === null) break;
+    environmentAssignments += 1;
+    if (environmentAssignments > MAX_RUNNER_ENV_ASSIGNMENTS) return null;
+    const [name, value] = assignment;
+    if (Object.hasOwn(runnerEnv, name)) return null;
+    runnerEnv[name] = value;
+    index += 1;
+  }
+  if (usesCrossEnv && environmentAssignments === 0) return null;
+
+  const runnerToken = tokens[index];
+  const runnerTokens = tokens.slice(index + 1);
+  if (runnerToken === "jest" && runnerTokens.every((token) => JEST_SAFE_ARGS.has(token))) {
+    return { runner: "jest", runnerArgs: runnerTokens, runnerEnv, usesCrossEnv };
+  }
+  if (runnerToken === "vitest" && (runnerTokens.length === 0 || (runnerTokens.length === 1 && (runnerTokens[0] === "run" || runnerTokens[0] === "--run")))) {
+    return { runner: "vitest", runnerArgs: [], runnerEnv, usesCrossEnv };
   }
   return null;
 }
@@ -42,6 +86,10 @@ async function localRunnerBin(root: string, runner: SupportedJsRunner): Promise<
   }
 }
 
+async function localCrossEnvAvailable(root: string): Promise<boolean> {
+  return pathExists(path.join(root, "node_modules", "cross-env", "package.json"));
+}
+
 function qualifyTarget(runner: SupportedJsRunner, inputFile: string): TestTargetQualification | null {
   const file = normalizedRepositoryPath(inputFile);
   if (!JS_TEST_EXTENSION.test(file) || !isTestLikePath(file)) return null;
@@ -55,7 +103,7 @@ function qualifyTarget(runner: SupportedJsRunner, inputFile: string): TestTarget
   };
 }
 
-function observerSource(runner: SupportedJsRunner, runnerBin: string, runnerArgs: string[], targets: string[]): string {
+function observerSource(runner: SupportedJsRunner, runnerBin: string, runnerArgs: string[], runnerEnv: Record<string, string>, targets: string[]): string {
   return String.raw`
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -65,6 +113,7 @@ import { isAbsolute, join, resolve } from "node:path";
 const runner=${JSON.stringify(runner)};
 const runnerBin=${JSON.stringify(runnerBin)};
 const runnerArgs=${JSON.stringify(runnerArgs)};
+const runnerEnv=${JSON.stringify(runnerEnv)};
 const targets=${JSON.stringify(targets)};
 const report=join(tmpdir(),"proofdiff-"+runner+"-"+randomUUID()+".json");
 const records=new Map(targets.map(runnerPath=>[resolve(runnerPath),{runnerPath,observed:false,passed:0,failed:0,skipped:0,tests:0}]));
@@ -115,7 +164,7 @@ function finish(code){if(finished)return;finished=true;emit(code);process.exitCo
 const args=runner==="jest"
   ? [...runnerArgs,"--runTestsByPath",...targets,"--json","--outputFile="+report]
   : ["run",...runnerArgs,...targets,"--reporter=json","--outputFile="+report];
-const child=spawn(process.execPath,[resolve(runnerBin),...args],{cwd:process.cwd(),env:process.env,stdio:["ignore","inherit","inherit"]});
+const child=spawn(process.execPath,[resolve(runnerBin),...args],{cwd:process.cwd(),env:{...process.env,...runnerEnv},stdio:["ignore","inherit","inherit"]});
 child.once("error",()=>{unattributedFailures++;finish(1)});
 child.once("close",code=>{finish(typeof code==="number"?code:1)});
 `;
@@ -146,6 +195,7 @@ export async function targetedJsFrameworkChecks(
     if (typeof script !== "string") continue;
     const recognized = recognizedRunnerScript(script);
     if (recognized === null) continue;
+    if (recognized.usesCrossEnv && !(await localCrossEnvAvailable(root))) continue;
     const runnerBin = await localRunnerBin(root, recognized.runner);
     if (runnerBin === null) continue;
 
@@ -158,13 +208,16 @@ export async function targetedJsFrameworkChecks(
     const selected = qualified.slice(0, limit);
     if (qualified.length > limit) truncated = true;
     const targets = selected.map((item) => item.runnerPath);
+    const environmentNames = Object.keys(recognized.runnerEnv).sort();
+    const environmentOrigin = environmentNames.length === 0 ? "" : `; preserving literal environment prefixes: ${environmentNames.join(", ")}`;
+    const wrapperOrigin = recognized.usesCrossEnv ? "; bounded cross-env wrapper recognized" : "";
     checks.push({
       id: `${definition.id}:targeted:${recognized.runner}`,
       label: `targeted ${recognized.runner}: ${selected.length} qualified test target${selected.length === 1 ? "" : "s"}`,
       kind: "test",
       command: "node",
-      args: ["--input-type=module", "--eval", observerSource(recognized.runner, runnerBin, recognized.runnerArgs, targets)],
-      origin: `ProofDiff targeted ${recognized.runner} execution derived from ${definition.origin}`,
+      args: ["--input-type=module", "--eval", observerSource(recognized.runner, runnerBin, recognized.runnerArgs, recognized.runnerEnv, targets)],
+      origin: `ProofDiff targeted ${recognized.runner} execution derived from ${definition.origin}${environmentOrigin}${wrapperOrigin}`,
       executesRepositoryCode: true,
       targetRunner: recognized.runner,
       ...(recognized.runnerArgs.length === 0 ? {} : { targetRunnerArgs: recognized.runnerArgs }),
