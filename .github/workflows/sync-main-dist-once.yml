@@ -1,0 +1,37 @@
+name: Sync tracked dist once
+
+on:
+  push:
+    branches: [fix/tracked-dist-integrity]
+    paths:
+      - .github/workflows/sync-main-dist-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/tracked-dist-integrity
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Commit synchronized dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- dist; then
+            echo "dist is already synchronized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- dist
+          git commit -m "Synchronize tracked dist with source"
+          git push origin HEAD:fix/tracked-dist-integrity
