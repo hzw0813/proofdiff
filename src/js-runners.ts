@@ -142,6 +142,16 @@ function suiteCounts(suite){
   return {passed,failed,skipped,tests:passed+failed};
 }
 function suiteFailed(suite,counts){return suite?.status==="failed"||(counts?.failed??0)>0}
+function mergeSuite(record,suite,counts){
+  const statusFailure=suite?.status==="failed"&&counts.failed===0?1:0;
+  const passed=record.passed+counts.passed;
+  const failed=record.failed+counts.failed+statusFailure;
+  const skipped=record.skipped+counts.skipped;
+  const tests=record.tests+counts.tests;
+  if(![passed,failed,skipped,tests].every(Number.isSafeInteger))return false;
+  Object.assign(record,{observed:true,passed,failed,skipped,tests});
+  return true;
+}
 function consume(){
   try{
     const info=statSync(report);if(!info.isFile()||info.size>4_000_000)return;
@@ -154,9 +164,9 @@ function consume(){
       const absolute=resolve(isAbsolute(raw)?raw:resolve(raw));
       const record=records.get(absolute);
       if(!record){if(suiteFailed(suite,counts))unattributedFailures++;continue}
-      if(seen.has(absolute)){invalid=true;break}
-      seen.add(absolute);Object.assign(record,{observed:true,...counts});
-      if(suite?.status==="failed"&&record.failed===0)record.failed=1;
+      if(seen.has(absolute)&&runner!=="vitest"){invalid=true;break}
+      seen.add(absolute);
+      if(!mergeSuite(record,suite,counts)){invalid=true;break}
     }
   }catch{}
 }
