@@ -1,1 +1,0 @@
-This branch intentionally keeps sensitive literal environment prefixes executable while surfacing their variable names in targeted Jest/Vitest check provenance. It does not change verification status semantics or `schemaVersion: "1.0"`.
