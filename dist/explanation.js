@@ -1,6 +1,6 @@
 function checkApplies(check, item) {
-    if (check.targetFiles && !check.targetFiles.some((target) => item.relatedTests.includes(target)))
-        return false;
+    if (check.targetFiles)
+        return check.targetFiles.some((target) => item.relatedTests.includes(target));
     if (check.id.startsWith("js:"))
         return item.file.language === "javascript" || item.file.language === "typescript";
     if (check.id.startsWith("python:"))
@@ -110,9 +110,9 @@ export function explainEvidenceBoundary(item, checks) {
             strongestEvidence: strongestWithoutTarget,
             stage: "static-relationship",
             reason: "unsupported-semantics",
-            detail: "ProofDiff could not establish first-class structural semantics for this changed file, so stronger relationship claims were not made.",
+            detail: "ProofDiff could not establish first-class structural semantics for this changed file, so stronger inferred relationship claims were not made.",
             proofdiffFailClosed: true,
-            nextAction: action("inspect-static-limitations", "Inspect the file-level and static-analysis limitations; add or connect explicit verification rather than inferring that no tests exist."),
+            nextAction: action("inspect-static-limitations", "Inspect the file-level and static-analysis limitations. If you know an exact source-to-test relationship ProofDiff cannot infer, a bounded --test-map can record that declaration without bypassing runner qualification or runtime observation."),
         };
     }
     if (item.relatedTests.length === 0) {
@@ -124,7 +124,7 @@ export function explainEvidenceBoundary(item, checks) {
                 ? "An applicable command passed, but ProofDiff established no supported related test-like path for this change."
                 : "ProofDiff established no supported related test-like path for this change.",
             proofdiffFailClosed: false,
-            nextAction: action("inspect-static-limitations", "Inspect static-analysis limitations and test relationships; absence of a discovered relationship is not proof that no relevant test exists."),
+            nextAction: action("inspect-static-limitations", "Inspect static-analysis limitations and test relationships. If you know an exact source-to-test relationship ProofDiff cannot infer, supply a bounded --test-map declaration; the declaration records provenance only and still requires independent runner qualification and runtime observation."),
         };
     }
     if (qualifiedPaths.size === 0) {
@@ -134,9 +134,9 @@ export function explainEvidenceBoundary(item, checks) {
             reason: passingOpaqueCheck ? "opaque-passing-check" : "runner-unqualified",
             detail: passingOpaqueCheck
                 ? "A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner."
-                : "Static related test-like paths were found, but none were qualified as exact targets for a recognized runner.",
+                : "Related test-like paths were found or declared, but none were qualified as exact targets for a recognized runner.",
             proofdiffFailClosed: true,
-            nextAction: action("qualify-related-test", "Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file."),
+            nextAction: action("qualify-related-test", "Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file. A --test-map declaration does not bypass runner qualification."),
         };
     }
     if (targetedForRelated.length > 0 && targetedForRelated.every((check) => check.status === "not-run")) {
@@ -144,7 +144,7 @@ export function explainEvidenceBoundary(item, checks) {
             strongestEvidence: "static-relationship",
             stage: "target-invocation",
             reason: "checks-not-run",
-            detail: "A related test target was statically related and runner-qualified, but repository checks were not executed in this run.",
+            detail: "A related test target was identified and runner-qualified, but repository checks were not executed in this run.",
             proofdiffFailClosed: false,
             nextAction: action("review-run-checks", "After reviewing the change, rerun with --run-checks if you want runtime observations. Repository-defined commands run with operating-system permissions and are not sandboxed.", true),
         };
