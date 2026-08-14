@@ -37,6 +37,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run clean
       - run: npm run build
       - name: Require committed dist to match a clean build
         shell: bash
