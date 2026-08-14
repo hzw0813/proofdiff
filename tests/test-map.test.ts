@@ -44,9 +44,29 @@ test("a declared relationship can bridge static discovery but cannot bypass exac
   assert.equal(assessment?.evidenceBoundary?.stage, "changed-code-execution");
   assert.ok(withMap.checks.some((check) => check.id.endsWith(":targeted") && check.status === "passed"));
   assert.match(assessment?.limitations.join("\n") ?? "", /user-declared by --test-map/);
+  assert.match(assessment?.reasons.join("\n") ?? "", /user-declared relationship provenance does not remove this review signal/);
   assert.match(withMap.trust.statement, /test map was parsed as bounded data/);
   assert.match(withMap.trust.statement, /not independently verified semantic relevance/);
   assert.match(withMap.notes.join("\n"), /Declarations provide relationship provenance only/);
+});
+
+test("an exact declared target can apply across source and test languages without making opaque checks cross-language", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ name: "cross-language-map", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
+    "src/value.py": "VALUE = 1\n",
+    "test/integration.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; test('integration', () => assert.equal('ok'.toUpperCase(), 'OK'));\n",
+    "proofdiff.test-map.json": mapFor("src/value.py", ["test/integration.test.js"]),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/value.py": "VALUE = 2\n" });
+
+  const report = await analyzeRepository({ repo: root, testMap: "proofdiff.test-map.json", runChecks: true, timeoutMs: 20_000 });
+  const assessment = report.assessments.find((item) => item.file.path === "src/value.py");
+  assert.equal(assessment?.status, "verified");
+  assert.deepEqual(assessment?.relatedTests, ["test/integration.test.js"]);
+  assert.deepEqual(assessment?.executedTests, ["test/integration.test.js"]);
+  assert.ok(report.checks.some((check) => check.targetFiles?.includes("test/integration.test.js") && check.status === "passed"));
+  assert.match(assessment?.reasons.join("\n") ?? "", /user-declared relationship provenance does not remove this review signal/);
 });
 
 test("test maps reject unsafe, stale, non-test-like, and ambiguous declarations", async (context) => {
@@ -60,7 +80,8 @@ test("test maps reject unsafe, stale, non-test-like, and ambiguous declarations"
 
   const cases = [
     { name: "escape", content: mapFor("../outside.js", ["test/value.test.js"]), pattern: /stay inside the repository/ },
-    { name: "stale", content: mapFor("src/value.js", ["test/missing.test.js"]), pattern: /not Git-visible/ },
+    { name: "stale-source", content: mapFor("src/missing.js", ["test/value.test.js"]), pattern: /neither Git-visible nor selected as changed/ },
+    { name: "stale-test", content: mapFor("src/value.js", ["test/missing.test.js"]), pattern: /not Git-visible/ },
     { name: "non-test-like", content: mapFor("src/value.js", ["src/helper.js"]), pattern: /not a supported test-like source file/ },
     {
       name: "duplicate-source",
