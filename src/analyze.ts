@@ -96,7 +96,7 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
         ],
       };
     }),
-    (a, b) => riskRank[b.risk] - a.riskScore || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path),
+    (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path),
   );
   const checksRun = checks.filter((check) => check.status !== "not-run").length;
   const notes = [...discovery.notes, ...graph.diagnostics];
