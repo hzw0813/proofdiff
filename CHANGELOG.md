@@ -4,6 +4,10 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+### Added
+
+- Added bounded exact per-target runtime observations for conventional root Jest and Vitest scripts. ProofDiff resolves the locally installed runner, explicitly supplies statically related test-like targets, consumes a bounded per-file JSON result artifact, and fails closed on unsupported command shapes or missing, malformed, oversized, duplicate, and unmatched results. The historical `verified` meaning remains **Related test file passed**; this does not claim changed-symbol execution, changed-line execution, assertion relevance, or correctness.
+
 ## [0.3.0] - 2026-08-14
 
 ### Changed
