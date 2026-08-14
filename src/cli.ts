@@ -8,6 +8,7 @@ import { GitError } from "./git.js";
 import { renderGithubSummary } from "./report/github.js";
 import { renderHtmlReport } from "./report/html.js";
 import { renderTerminalReport } from "./report/terminal.js";
+import { TestMapError } from "./test-map.js";
 import type { AnalysisReport } from "./types.js";
 
 type OutputFormat = "terminal" | "json";
@@ -25,6 +26,7 @@ interface CliOptions {
   output?: string;
   coverageLcov?: string;
   coverageCommit?: string;
+  testMap?: string;
   html?: string;
   githubSummary?: string;
   color: boolean;
@@ -47,6 +49,11 @@ Verification:
   --check <id|kind>     Run only a check id or test/typecheck/lint (repeatable)
   --timeout <seconds>   Per-check timeout, 1–1800 seconds (default: 120)
 
+Declared relationship evidence:
+  --test-map <file>     Read a bounded JSON source-to-test relationship map
+                       Declarations add relationship provenance only; they do not
+                       bypass runner qualification or imply runtime coverage
+
 Coverage artifact evidence:
   --coverage-lcov <file>   Read an existing LCOV artifact as bounded data
   --coverage-commit <ref>  User-declared artifact commit; must match the selected diff target
@@ -67,9 +74,10 @@ Other:
   -v, --version         Show version
 
 Trust boundary:
-  Static analysis never executes repository code. --run-checks is explicit consent
-  to run repository-defined commands; output and duration are bounded, but this is
-  not an operating-system sandbox. Analyze untrusted repositories without it.
+  Static analysis and bounded test-map/coverage parsing do not execute repository
+  code. --run-checks is explicit consent to run repository-defined commands; output
+  and duration are bounded, but this is not an operating-system sandbox. Analyze
+  untrusted repositories without it.
 `;
 
 class UsageError extends Error {
@@ -105,6 +113,7 @@ function parseArgs(args: string[]): CliOptions | "help" | "version" {
     if (arg === "--range") { options.range = valueAfter(args, index, arg); index += 1; continue; }
     if (arg === "--check") { options.selectedChecks.push(valueAfter(args, index, arg)); index += 1; continue; }
     if (arg === "--output") { options.output = valueAfter(args, index, arg); index += 1; continue; }
+    if (arg === "--test-map") { options.testMap = valueAfter(args, index, arg); index += 1; continue; }
     if (arg === "--coverage-lcov") { options.coverageLcov = valueAfter(args, index, arg); index += 1; continue; }
     if (arg === "--coverage-commit") { options.coverageCommit = valueAfter(args, index, arg); index += 1; continue; }
     if (arg === "--html") { options.html = valueAfter(args, index, arg); index += 1; continue; }
@@ -160,6 +169,7 @@ async function main(): Promise<void> {
     runChecks: parsed.runChecks,
     selectedChecks: parsed.selectedChecks,
     timeoutMs: parsed.timeoutMs,
+    ...(parsed.testMap === undefined ? {} : { testMap: parsed.testMap }),
     ...(parsed.coverageLcov === undefined ? {} : { coverageLcov: parsed.coverageLcov }),
     ...(parsed.coverageCommit === undefined ? {} : { coverageCommit: parsed.coverageCommit }),
   });
@@ -179,6 +189,11 @@ async function main(): Promise<void> {
 main().catch((error: unknown) => {
   if (error instanceof UsageError) {
     process.stderr.write(`proofdiff: ${error.message}\nRun proofdiff --help for usage.\n`);
+    process.exitCode = 2;
+    return;
+  }
+  if (error instanceof TestMapError) {
+    process.stderr.write(`proofdiff: ${error.message}\nTest-map relationship evidence was not accepted; no declared relationship was used.\n`);
     process.exitCode = 2;
     return;
   }

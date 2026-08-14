@@ -63,6 +63,9 @@ try {
   assert.match(actionDefinition, /resolve-action-base\.mjs/);
   assert.match(actionDefinition, /job-summary:/);
   assert.match(actionDefinition, /default: "true"/);
+  assert.match(actionDefinition, /test-map:/);
+  assert.match(actionDefinition, /PROOFDIFF_TEST_MAP: \$\{\{ inputs\['test-map'\] \}\}/);
+  assert.match(actionDefinition, /args\+=\(--test-map "\$PROOFDIFF_TEST_MAP"\)/);
   assert.match(actionDefinition, /coverage-lcov:/);
   assert.match(actionDefinition, /coverage-commit:/);
   assert.match(actionDefinition, /PROOFDIFF_COVERAGE_LCOV: \$\{\{ inputs\['coverage-lcov'\] \}\}/);
@@ -165,7 +168,7 @@ try {
   assert.match(trustedSummaryContent, /Observed passing target: <code>test\/checkout\.test\.js<\/code>/);
   assert.match(trustedSummaryContent, /does not show that changed code ran or that behavior is correct/);
 
-  process.stdout.write("GitHub Action smoke passed: production-only install, safe PR base auto-resolution, static default, declared-commit-matched coverage input, trusted checks, base diff, HTML output, and bounded job summaries.\n");
+  process.stdout.write("GitHub Action smoke passed: production-only install, safe PR base auto-resolution, static default, test-map wiring, declared-commit-matched coverage input, trusted checks, base diff, HTML output, and bounded job summaries.\n");
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }

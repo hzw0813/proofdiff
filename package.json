@@ -49,7 +49,7 @@
     "clean": "node scripts/clean.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:compile": "tsc -p tsconfig.test.json && npm run evaluation:validate",
-    "test": "npm run build && npm run test:compile && node scripts/verify-test-manifest.mjs && node --test --test-concurrency=1 dist-test/tests/adapters.test.js dist-test/tests/analyze.test.js dist-test/tests/checks.test.js dist-test/tests/coverage.test.js dist-test/tests/demo.test.js dist-test/tests/e2e.test.js dist-test/tests/explanation.test.js dist-test/tests/git.test.js dist-test/tests/js-runners.test.js dist-test/tests/privacy.test.js dist-test/tests/report.test.js dist-test/tests/resolution.test.js",
+    "test": "npm run build && npm run test:compile && node scripts/verify-test-manifest.mjs && node --test --test-concurrency=1 dist-test/tests/adapters.test.js dist-test/tests/analyze.test.js dist-test/tests/checks.test.js dist-test/tests/coverage.test.js dist-test/tests/demo.test.js dist-test/tests/e2e.test.js dist-test/tests/explanation.test.js dist-test/tests/git.test.js dist-test/tests/js-runners.test.js dist-test/tests/privacy.test.js dist-test/tests/report.test.js dist-test/tests/resolution.test.js dist-test/tests/test-map.test.js",
     "test:e2e": "npm run build && npm run test:compile && node --test dist-test/tests/e2e.test.js",
     "test:action": "npm run build && node scripts/verify-action.mjs",
     "test:coverage": "npm run build && npm run test:compile && node scripts/run-compiled-tests.mjs --coverage",
