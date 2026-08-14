@@ -4,6 +4,20 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-15
+
+### Fixed
+
+- Restored repository Action/runtime parity by clean-regenerating the tracked `dist/` tree from the current source. The composite Action executes tracked `dist/cli.js` directly, while npm release packaging rebuilds `dist`; keeping these trees synchronized prevents a GitHub Action tag and npm package with the same version from carrying different runtime code.
+- Added a permanent clean-build `Generated dist / source parity` CI gate. CI removes generated output, rebuilds it, and requires the committed `dist/` tree to match exactly, including detection of stale orphaned generated files.
+- Bound immutable `--base`, `--range`, and `--staged` analysis to the checked-out filesystem state consumed by graph analysis, check discovery, runner qualification, and optional execution. Base/range targets must match checked-out HEAD; tracked drift, Git-visible untracked inputs, and discovery-sensitive ignored metadata/tests fail closed; staged analysis requires worktree/index alignment.
+- Tightened immutable `--run-checks` workspace trust: ignored repository-local runtime inputs are rejected before repository code execution, while bounded dependency/cache directories remain environment inputs. Static-only analysis uses the narrower discovery-sensitive ignored-input boundary.
+- Preserved explicit LCOV semantics under the workspace gate: only the exact supplied LCOV data artifact may be exempt from generic untracked/ignored rejection, it still undergoes declared-commit and bounded parsing checks, and sibling files or discovery-sensitive metadata/test paths receive no exemption. Historical range targets that are not checked out now fail closed with guidance to use the matching checkout or a separate worktree rather than mixing snapshots.
+
+### Changed
+
+- JSON `schemaVersion: "1.0"` and the human meaning of `verified` remain unchanged: **Related test file passed**. These changes strengthen runtime/provenance boundaries and do not claim changed-symbol execution, changed-line execution, assertion relevance, coverage completeness, or correctness.
+
 ## [0.5.1] - 2026-08-15
 
 ### Fixed

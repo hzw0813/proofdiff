@@ -1,5 +1,5 @@
 import type { AnalysisReport, AnalyzeOptions } from "./types.js";
-export declare const VERSION = "0.5.1";
+export declare const VERSION = "0.5.2";
 export interface AnalyzeRepositoryOptions extends AnalyzeOptions {
     testMap?: string;
 }
