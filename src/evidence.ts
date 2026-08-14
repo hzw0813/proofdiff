@@ -15,7 +15,7 @@ function isRecognizedNoTestsExit(check: CheckResult): boolean {
   return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");
 }
 
-function verificationFor(file: ChangedFile, relatedTests: string[], checks: CheckResult[]): { status: VerificationStatus; evidence: EvidenceItem[]; executedTests: string[]; testExecutions: FileAssessment["testExecutions"] } {
+function verificationFor(file: ChangedFile, relatedTests: string[], checks: CheckResult[], declaredTests: string[]): { status: VerificationStatus; evidence: EvidenceItem[]; executedTests: string[]; testExecutions: FileAssessment["testExecutions"] } {
   const evidence: EvidenceItem[] = [];
   const executed = checks.filter((check) => check.status !== "not-run");
   const applicable = executed.filter((check) => checkApplies(check, file, relatedTests));
@@ -79,11 +79,25 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
   }
 
   if (relatedTests.length > 0) {
+    const declared = new Set(declaredTests);
+    const inferredCount = relatedTests.filter((testPath) => !declared.has(testPath)).length;
+    const relationshipParts: string[] = [];
+    if (inferredCount > 0) relationshipParts.push(`${inferredCount} from resolved local dependency paths or accepted runner qualification`);
+    if (declaredTests.length > 0) relationshipParts.push(`${declaredTests.length} user-declared by --test-map`);
     evidence.push({
       kind: "related-test",
-      label: `${relatedTests.length} statically related test-like path${relatedTests.length === 1 ? "" : "s"}`,
-      detail: "Related by resolved local import/dependency paths or accepted runner qualification. Static relationship and runner identity are not runtime coverage.",
+      label: `${relatedTests.length} related test-like path${relatedTests.length === 1 ? "" : "s"}`,
+      detail: `${relationshipParts.join("; ")}. User declarations record intended relevance but are not independently attested by ProofDiff. Relationship evidence and runner identity are not runtime coverage.`,
       confidence: "medium",
+    });
+  }
+
+  if (declaredTests.length > 0) {
+    evidence.push({
+      kind: "related-test",
+      label: `${declaredTests.length} user-declared test relationship${declaredTests.length === 1 ? "" : "s"}`,
+      detail: "These exact paths came from the supplied test map. ProofDiff records that declaration as provenance only; runner qualification, explicit target supply, runtime observation, coverage, and correctness remain independent questions.",
+      confidence: "high",
     });
   }
 
@@ -157,17 +171,18 @@ function riskFor(file: ChangedFile, status: VerificationStatus, relatedTests: st
   return { score: bounded, level, reasons };
 }
 
-export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: CheckResult[]): FileAssessment {
+export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: CheckResult[], declaredTests: string[] = []): FileAssessment {
   const analysis = graph.analyses.get(file.path);
   const impact = impactedFiles(graph, file.path);
   const relationshipImpact = impactedFiles(graph, file.path, 5_000);
   const impactedSet = new Set([file.path, ...relationshipImpact.files]);
   const staticallyTestLike = relationshipImpact.files.filter((candidate) => graph.testLikeFiles.has(candidate));
   if (isTestLikePath(file.path)) staticallyTestLike.unshift(file.path);
-  const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate));
-  const relatedTests = unique([...staticallyTestLike, ...qualified]).sort();
+  const declaredSet = new Set(declaredTests);
+  const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate) || declaredSet.has(candidate));
+  const relatedTests = unique([...staticallyTestLike, ...qualified, ...declaredTests]).sort();
   const changedCallSites = callsInChangedLines(file, analysis);
-  const verification = verificationFor(file, relatedTests, checks);
+  const verification = verificationFor(file, relatedTests, checks, declaredTests);
   const risk = riskFor(file, verification.status, relatedTests, impact.files, analysis);
   const limitations: string[] = [];
   if (!analysis && file.language !== "unknown" && file.change !== "deleted") limitations.push("Source could not be read or analyzed.");
@@ -178,11 +193,14 @@ export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: Ch
   if (file.language === "unknown") limitations.push("Only file-level analysis is available for this file type.");
   if (file.binary) limitations.push("Binary file contents were not inspected.");
   if (changedCallSites.truncated) limitations.push("Call references in changed lines were limited to the first 100 parser-observed sites.");
+  if (declaredTests.length > 0) limitations.push(`${declaredTests.length} related test path${declaredTests.length === 1 ? " was" : "s were"} user-declared by --test-map; the declaration itself does not establish runner identity, runtime execution, coverage, assertion relevance, or correctness.`);
   if (relatedTests.length === 0) limitations.push("No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically.");
-  else if (verification.executedTests.length === 0) limitations.push("Statically related test-like paths were found, but no runner-qualified exact target produced a non-skipped passing test observation.");
+  else if (verification.executedTests.length === 0) limitations.push("Related test-like paths were found or declared, but no runner-qualified exact target produced a non-skipped passing test observation.");
   else limitations.push("Qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
   const unqualifiedTestLike = staticallyTestLike.filter((candidate) => !qualified.includes(candidate));
   if (unqualifiedTestLike.length > 0) limitations.push(`${unqualifiedTestLike.length} statically related test-like path${unqualifiedTestLike.length === 1 ? " was" : "s were"} not qualified by a recognized runner convention or configuration.`);
+  const unqualifiedDeclared = declaredTests.filter((candidate) => !qualified.includes(candidate));
+  if (unqualifiedDeclared.length > 0) limitations.push(`${unqualifiedDeclared.length} user-declared related test path${unqualifiedDeclared.length === 1 ? " was" : "s were"} not qualified by a recognized runner convention or configuration; declarations do not bypass runner qualification.`);
 
   const evidence = [...verification.evidence];
   if (changedCallSites.calls.length > 0) {
