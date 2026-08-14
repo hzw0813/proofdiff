@@ -108,7 +108,7 @@ function emit(code){
   if(invalid){for(const record of records.values())Object.assign(record,{observed:false,passed:0,failed:0,skipped:0,tests:0})}
   const attributedFailure=[...records.values()].some(record=>record.observed&&record.failed>0);
   if(code!==0&&!attributedFailure)unattributedFailures++;
-  try{writeSync(3,JSON.stringify({version:1,runner,unattributedFailures,files:[...records.values()]})+"\\n")}catch{}
+  try{writeSync(3,JSON.stringify({version:1,runner,unattributedFailures,files:[...records.values()]})+"\n")}catch{}
   try{rmSync(report,{force:true})}catch{}
 }
 function finish(code){if(finished)return;finished=true;emit(code);process.exitCode=code}
