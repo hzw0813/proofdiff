@@ -130,8 +130,8 @@ test("test map artifact paths are bounded and symbolic-link maps are rejected", 
   });
   context.after(() => rm(root, { recursive: true, force: true }));
 
-  assert.equal(testMapRepositoryPath(root, "real-map.json"), "real-map.json");
-  assert.equal(testMapRepositoryPath(root, path.join("..", "outside-map.json")), null);
+  assert.equal(await testMapRepositoryPath(root, "real-map.json"), "real-map.json");
+  assert.equal(await testMapRepositoryPath(root, path.join("..", "outside-map.json")), null);
 
   if (process.platform === "win32") return;
   await symlink("real-map.json", path.join(root, "linked-map.json"));
