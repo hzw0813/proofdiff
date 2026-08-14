@@ -114,7 +114,10 @@ test("test-map visibility can use the complete Git inventory independently of a 
   const limited = await listRepositoryFiles(root, 1);
   assert.equal(limited.truncated, true);
   assert.equal(limited.files.length, 1);
-  await assert.rejects(() => loadTestMap(root, "proofdiff.test-map.json", limited.files), /not Git-visible/);
+  await assert.rejects(
+    () => loadTestMap(root, "proofdiff.test-map.json", limited.files, ["src/value.js"]),
+    /test path that is not Git-visible/,
+  );
 
   const complete = await listRepositoryFiles(root, Number.MAX_SAFE_INTEGER);
   assert.equal(complete.truncated, false);
