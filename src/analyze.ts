@@ -8,7 +8,7 @@ import { targetedJsFrameworkChecks } from "./js-runners.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
 import { compareCodeUnits, stableSort } from "./util.js";
 
-export const VERSION = "0.4.1";
+export const VERSION = "0.4.2";
 
 const statusRank: Record<VerificationStatus, number> = {
   "verification-failed": 5,
