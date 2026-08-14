@@ -66,10 +66,11 @@ const runner=${JSON.stringify(runner)};
 const runnerBin=${JSON.stringify(runnerBin)};
 const runnerArgs=${JSON.stringify(runnerArgs)};
 const targets=${JSON.stringify(targets)};
-const report=join(tmpdir(),`proofdiff-${runner}-${randomUUID()}.json`);
+const report=join(tmpdir(),"proofdiff-"+runner+"-"+randomUUID()+".json");
 const records=new Map(targets.map(runnerPath=>[resolve(runnerPath),{runnerPath,observed:false,passed:0,failed:0,skipped:0,tests:0}]));
 let unattributedFailures=0;
 let invalid=false;
+let finished=false;
 const statuses={passed:"passed",failed:"failed",pending:"skipped",skipped:"skipped",todo:"skipped",disabled:"skipped"};
 function safeInt(value){return Number.isSafeInteger(value)&&value>=0?value:null}
 function suiteCounts(suite){
@@ -110,12 +111,13 @@ function emit(code){
   try{writeSync(3,JSON.stringify({version:1,runner,unattributedFailures,files:[...records.values()]})+"\\n")}catch{}
   try{rmSync(report,{force:true})}catch{}
 }
+function finish(code){if(finished)return;finished=true;emit(code);process.exitCode=code}
 const args=runner==="jest"
-  ? [...runnerArgs,"--runTestsByPath",...targets,"--json",`--outputFile=${report}`]
-  : ["run",...runnerArgs,...targets,"--reporter=json",`--outputFile=${report}`];
+  ? [...runnerArgs,"--runTestsByPath",...targets,"--json","--outputFile="+report]
+  : ["run",...runnerArgs,...targets,"--reporter=json","--outputFile="+report];
 const child=spawn(process.execPath,[resolve(runnerBin),...args],{cwd:process.cwd(),env:process.env,stdio:["ignore","inherit","inherit"]});
-child.once("error",()=>{unattributedFailures++;emit(1);process.exitCode=1});
-child.once("close",code=>{const exitCode=typeof code==="number"?code:1;emit(exitCode);process.exitCode=exitCode});
+child.once("error",()=>{unattributedFailures++;finish(1)});
+child.once("close",code=>{finish(typeof code==="number"?code:1)});
 `;
 }
 
@@ -156,7 +158,6 @@ export async function targetedJsFrameworkChecks(
     const selected = qualified.slice(0, limit);
     if (qualified.length > limit) truncated = true;
     const targets = selected.map((item) => item.runnerPath);
-    const runner = recognized.runner as NonNullable<CheckDefinition["targetRunner"]>;
     checks.push({
       id: `${definition.id}:targeted:${recognized.runner}`,
       label: `targeted ${recognized.runner}: ${selected.length} qualified test target${selected.length === 1 ? "" : "s"}`,
@@ -165,7 +166,7 @@ export async function targetedJsFrameworkChecks(
       args: ["--input-type=module", "--eval", observerSource(recognized.runner, runnerBin, recognized.runnerArgs, targets)],
       origin: `ProofDiff targeted ${recognized.runner} execution derived from ${definition.origin}`,
       executesRepositoryCode: true,
-      targetRunner: runner,
+      targetRunner: recognized.runner,
       ...(recognized.runnerArgs.length === 0 ? {} : { targetRunnerArgs: recognized.runnerArgs }),
       targetFiles: selected.map((item) => item.path),
       targetQualifications: selected,
