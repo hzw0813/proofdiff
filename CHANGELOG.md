@@ -4,6 +4,17 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-14
+
+### Fixed
+
+- Fixed real Vitest multi-project JSON compatibility: when Vitest emits multiple valid suite records for the same exact physical target path, ProofDiff now aggregates those observations instead of discarding the entire report as duplicate-path ambiguity. Aggregation is Vitest-only, uses safe-integer counts, preserves exact target identity, treats any failing duplicate as a target failure, and still fails closed on malformed data; duplicate Jest target records remain fail-closed.
+
+### Changed
+
+- Targeted Jest/Vitest check provenance now explicitly warns when bounded literal prefixes propagate sensitive environment names such as `PATH`, `NODE_OPTIONS`, `NODE_PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, or `DYLD_*`. The values are not exposed and the variables remain supported rather than blocked, preserving repository test-script semantics and the documented `--run-checks` trust boundary.
+- JSON `schemaVersion: "1.0"` and the historical `verified` meaning **Related test file passed** remain unchanged. The Vitest fix was validated against pinned Zod with real Vitest 4.1.5: an exact target that previously remained `not-observed` was observed as 110 passing tests, while a pinned Vitest workspace-orchestration negative control remained opaque.
+
 ## [0.4.1] - 2026-08-14
 
 ### Changed
