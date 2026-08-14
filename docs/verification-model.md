@@ -4,13 +4,17 @@ ProofDiff answers “what evidence exists?” It does not answer “is this safe
 
 ## Facts, relationships, and inference
 
-Facts are directly observed: Git changed a path, a parser found a declaration or name-only call site, or a command exited with a particular code. Call sites are filtered to changed lines and do not claim target resolution or runtime execution.
+Facts are directly observed: Git changed a path, a parser found a declaration or name-only call site, a user supplied a specific source-to-test declaration, or a command exited with a particular code. Call sites are filtered to changed lines and do not claim target resolution or runtime execution.
 
 Static relationships are reproducible but incomplete: file A imports file B; a test reaches a changed file through resolvable local imports. They are labeled medium confidence because they do not show that a runtime path executed.
 
 For JavaScript/TypeScript, “resolvable local imports” includes relative paths plus two bounded metadata-backed subsets: exact/single-wildcard compiler `paths` mappings and exact self-references through the importing package's own `name` and `exports`. A matched `paths` target is resolved only through documented explicit-extension substitution, or through extensionless file/index lookup when Bundler or Node10 is explicitly configured. NodeNext-family extensionless lookup is context-sensitive and remains unresolved. ProofDiff records the metadata path, matched key, mechanism, target, and limitation internally. This stronger static evidence does not say that a runtime, bundler, or test runner used the same mapping.
 
-“Test-like path” and “runnable test target” are separate facts. Broad path shapes help find static relationships, including root `test.js` and `unittests/`, but never authorize execution. A recognized runner's documented convention, supported configuration, exact file list, or a bounded exact-supply rule must independently qualify a target.
+A user-declared relationship is a different provenance source. `--test-map` accepts bounded JSON that names an exact source path and one or more exact repository-relative test-like source paths. ProofDiff records that the user declared those paths related; it does not independently attest that the semantic relationship is true. The declaration is not runner qualification, target execution, changed-code coverage, assertion relevance, or correctness. It exists to bridge relationships the bounded static graph cannot infer without asking ProofDiff to guess.
+
+The map format is deliberately narrow: version `1`, at most 1,000 source relationships, at most 100 test paths per source, at most 5,000 total test paths, and at most 256 KB. Test paths must be Git-visible supported source files and match ProofDiff's test-like path rules. Absolute/escaping/control-character paths, duplicate sources, duplicate tests, self-relations, stale test paths, unsupported fields, malformed JSON, and oversized inputs are rejected as a whole rather than partially accepted.
+
+“Test-like path” and “runnable test target” are separate facts. Broad path shapes help find static relationships, including root `test.js` and `unittests/`, but never authorize execution. Declaring a path in `--test-map` likewise does not authorize it as runnable. A recognized runner's documented convention, supported configuration, exact file list, or a bounded exact-supply rule must independently qualify a target.
 
 Inference ranks review attention: broad changes, missing related tests, deleted code, dependency files, parser fallbacks, and security-sensitive paths raise the score. Risk is not failure probability.
 
@@ -19,7 +23,7 @@ Inference ranks review attention: broad changes, missing related tests, deleted 
 For each changed file, the stable JSON status algorithm is:
 
 1. A genuine applicable failure, error, or timeout yields **Verification failed**. In a targeted batch, pass/failure is attributed only to the associated path.
-2. `verified`, displayed as **Related test file passed**, requires all of: a static relationship, runner qualification, explicit target supply, at least one non-skipped test observed for that exact target, a successful per-target outcome, and no relevant failure.
+2. `verified`, displayed as **Related test file passed**, requires all of: supported relationship provenance (bounded static discovery or an explicit user-declared relationship), runner qualification, explicit target supply, at least one non-skipped test observed for that exact target, a successful per-target outcome, and no relevant failure. A declaration establishes only that the user named the relationship; it does not strengthen any later step.
 3. Other applicable passing commands yield **Partially verified**. A target observed with zero tests, only skipped tests, or no trustworthy record cannot strengthen evidence; it is partial only when another applicable command passed, otherwise unverified.
 4. If checks ran but none applied successfully, the result is **Unverified**.
 5. If no applicable checks ran, the result is **Unknown**.
@@ -28,14 +32,14 @@ The overall JSON result is `verification-failed` if any file failed, `verified` 
 
 Terminal, JSON, HTML, and GitHub job-summary output are projections of this same algorithm. The job summary does not recompute, infer, or strengthen evidence; it presents a bounded per-file subset and directs users to the detailed reports.
 
-The `verified` machine value is retained for schema compatibility; it is not a runtime-coverage claim. A file labeled **Related test file passed** can still contain bugs, missing assertions, unexecuted symbols, lines, or branches, environmental differences, flaky behavior, or threats outside the discovered graph.
+The `verified` machine value is retained for schema compatibility; it is not a runtime-coverage claim. A file labeled **Related test file passed** can still contain bugs, a wrong user-declared relationship, missing assertions, unexecuted symbols, lines, or branches, environmental differences, flaky behavior, or threats outside the discovered graph.
 
 ProofDiff can consume an explicitly supplied LCOV artifact with a declared commit that matches the selected target to add artifact-reported changed-line coverage evidence without executing repository code itself. This is additive evidence and does not change the historical `verified` status algorithm above. The artifact is accepted only when its supplied commit resolves exactly to the committed target of the selected diff. Working-tree/staged selections, commit mismatches, malformed artifacts, ambiguous/out-of-repository paths, and parser bounds fail closed.
 
-The evidence ladder is:
+The primary evidence ladder is:
 
 1. changed file observed;
-2. statically related test-like path identified;
+2. related test-like path identified through supported static discovery or explicit declaration provenance;
 3. exact path qualified and supplied to a recognized runner;
 4. at least one non-skipped test observed passing for that target;
 5. changed symbol executed;
@@ -43,7 +47,9 @@ The evidence ladder is:
 7. relevant assertions exercised;
 8. behavior shown correct.
 
-ProofDiff's primary evidence boundary follows this ladder and currently stops at level 4. Supplied LCOV is reported on a separate additive coverage-evidence axis and does not advance the primary boundary or imply that earlier ladder levels were satisfied. When the user-declared coverage commit matches the selected target commit, ProofDiff can report which changed current lines the artifact says received hits. ProofDiff does not independently attest the artifact's provenance, and LCOV does not establish symbol identity, branch execution, test relevance, assertion relevance, or correctness. Partial coverage is reported as partial rather than generalized.
+ProofDiff's primary evidence boundary follows this ladder and currently stops at level 4. A user declaration can supply provenance at level 2 only; it cannot advance levels 3 or 4. Supplied LCOV is reported on a separate additive coverage-evidence axis and does not advance the primary boundary or imply that earlier ladder levels were satisfied. When the user-declared coverage commit matches the selected target commit, ProofDiff can report which changed current lines the artifact says received hits. ProofDiff does not independently attest the artifact's provenance, and LCOV does not establish symbol identity, branch execution, test relevance, assertion relevance, or correctness. Partial coverage is reported as partial rather than generalized.
+
+The evidence boundary is also the main guidance mechanism. If no relationship is inferred, the safe next action may recommend a bounded `--test-map` when the user already knows an exact relationship. If a relationship is declared but cannot be runner-qualified, the boundary stops at `runner-qualification` and explicitly says the declaration does not bypass that gate. If a target is qualified but checks were not executed, it stops at `target-invocation`. This keeps UNKNOWN/UNVERIFIED actionable without upgrading weaker evidence.
 
 Runner semantics are deliberately narrow:
 
@@ -57,14 +63,15 @@ Node, pytest, and unittest observer records travel over a separate bounded contr
 
 ## Current limitations
 
+- User-declared test maps use exact paths only. They do not support globs, regular expressions, package selectors, generated target discovery, build-tool queries, or semantic predicates. ProofDiff verifies map syntax and test-path visibility, not whether the declared relationship is semantically correct.
 - Coverage ingestion is currently limited to explicitly supplied LCOV plus a user-declared commit that must resolve to the selected target. ProofDiff verifies that equality but does not independently attest artifact provenance. Changed-line reconstruction is capped at 50,000 current lines per file and otherwise remains unmeasured. ProofDiff does not run coverage tools, merge artifacts from different commits, remap source maps, guess CI workspace prefixes, or claim branch/assertion coverage.
 - Compiler resolution is intentionally partial: NodeNext-family extensionless paths, directory package metadata, non-default `moduleSuffixes`, Classic lookup, package or array `extends`, project references, standalone `baseUrl`, `${configDir}`, multiple-wildcard mappings, installed packages, and arbitrary bundler aliases are not resolved.
 - Package resolution is intentionally partial: only the importing package's exact self-exports under an explicit export-aware compiler mode are considered. Hidden package boundaries, versioned or unmodeled conditions, export patterns/arrays, package imports, workspace dependencies, third-party packages, and `node_modules` are not resolved. Compiler aliases also require bounded evidence that the selected config includes the importer.
 - Python namespace packages and dynamic imports may be missed.
 - Root project scripts are discovered; monorepo package scripts are only noted.
-- Jest/Vitest exact-target support does not interpret shell substitution or chaining, duplicate or more than four environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, arbitrary wrappers, custom runner options/config shapes, workspace package scripts, or package-manager layouts that do not expose the runner as a local `node_modules/<runner>` package. Those cases remain ordinary opaque checks rather than being guessed.
+- Jest/Vitest exact-target support does not interpret shell substitution or chaining, duplicate or more than four environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, arbitrary wrappers, custom runner options/config shapes, workspace package scripts, or package-manager layouts that do not expose the runner as a local `node_modules/<runner>` package. Those cases remain ordinary opaque checks rather than being guessed. A test-map declaration can name a relationship in these repositories, but it cannot make an unsupported runner command exact-target-capable.
 - Deleted symbols are inferred only from recognizable removed declarations.
 - File-scoped observations prove only that a qualified target produced non-skipped tests with the recorded outcome; they do not prove which changed symbols, lines, branches, assertions, or runtime paths executed.
-- Mocha, AVA, Hereby, custom unittest loaders, and additional languages/runners remain unsupported for exact per-target evidence. Finding a test through an alias or self-export does not add runner support.
+- Mocha, AVA, Hereby, custom unittest loaders, and additional languages/runners remain unsupported for exact per-target evidence. Finding or declaring a test relationship does not add runner support.
 
 Each applicable limit is surfaced in the report.
