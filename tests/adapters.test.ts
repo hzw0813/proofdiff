@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { JavaScriptAdapter } from "../src/adapters/javascript.js";
-import { PythonAdapter } from "../src/adapters/python.js";
+import { analyzePythonSource, PythonAdapter, pythonInterpreterCandidates } from "../src/adapters/python.js";
 
 test("TypeScript adapter extracts symbols, imports, and calls with high confidence", async () => {
   const source = `import { parse } from "./parser.js";
@@ -46,4 +46,46 @@ class Service:
   assert.ok(result.imports.some((item) => item.source === ".maths"));
   assert.ok(result.calls.includes("add"));
   assert.deepEqual(result.callSites?.find((site) => site.name === "add"), { name: "add", line: 6, confidence: "high" });
+});
+
+test("Python AST analysis retries the alternate interpreter after a candidate timeout", async () => {
+  assert.deepEqual(pythonInterpreterCandidates("win32").map((candidate) => candidate.command), ["python", "python3"]);
+  assert.deepEqual(pythonInterpreterCandidates("linux").map((candidate) => candidate.command), ["python3", "python"]);
+
+  const commands: string[] = [];
+  const result = await analyzePythonSource("def public():\n    return 1\n", process.cwd(), {
+    platform: "win32",
+    run: async (command) => {
+      commands.push(command);
+      if (command === "python") {
+        return {
+          exitCode: null,
+          stdout: "",
+          stderr: "",
+          timedOut: true,
+          durationMs: 10_000,
+          truncated: false,
+          error: "Process timed out",
+        };
+      }
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          symbols: [{ name: "public", kind: "function", start: 1, end: 2, exported: true }],
+          imports: [],
+          calls: [],
+          callSites: [],
+        }),
+        stderr: "",
+        timedOut: false,
+        durationMs: 1,
+        truncated: false,
+      };
+    },
+  });
+
+  assert.deepEqual(commands, ["python", "python3"]);
+  assert.equal(result.parser, "python3 ast");
+  assert.equal(result.confidence, "high");
+  assert.ok(result.symbols.some((symbol) => symbol.name === "public" && symbol.exported));
 });
