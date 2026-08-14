@@ -38,13 +38,15 @@ npx proofdiff --run-checks --html proofdiff-report.html
 
 ### Exact test-target evidence support
 
-ProofDiff can discover and run broader repository checks, but **Related test file passed** requires runner-qualified, per-target observations. Today, exact test-target pass evidence is supported for:
+ProofDiff can discover and run broader repository checks, but **Related test file passed** requires runner-qualified, per-target observations. Exact per-target pass evidence is currently supported for:
 
 - Node.js built-in test runner (`node --test`)
+- Jest for bounded root scripts such as `jest`, `jest --ci`, and `jest --runInBand`, using the locally installed runner and its JSON result artifact
+- Vitest for bounded root scripts `vitest`, `vitest run`, or `vitest --run`, using the locally installed runner and its JSON result artifact
 - pytest
 - Python `unittest`
 
-Jest, Vitest, Mocha, AVA, and other runners are not yet supported for exact per-target pass evidence. Their repository commands may still run as deterministic checks, but ProofDiff will fail closed rather than upgrade a file to **Related test file passed** when it cannot prove which exact test target produced a non-skipped passing observation. See the [verification model](docs/verification-model.md) and [troubleshooting guide](docs/troubleshooting.md).
+Custom Jest/Vitest wrappers and unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners remain unsupported for exact per-target pass evidence. Their repository commands may still run as deterministic checks, but ProofDiff fails closed instead of upgrading a file when it cannot establish exact target identity and a trustworthy non-skipped passing observation. See the [verification model](docs/verification-model.md) and [troubleshooting guide](docs/troubleshooting.md).
 
 ## Why ProofDiff?
 
