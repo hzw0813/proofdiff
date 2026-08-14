@@ -62,7 +62,7 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
     throw new CoverageError("Coverage evidence requires both coverageLcov and coverageCommit.");
   }
 
-  const testMapPath = options.testMap === undefined ? null : testMapRepositoryPath(root, options.testMap);
+  const testMapPath = options.testMap === undefined ? null : await testMapRepositoryPath(root, options.testMap);
   const testMapChanged = testMapPath !== null && files.some((file) => file.path === testMapPath || file.previousPath === testMapPath);
   if (testMapChanged && selection.mode !== "working-tree") {
     throw new TestMapError(`Test map is part of the selected ${selection.mode} diff: ${testMapPath}. A relationship declaration cannot strengthen the same immutable change that authored or modified it. Review and land the map separately, or supply a trusted map outside the selected repository diff.`);
