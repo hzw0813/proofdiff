@@ -1,4 +1,4 @@
-import { runProcess, safeExecutablePath } from "../process.js";
+import { runProcess, safeExecutablePath, type ProcessOptions, type ProcessResult } from "../process.js";
 import type { SourceAnalysis, SymbolInfo } from "../types.js";
 import type { LanguageAdapter } from "./types.js";
 
@@ -72,47 +72,80 @@ type PythonOutput = {
   callSites?: Array<{ name: string; line: number }>;
 };
 
+type PythonProcessRunner = (command: string, args: string[], options: ProcessOptions) => Promise<ProcessResult>;
+
+type PythonCandidate = {
+  command: string;
+  parser: string;
+};
+
+export function pythonInterpreterCandidates(platform: NodeJS.Platform = process.platform): PythonCandidate[] {
+  return platform === "win32"
+    ? [{ command: "python", parser: "python ast" }, { command: "python3", parser: "python3 ast" }]
+    : [{ command: "python3", parser: "python3 ast" }, { command: "python", parser: "python ast" }];
+}
+
+function failureReason(result: ProcessResult): string {
+  if (result.timedOut) return "timed out";
+  return result.stderr.trim() || result.error || `exited with ${String(result.exitCode)}`;
+}
+
+export async function analyzePythonSource(
+  source: string,
+  root: string,
+  options: { platform?: NodeJS.Platform; run?: PythonProcessRunner } = {},
+): Promise<SourceAnalysis> {
+  const failures: string[] = [];
+  const runner = options.run ?? runProcess;
+  for (const candidate of pythonInterpreterCandidates(options.platform)) {
+    const result = await runner(candidate.command, ["-I", "-S", "-c", PYTHON_AST_SCRIPT], {
+      cwd: root,
+      stdin: source,
+      timeoutMs: 10_000,
+      maxOutputBytes: 1_000_000,
+      env: { PATH: safeExecutablePath(), PYTHONIOENCODING: "utf-8" },
+    });
+    if (result.exitCode === 0) {
+      try {
+        const parsed = JSON.parse(result.stdout) as PythonOutput;
+        if (parsed.error) return lexicalFallback(source, parsed.error);
+        return {
+          language: "python",
+          parser: candidate.parser,
+          symbols: (parsed.symbols ?? []).map((symbol) => ({
+            name: symbol.name,
+            kind: symbol.kind,
+            range: { start: symbol.start, end: symbol.end },
+            exported: symbol.exported,
+            confidence: "high",
+          })),
+          imports: (parsed.imports ?? []).map((item) => ({ source: item.source, names: item.names, kind: "static", line: item.line, confidence: "high" })),
+          calls: parsed.calls ?? [],
+          callSites: (parsed.callSites ?? []).map((site) => ({ ...site, confidence: "high" })),
+          diagnostics: [],
+          confidence: "high",
+        };
+      } catch {
+        failures.push(`${candidate.command}: invalid AST helper output`);
+        continue;
+      }
+    }
+    failures.push(`${candidate.command}: ${failureReason(result)}`);
+  }
+  return lexicalFallback(
+    source,
+    failures.length > 0
+      ? `Python AST helpers unavailable (${failures.join("; ")}); using lexical analysis`
+      : "Python interpreter unavailable; using lexical analysis",
+  );
+}
+
 export class PythonAdapter implements LanguageAdapter {
   readonly id = "python" as const;
   readonly extensions = [".py", ".pyi"] as const;
 
   async analyze(_file: string, source: string, root: string): Promise<SourceAnalysis> {
-    for (const executable of ["python3", "python"]) {
-      const result = await runProcess(executable, ["-I", "-S", "-c", PYTHON_AST_SCRIPT], {
-        cwd: root,
-        stdin: source,
-        timeoutMs: 10_000,
-        maxOutputBytes: 1_000_000,
-        env: { PATH: safeExecutablePath(), PYTHONIOENCODING: "utf-8" },
-      });
-      if (result.error?.includes("ENOENT")) continue;
-      if (result.exitCode === 0) {
-        try {
-          const parsed = JSON.parse(result.stdout) as PythonOutput;
-          if (parsed.error) return lexicalFallback(source, parsed.error);
-          return {
-            language: "python",
-            parser: `${executable} ast`,
-            symbols: (parsed.symbols ?? []).map((symbol) => ({
-              name: symbol.name,
-              kind: symbol.kind,
-              range: { start: symbol.start, end: symbol.end },
-              exported: symbol.exported,
-              confidence: "high",
-            })),
-            imports: (parsed.imports ?? []).map((item) => ({ source: item.source, names: item.names, kind: "static", line: item.line, confidence: "high" })),
-            calls: parsed.calls ?? [],
-            callSites: (parsed.callSites ?? []).map((site) => ({ ...site, confidence: "high" })),
-            diagnostics: [],
-            confidence: "high",
-          };
-        } catch {
-          return lexicalFallback(source, "Python AST helper returned invalid output");
-        }
-      }
-      return lexicalFallback(source, result.stderr.trim() || result.error || "Python AST helper failed");
-    }
-    return lexicalFallback(source, "Python interpreter unavailable; using lexical analysis");
+    return await analyzePythonSource(source, root);
   }
 }
 
