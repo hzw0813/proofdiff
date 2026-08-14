@@ -5,6 +5,7 @@ import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { targetedJsFrameworkChecks } from "./js-runners.js";
+import { assertSelectionWorkspaceAligned } from "./selection-workspace.js";
 import { bindTestMapToSelectionSnapshot } from "./test-map-binding.js";
 import { loadTestMap, TestMapError, testMapRepositoryPath } from "./test-map.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
@@ -87,6 +88,11 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   if (testMapBinding !== undefined && !testMapBinding.matched) {
     throw new TestMapError(`${testMapBinding.detail} Repository-local relationship declarations used for an immutable diff must be bound to that selected snapshot; use the snapshot-matching map or an explicitly trusted map outside the repository.`);
   }
+
+  await assertSelectionWorkspaceAligned(root, selection, {
+    ...(options.coverageLcov === undefined ? {} : { allowedDataArtifacts: [options.coverageLcov] }),
+    repositoryCodeWillExecute: options.runChecks === true,
+  });
 
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
