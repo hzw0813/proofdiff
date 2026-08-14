@@ -24,10 +24,10 @@ async function committedChange(): Promise<{ root: string; base: string; head: st
 test("declared-commit-matched LCOV adds artifact-reported changed-line evidence without changing historical verification status", async (context) => {
   const { root, base, head } = await committedChange();
   context.after(() => rm(root, { recursive: true, force: true }));
+  const baselineReport = await analyzeRepository({ repo: root, base });
   await writeFiles(root, {
     "coverage/lcov.info": "TN:\nSF:src/value.js\nDA:1,1\nDA:2,1\nDA:3,1\nDA:4,1\nend_of_record\n",
   });
-  const baselineReport = await analyzeRepository({ repo: root, base });
   const report = await analyzeRepository({
     repo: root,
     base,
@@ -52,10 +52,10 @@ test("declared-commit-matched LCOV adds artifact-reported changed-line evidence 
 test("partial changed-line coverage is not generalized to the rest of the change", async (context) => {
   const { root, base, head } = await committedChange();
   context.after(() => rm(root, { recursive: true, force: true }));
+  const baselineReport = await analyzeRepository({ repo: root, base });
   await writeFiles(root, {
     "coverage/lcov.info": "SF:src/value.js\nDA:2,1\nDA:3,0\nend_of_record\n",
   });
-  const baselineReport = await analyzeRepository({ repo: root, base });
   const report = await analyzeRepository({ repo: root, base, coverageLcov: "coverage/lcov.info", coverageCommit: head });
   const item = report.assessments[0];
   assert.equal(item?.coverage?.state, "partially-covered");
@@ -67,15 +67,28 @@ test("partial changed-line coverage is not generalized to the rest of the change
 test("zero-hit changed lines remain negative evidence for only the supplied coverage artifact", async (context) => {
   const { root, base, head } = await committedChange();
   context.after(() => rm(root, { recursive: true, force: true }));
+  const baselineReport = await analyzeRepository({ repo: root, base });
   await writeFiles(root, {
     "coverage/lcov.info": "SF:src/value.js\nDA:2,0\nDA:3,0\nend_of_record\n",
   });
-  const baselineReport = await analyzeRepository({ repo: root, base });
   const report = await analyzeRepository({ repo: root, base, coverageLcov: "coverage/lcov.info", coverageCommit: head });
   const item = report.assessments[0];
   assert.equal(item?.coverage?.state, "uncovered");
   assert.deepEqual(item?.evidenceBoundary, baselineReport.assessments[0]?.evidenceBoundary);
   assert.ok(item?.evidence.some((entry) => entry.label === "Changed lines measured with zero hits"));
+});
+
+test("the explicit LCOV exemption does not authorize sibling untracked inputs", async (context) => {
+  const { root, base, head } = await committedChange();
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "coverage/lcov.info": "SF:src/value.js\nDA:2,1\nDA:3,1\nend_of_record\n",
+    "coverage/extra.txt": "outside the declared artifact\n",
+  });
+  await assert.rejects(
+    analyzeRepository({ repo: root, base, coverageLcov: "coverage/lcov.info", coverageCommit: head }),
+    /Git-visible untracked file.*coverage\/extra\.txt/,
+  );
 });
 
 test("coverage from a different commit is rejected without strengthening any file", async (context) => {
