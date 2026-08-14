@@ -70,11 +70,14 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   }
 
   const inventory = await listRepositoryFiles(root);
-  const testMapVisibleFiles = options.testMap === undefined
-    ? inventory.files
-    : inventory.truncated
-      ? (await listRepositoryFiles(root, Number.MAX_SAFE_INTEGER)).files
-      : inventory.files;
+  let testMapVisibleFiles = inventory.files;
+  if (options.testMap !== undefined && inventory.truncated) {
+    const completeVisibility = await listRepositoryFiles(root, Number.MAX_SAFE_INTEGER);
+    if (completeVisibility.truncated) {
+      throw new TestMapError("Repository path inventory exceeds ProofDiff's bounded Git-output limit, so test-map Git visibility cannot be established completely. ProofDiff failed closed instead of treating a partial inventory as authoritative.");
+    }
+    testMapVisibleFiles = completeVisibility.files;
+  }
   const testMap = options.testMap === undefined
     ? undefined
     : await loadTestMap(root, options.testMap, testMapVisibleFiles, files.map((file) => file.path));
@@ -146,7 +149,7 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
     if (testMapBinding?.matched) notes.push(`Repository-local test-map snapshot binding: ${testMapBinding.detail}`);
   }
   if (inventory.truncated) {
-    notes.push(`Repository source analysis was limited to the first 5,000 tracked/unignored files.${testMap ? " Test-map Git visibility was validated against the complete Git-visible inventory rather than this analysis slice." : ""}`);
+    notes.push(`Repository source analysis was limited to the first 5,000 tracked/unignored files.${testMap ? " Test-map Git visibility was validated against a separate complete bounded Git-visible inventory rather than this analysis slice." : ""}`);
   }
   if (targeted.truncated || jsFrameworkTargeted.truncated) notes.push("Runner-qualified targeted test execution was limited to the first 100 statically impacted or user-declared paths.");
   if (files.length === 0) notes.push("No changes matched the selected diff.");
