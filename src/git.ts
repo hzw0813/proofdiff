@@ -19,6 +19,7 @@ function gitEnvironment(): NodeJS.ProcessEnv {
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_CONFIG_GLOBAL: gitNullDevice(),
     GIT_ATTR_NOSYSTEM: "1",
+    GIT_NO_REPLACE_OBJECTS: "1",
     GIT_TERMINAL_PROMPT: "0",
     GIT_PAGER: "cat",
     GIT_OPTIONAL_LOCKS: "0",
@@ -292,9 +293,13 @@ export async function listUntrackedFiles(root: string): Promise<string[]> {
 }
 
 export async function listRepositoryFiles(root: string, limit = 5_000): Promise<{ files: string[]; truncated: boolean }> {
-  const raw = await git(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
-  const files = unique(raw.split("\0").filter(Boolean).map(normalizeRepoPath)).sort();
-  return { files: files.slice(0, limit), truncated: files.length > limit };
+  const result = await gitResult(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
+  if (result.exitCode !== 0) {
+    const message = result.stderr.trim() || result.error || `git exited with ${String(result.exitCode)}`;
+    throw new GitError(message);
+  }
+  const files = unique(result.stdout.split("\0").filter(Boolean).map(normalizeRepoPath)).sort();
+  return { files: files.slice(0, limit), truncated: result.truncated || files.length > limit };
 }
 
 export async function repositoryInfo(root: string): Promise<RepositoryInfo> {

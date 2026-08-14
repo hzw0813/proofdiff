@@ -5,7 +5,8 @@ import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { targetedJsFrameworkChecks } from "./js-runners.js";
-import { loadTestMap } from "./test-map.js";
+import { bindTestMapToSelectionSnapshot } from "./test-map-binding.js";
+import { loadTestMap, TestMapError, testMapRepositoryPath } from "./test-map.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
 import { compareCodeUnits, stableSort, unique } from "./util.js";
 
@@ -61,10 +62,32 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   if ((options.coverageLcov === undefined) !== (options.coverageCommit === undefined)) {
     throw new CoverageError("Coverage evidence requires both coverageLcov and coverageCommit.");
   }
+
+  const testMapPath = options.testMap === undefined ? null : await testMapRepositoryPath(root, options.testMap);
+  const testMapChanged = testMapPath !== null && files.some((file) => file.path === testMapPath || file.previousPath === testMapPath);
+  if (testMapChanged && selection.mode !== "working-tree") {
+    throw new TestMapError(`Test map is part of the selected ${selection.mode} diff: ${testMapPath}. A relationship declaration cannot strengthen the same immutable change that authored or modified it. Review and land the map separately, or supply a trusted map outside the selected repository diff.`);
+  }
+
   const inventory = await listRepositoryFiles(root);
+  let testMapVisibleFiles = inventory.files;
+  if (options.testMap !== undefined && inventory.truncated) {
+    const completeVisibility = await listRepositoryFiles(root, Number.MAX_SAFE_INTEGER);
+    if (completeVisibility.truncated) {
+      throw new TestMapError("Repository path inventory exceeds ProofDiff's bounded Git-output limit, so test-map Git visibility cannot be established completely. ProofDiff failed closed instead of treating a partial inventory as authoritative.");
+    }
+    testMapVisibleFiles = completeVisibility.files;
+  }
   const testMap = options.testMap === undefined
     ? undefined
-    : await loadTestMap(root, options.testMap, inventory.files, files.map((file) => file.path));
+    : await loadTestMap(root, options.testMap, testMapVisibleFiles, files.map((file) => file.path));
+  const testMapBinding = testMap !== undefined && testMapPath !== null && selection.mode !== "working-tree"
+    ? await bindTestMapToSelectionSnapshot(root, selection, testMapPath, options.testMap!)
+    : undefined;
+  if (testMapBinding !== undefined && !testMapBinding.matched) {
+    throw new TestMapError(`${testMapBinding.detail} Repository-local relationship declarations used for an immutable diff must be bound to that selected snapshot; use the snapshot-matching map or an explicitly trusted map outside the repository.`);
+  }
+
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
   const impactedPaths = unique(files.flatMap((file) => [
@@ -122,8 +145,12 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   if (testMap) {
     const matched = files.filter((file) => testMap.bySource.has(file.path)).length;
     notes.push(`Loaded ${testMap.artifact}: ${testMap.relationships} user-declared source relationship${testMap.relationships === 1 ? "" : "s"} with ${testMap.testPaths} test path${testMap.testPaths === 1 ? "" : "s"}; ${matched} selected changed source${matched === 1 ? "" : "s"} matched. Declarations provide relationship provenance only; ProofDiff does not independently attest semantic relevance, runner identity, execution, coverage, or correctness.`);
+    if (testMapChanged) notes.push(`The supplied test map ${testMap.artifact} is itself part of the mutable working-tree selection. ProofDiff allows this for local iteration, but the declaration is not pre-existing review policy; immutable base/range/staged selections fail closed when their supplied map is changed by the same selection.`);
+    if (testMapBinding?.matched) notes.push(`Repository-local test-map snapshot binding: ${testMapBinding.detail}`);
   }
-  if (inventory.truncated) notes.push("Repository source analysis was limited to the first 5,000 tracked/unignored files.");
+  if (inventory.truncated) {
+    notes.push(`Repository source analysis was limited to the first 5,000 tracked/unignored files.${testMap ? " Test-map Git visibility was validated against a separate complete bounded Git-visible inventory rather than this analysis slice." : ""}`);
+  }
   if (targeted.truncated || jsFrameworkTargeted.truncated) notes.push("Runner-qualified targeted test execution was limited to the first 100 statically impacted or user-declared paths.");
   if (files.length === 0) notes.push("No changes matched the selected diff.");
   if (!options.runChecks && allChecks.length > 0) notes.push("Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.");
@@ -149,6 +176,10 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
         ? " A declared-commit-matched LCOV artifact was parsed as bounded data; ProofDiff did not execute code to produce it."
         : ""}${testMap
         ? " A user-supplied test map was parsed as bounded data. Its source-to-test relationships are declarations, not independently verified semantic relevance."
+        : ""}${testMapBinding?.matched
+        ? ` Its repository-local declaration content was matched to the selected immutable ${testMapBinding.target === "index" ? "index" : "target"} snapshot.`
+        : ""}${testMapChanged
+        ? " The supplied test map is part of the mutable working-tree selection; immutable diff selections reject this self-modifying declaration pattern."
         : ""}`,
     },
   };

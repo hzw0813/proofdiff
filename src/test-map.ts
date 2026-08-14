@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readFile, stat } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import { isTestLikePath, normalizeRepoPath, SOURCE_EXTENSIONS } from "./util.js";
 
 const MAX_TEST_MAP_BYTES = 256 * 1024;
@@ -27,6 +27,19 @@ function exactKeys(value: Record<string, unknown>, allowed: string[], label: str
   if (extra.length > 0) throw new TestMapError(`${label} contains unsupported field${extra.length === 1 ? "" : "s"}: ${extra.join(", ")}.`);
 }
 
+export async function testMapRepositoryPath(root: string, file: string): Promise<string | null> {
+  const lexical = path.isAbsolute(file) ? path.resolve(file) : path.resolve(root, file);
+  let absolute = lexical;
+  try {
+    absolute = await realpath(lexical);
+  } catch {
+    // Preserve the lexical path so loadTestMap can produce the primary missing-file error.
+  }
+  const relative = path.relative(root, absolute);
+  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
+  return normalizeRepoPath(relative);
+}
+
 function normalizeDeclaredPath(root: string, value: unknown, label: string): string {
   if (typeof value !== "string" || value.length === 0) throw new TestMapError(`${label} must be a non-empty repository-relative path.`);
   if (/[\u0000-\u001F\u007F]/.test(value) || path.isAbsolute(value) || path.win32.isAbsolute(value)) {
@@ -49,10 +62,11 @@ export async function loadTestMap(
   const absolute = path.isAbsolute(file) ? file : path.resolve(root, file);
   let metadata;
   try {
-    metadata = await stat(absolute);
+    metadata = await lstat(absolute);
   } catch {
     throw new TestMapError(`Test map does not exist: ${file}`);
   }
+  if (metadata.isSymbolicLink()) throw new TestMapError(`Test map must not be a symbolic link: ${file}`);
   if (!metadata.isFile()) throw new TestMapError(`Test map is not a file: ${file}`);
   if (metadata.size > MAX_TEST_MAP_BYTES) throw new TestMapError(`Test map exceeds the ${MAX_TEST_MAP_BYTES / 1024} KB limit.`);
 
