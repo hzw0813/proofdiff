@@ -110,6 +110,23 @@ if (process.env.NODE_ENV !== "test" || process.env.CI !== "1") process.exit(7);
   assert.equal(result?.targetObservations?.[0]?.outcome, "passed");
 });
 
+test("sensitive environment prefixes remain supported but are explicitly qualified without exposing values", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: { test: "Path=/tmp/proofdiff-bin NODE_OPTIONS=--no-warnings LD_PRELOAD=/tmp/libproofdiff.so DYLD_LIBRARY_PATH=/tmp/dyld jest" } }),
+    "test/env.test.js": "export const env = true;\n",
+    "node_modules/jest/package.json": JSON.stringify({ bin: { jest: "./bin/jest.cjs" } }),
+    "node_modules/jest/bin/jest.cjs": JEST_BIN,
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+
+  const discovery = await discoverChecks(root);
+  const targeted = await targetedJsFrameworkChecks(root, discovery.checks, ["test/env.test.js"]);
+  assert.equal(targeted.checks.length, 1);
+  const origin = targeted.checks[0]?.origin ?? "";
+  assert.match(origin, /warning: sensitive environment prefixes propagated: DYLD_LIBRARY_PATH, LD_PRELOAD, NODE_OPTIONS, Path/);
+  assert.doesNotMatch(origin, /proofdiff-bin|no-warnings|libproofdiff|\/tmp\/dyld/);
+});
+
 test("bounded cross-env prefixes are normalized only when cross-env is locally installed", async (context) => {
   const envAwareVitest = String.raw`
 if (process.env.NODE_ENV !== "test") process.exit(7);

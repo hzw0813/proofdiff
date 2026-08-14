@@ -18,6 +18,7 @@ const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const ENV_LITERAL_VALUE = /^[A-Za-z0-9_./:@%+,-]*$/;
 const MAX_RUNNER_ENV_ASSIGNMENTS = 4;
 const BLOCKED_ENV_NAMES = new Set(["__proto__", "prototype", "constructor"]);
+const SENSITIVE_ENV_NAMES = new Set(["PATH", "NODE_OPTIONS", "NODE_PATH", "LD_PRELOAD", "LD_LIBRARY_PATH"]);
 
 function normalizedRepositoryPath(value: string): string {
   return value.replaceAll("\\", "/").replace(/^\.\//, "");
@@ -66,6 +67,13 @@ function recognizedRunnerScript(command: string): RecognizedRunnerScript | null 
     return { runner: "vitest", runnerArgs: [], runnerEnv, usesCrossEnv };
   }
   return null;
+}
+
+function sensitiveRunnerEnvironmentNames(environment: Record<string, string>): string[] {
+  return Object.keys(environment).filter((name) => {
+    const normalized = name.toUpperCase();
+    return SENSITIVE_ENV_NAMES.has(normalized) || normalized.startsWith("DYLD_");
+  }).sort();
 }
 
 async function localRunnerBin(root: string, runner: SupportedJsRunner): Promise<string | null> {
@@ -209,7 +217,9 @@ export async function targetedJsFrameworkChecks(
     if (qualified.length > limit) truncated = true;
     const targets = selected.map((item) => item.runnerPath);
     const environmentNames = Object.keys(recognized.runnerEnv).sort();
+    const sensitiveEnvironmentNames = sensitiveRunnerEnvironmentNames(recognized.runnerEnv);
     const environmentOrigin = environmentNames.length === 0 ? "" : `; preserving literal environment prefixes: ${environmentNames.join(", ")}`;
+    const sensitiveEnvironmentOrigin = sensitiveEnvironmentNames.length === 0 ? "" : `; warning: sensitive environment prefixes propagated: ${sensitiveEnvironmentNames.join(", ")}`;
     const wrapperOrigin = recognized.usesCrossEnv ? "; bounded cross-env wrapper recognized" : "";
     checks.push({
       id: `${definition.id}:targeted:${recognized.runner}`,
@@ -217,7 +227,7 @@ export async function targetedJsFrameworkChecks(
       kind: "test",
       command: "node",
       args: ["--input-type=module", "--eval", observerSource(recognized.runner, runnerBin, recognized.runnerArgs, recognized.runnerEnv, targets)],
-      origin: `ProofDiff targeted ${recognized.runner} execution derived from ${definition.origin}${environmentOrigin}${wrapperOrigin}`,
+      origin: `ProofDiff targeted ${recognized.runner} execution derived from ${definition.origin}${environmentOrigin}${sensitiveEnvironmentOrigin}${wrapperOrigin}`,
       executesRepositoryCode: true,
       targetRunner: recognized.runner,
       ...(recognized.runnerArgs.length === 0 ? {} : { targetRunnerArgs: recognized.runnerArgs }),
