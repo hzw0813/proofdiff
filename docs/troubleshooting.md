@@ -36,11 +36,36 @@ Only do this for code you trust. The timeout, environment filtering, and output 
 
 ## No checks were discovered
 
-ProofDiff deliberately recognizes a narrow set of conventional root-level test, typecheck, and lint configurations. Confirm the relevant script exists in `package.json`, or that conventional Python tests are present. A custom or monorepo-specific command is currently outside automatic discovery; the report should remain `Unknown` or `Unverified`, not imply safety.
+ProofDiff deliberately recognizes a narrow set of conventional root-level test, typecheck, and lint configurations. Confirm the relevant script exists in `package.json`, or that conventional Python tests are present. A custom or monorepo-specific command is currently outside automatic discovery; the report should remain `Unknown` or `Unverified`, not imply safety. A `--test-map` can declare which exact test file is related to a source file, but it cannot add support for a runner or command shape ProofDiff does not recognize.
+
+## ProofDiff found no related test, but I know which test is relevant
+
+First inspect the file's `Boundary` and `Next` lines. Missing static discovery can be caused by dynamic imports, workspace boundaries, unsupported aliases, generated wiring, or other intentionally bounded analysis. If you already know an exact source→test relationship, you can record that fact explicitly instead of asking ProofDiff to infer it:
+
+```json
+{
+  "version": 1,
+  "relationships": [
+    {
+      "source": "src/payment.ts",
+      "tests": ["test/payment.test.ts"]
+    }
+  ]
+}
+```
+
+```bash
+proofdiff --test-map proofdiff.test-map.json
+proofdiff --test-map proofdiff.test-map.json --run-checks
+```
+
+This is not a coverage override. The report records that the relationship was **user-declared**. ProofDiff still independently requires a supported runner qualification, explicit exact-target supply, and a trustworthy non-skipped runtime pass before the file can become **Related test file passed**. If the runner remains unsupported, the evidence boundary stops at `runner-qualification` and the declaration does not bypass it.
+
+Test-map inputs are exact and fail closed. Test paths must be repository-relative, Git-visible, supported test-like source files. Traversal/absolute paths, stale test paths, duplicate source/test declarations, self-relations, unsupported fields, malformed JSON, or configured bounds cause the map to be rejected as a whole with exit code `2`; ProofDiff does not silently use the valid-looking subset.
 
 ## A passing test command is only “Partially verified”
 
-A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when the exact statically related path is runner-qualified, explicitly supplied, and produces at least one non-skipped passing test observation with no relevant failure.
+A repository-wide command can pass without proving which test file ran. ProofDiff only reports **Related test file passed** (JSON status `verified`) when a related path established by supported static discovery or explicit declaration provenance is runner-qualified, explicitly supplied, and produces at least one non-skipped passing test observation with no relevant failure. A declaration establishes only that the user named the relationship.
 
 Exact per-target pass observations are currently supported for:
 
@@ -54,21 +79,23 @@ For Jest and Vitest, recognized literal environment values are preserved in the 
 
 ## A helper under `tests/` is related but not executed
 
-This is intentional. Directory placement is useful for static “test-like” discovery but does not establish runnable target identity. Node's default runner discovers JavaScript under `test/` (singular), not every arbitrary helper under `tests/`; pytest and unittest use their filename configuration/conventions. Jest and Vitest support is also conservative: a path must first be statically related and test-like, then be explicitly supplied to a recognized bounded runner shape, and finally produce an exact per-file runtime observation. The report keeps unsupported helpers visible without treating directory placement as execution evidence.
+This is intentional. Directory placement is useful for static “test-like” discovery but does not establish runnable target identity. Node's default runner discovers JavaScript under `test/` (singular), not every arbitrary helper under `tests/`; pytest and unittest use their filename configuration/conventions. Jest and Vitest support is also conservative: a path must first be related and test-like, then be explicitly supplied to a recognized bounded runner shape, and finally produce an exact per-file runtime observation. A test-map declaration can establish relationship provenance but still cannot make a helper runnable. The report keeps unsupported helpers visible without treating directory placement or declaration as execution evidence.
 
 ## A TypeScript alias or package self-reference is still missing
 
 ProofDiff deliberately supports only bounded, high-evidence metadata shapes. Compiler mappings require an inventory-visible nearest ancestor `tsconfig.json`, repository-relative string inheritance, supported project-membership rules that include the importer, and an exact or single-wildcard `paths` key; `baseUrl` only anchors those targets. Without `baseUrl`, target values must begin with `./` or `../`. Explicit extensions use TypeScript's documented substitution families. Extensionless file/index lookup requires an explicit Bundler or Node10 mode; NodeNext-family import/require context, directory `package.json` precedence, non-default `moduleSuffixes`, and unknown extensions remain unresolved. Package self-imports require an explicit export-aware mode plus the nearest visible owning package's exact declared name and exact export key with an explicit supported target extension. Hidden metadata, excluded project files, JavaScript without `allowJs`, versioned export conditions, export patterns/arrays, unknown runtime-condition choices, package-based configuration inheritance, standalone `baseUrl`, workspace dependency linking, third-party packages, and `node_modules` remain unresolved. Malformed, cyclic, excessive, ambiguous, escaping, or symlinked metadata fails closed and may appear in report notes.
 
-Even when an alias or self-export is found, it adds only a static graph edge. It cannot qualify a runner target, populate `executedTests`, or produce `verified` without the independent per-target runtime evidence described above.
+Even when an alias or self-export is found, it adds only a static graph edge. It cannot qualify a runner target, populate `executedTests`, or produce `verified` without the independent per-target runtime evidence described above. If the exact source→test relationship is known despite the unresolved edge, `--test-map` can record the declaration; the later runtime gates remain unchanged.
 
 ## A targeted check passed but the result is still partial or unverified
 
 Inspect `targetObservations` in JSON or expand the check in the HTML report. A runner process can succeed after collecting zero tests, filtering every test, or skipping every test. Missing, malformed, truncated, or unmatched observer records are also rejected. Duplicate Jest observations are rejected; valid duplicate Vitest observations for the same already-qualified exact physical path are aggregated, but malformed duplicates still fail closed. None of the rejected or zero/skip-only outcomes produces `executedTests`. If another applicable opaque command passed the file is partial; otherwise it remains unverified.
 
+Also inspect `evidenceBoundary.stage`, `reason`, and `nextAction`. The boundary is intentionally actionable without changing the evidence strength: `no-related-test` can suggest `--test-map` when an exact relationship is already known; `runner-unqualified` says the relationship exists but the runner gate is still missing; `checks-not-run` says the target is qualified but runtime execution was not requested; `observer-inconclusive` says execution happened without a trustworthy exact-target observation.
+
 ## A related test file passed, but the changed symbol may not have run
 
-This is expected under the current file-level evidence model. ProofDiff observes a runner-qualified exact target and at least one non-skipped passing test for that file. It does not use that fact to claim that a changed symbol, line, branch, relevant assertion, or behavior ran. Optional LCOV coverage-artifact evidence is reported separately and does not change the historical `verified` status. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
+This is expected under the current file-level evidence model. ProofDiff observes a runner-qualified exact related target and at least one non-skipped passing test for that file. Relationship provenance may come from bounded static discovery or an explicit user declaration; neither proves that changed code executed. ProofDiff does not use the passing target to claim that a changed symbol, line, branch, relevant assertion, or behavior ran. Optional LCOV coverage-artifact evidence is reported separately and does not change the historical `verified` status. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
 
 ## Unexpected `node_modules` or generated files appear
 
@@ -94,7 +121,7 @@ Ensure checkout history is available. With GitHub Actions, use `actions/checkout
 
 ## The HTML report contains sensitive names or output
 
-Reports are local files but may include paths, symbols, commands, and bounded check output. ProofDiff creates requested output files with user-only permissions where supported. Review a report before sharing it and delete it using your normal secure workflow if it should not persist.
+Reports are local files but may include paths, symbols, commands, user-declared relationship paths, and bounded check output. ProofDiff creates requested output files with user-only permissions where supported. Review a report before sharing it and delete it using your normal secure workflow if it should not persist.
 
 ## The GitHub job summary is missing
 
