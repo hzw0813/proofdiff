@@ -5,6 +5,7 @@ import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { targetedJsFrameworkChecks } from "./js-runners.js";
+import { assertSelectionWorkspaceAligned } from "./selection-workspace.js";
 import { bindTestMapToSelectionSnapshot } from "./test-map-binding.js";
 import { loadTestMap, TestMapError, testMapRepositoryPath } from "./test-map.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
@@ -56,6 +57,7 @@ function summarize(assessments: FileAssessment[], checksRun: number, discovered:
 export async function analyzeRepository(options: AnalyzeRepositoryOptions): Promise<AnalysisReport> {
   const root = await findRepository(options.repo);
   const { selection, args } = await selectDiff(root, options);
+  await assertSelectionWorkspaceAligned(root, selection);
   const includeUntracked = selection.mode === "working-tree";
   const untracked = includeUntracked ? await listUntrackedFiles(root) : [];
   const files = await changedFiles(root, args, includeUntracked, untracked);
