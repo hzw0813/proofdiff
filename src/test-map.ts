@@ -40,7 +40,12 @@ function normalizeDeclaredPath(root: string, value: unknown, label: string): str
   return normalizeRepoPath(relative);
 }
 
-export async function loadTestMap(root: string, file: string, repositoryFiles: string[]): Promise<LoadedTestMap> {
+export async function loadTestMap(
+  root: string,
+  file: string,
+  repositoryFiles: string[],
+  selectedSourcePaths: string[] = [],
+): Promise<LoadedTestMap> {
   const absolute = path.isAbsolute(file) ? file : path.resolve(root, file);
   let metadata;
   try {
@@ -64,6 +69,7 @@ export async function loadTestMap(root: string, file: string, repositoryFiles: s
   if (parsed.relationships.length > MAX_RELATIONSHIPS) throw new TestMapError(`Test map exceeds the ${MAX_RELATIONSHIPS} relationship limit.`);
 
   const visible = new Set(repositoryFiles.map(normalizeRepoPath));
+  const selectableSources = new Set([...visible, ...selectedSourcePaths.map(normalizeRepoPath)]);
   const bySource = new Map<string, string[]>();
   let testPaths = 0;
 
@@ -73,6 +79,7 @@ export async function loadTestMap(root: string, file: string, repositoryFiles: s
     if (!plainObject(relationship)) throw new TestMapError(`${label} must be an object.`);
     exactKeys(relationship, ["source", "tests"], label);
     const source = normalizeDeclaredPath(root, relationship.source, `${label}.source`);
+    if (!selectableSources.has(source)) throw new TestMapError(`${label} references a source path that is neither Git-visible nor selected as changed: ${source}`);
     if (bySource.has(source)) throw new TestMapError(`Test map declares source more than once: ${source}`);
     if (!Array.isArray(relationship.tests) || relationship.tests.length === 0) throw new TestMapError(`${label}.tests must be a non-empty array.`);
     if (relationship.tests.length > MAX_TESTS_PER_RELATIONSHIP) throw new TestMapError(`${label}.tests exceeds the ${MAX_TESTS_PER_RELATIONSHIP} path limit.`);
