@@ -53,7 +53,7 @@ async function snapshotBlob(root: string, object: string): Promise<string | null
     maxOutputBytes: MAX_BINDING_BYTES + 1,
     env: gitEnvironment(),
   });
-  if (result.exitCode !== 0 || result.outputTruncated) return null;
+  if (result.exitCode !== 0 || result.truncated) return null;
   return result.stdout;
 }
 
