@@ -75,6 +75,29 @@ test("base and range selections validate real commits", async (context) => {
   assert.equal((await changedFiles(root, selectedRange.args, false))[0]?.path, "a.py");
 });
 
+test("static Git inspection ignores local replace refs", async (context) => {
+  const root = await initializeRepository({ "value.txt": "baseline\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const base = git(root, "rev-parse", "HEAD").trim();
+  await writeFiles(root, { "value.txt": "committed\n" });
+  git(root, "add", "value.txt");
+  git(root, "commit", "-qm", "real committed value");
+  const head = git(root, "rev-parse", "HEAD").trim();
+
+  await writeFiles(root, { "replacement.txt": "spoof-one\nspoof-two\nspoof-three\n" });
+  const originalBlob = git(root, "rev-parse", "HEAD:value.txt").trim();
+  const replacementBlob = git(root, "hash-object", "-w", "replacement.txt").trim();
+  git(root, "replace", originalBlob, replacementBlob);
+
+  assert.match(git(root, "cat-file", "blob", "HEAD:value.txt"), /spoof-three/);
+  assert.match(git(root, "diff", "--numstat", `${base}..${head}`, "--", "value.txt"), /^3\s+1\s+/);
+
+  const [file] = await changedFiles(root, [`${base}..${head}`], false);
+  assert.equal(file?.path, "value.txt");
+  assert.equal(file?.additions, 1);
+  assert.equal(file?.deletions, 1);
+});
+
 test("staged files work before the first commit", async (context) => {
   const root = await temporaryDirectory();
   context.after(() => rm(root, { recursive: true, force: true }));
