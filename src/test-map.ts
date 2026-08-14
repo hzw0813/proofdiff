@@ -1,5 +1,5 @@
 import path from "node:path";
-import { lstat, readFile } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import { isTestLikePath, normalizeRepoPath, SOURCE_EXTENSIONS } from "./util.js";
 
 const MAX_TEST_MAP_BYTES = 256 * 1024;
@@ -27,8 +27,14 @@ function exactKeys(value: Record<string, unknown>, allowed: string[], label: str
   if (extra.length > 0) throw new TestMapError(`${label} contains unsupported field${extra.length === 1 ? "" : "s"}: ${extra.join(", ")}.`);
 }
 
-export function testMapRepositoryPath(root: string, file: string): string | null {
-  const absolute = path.isAbsolute(file) ? path.resolve(file) : path.resolve(root, file);
+export async function testMapRepositoryPath(root: string, file: string): Promise<string | null> {
+  const lexical = path.isAbsolute(file) ? path.resolve(file) : path.resolve(root, file);
+  let absolute = lexical;
+  try {
+    absolute = await realpath(lexical);
+  } catch {
+    // Preserve the lexical path so loadTestMap can produce the primary missing-file error.
+  }
   const relative = path.relative(root, absolute);
   if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
   return normalizeRepoPath(relative);
