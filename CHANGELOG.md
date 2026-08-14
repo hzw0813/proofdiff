@@ -4,6 +4,19 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-15
+
+### Fixed
+
+- Bound repository-local `--test-map` declarations to immutable selections: `--base` and `--range` now require the current declaration content to match the selected target commit, `--staged` requires it to match the index, and a map changed by the same immutable selection fails closed. Mutable working-tree iteration remains allowed with an explicit trust caveat; an external map remains an explicit external trust input.
+- Hardened Git provenance against local replacement objects by disabling `.git/refs/replace` semantics for ProofDiff Git inspection and test-map snapshot reads. Real regression tests confirm ordinary Git can be spoofed by a replacement blob while ProofDiff still observes the original committed content.
+- Fixed test-map visibility in repositories whose static graph inventory exceeds 5,000 paths. Relationship validation now uses a separate bounded Git-visible inventory, and fails closed if even that inventory exceeds the underlying Git-output bound instead of treating a partial list as authoritative.
+- Rejected symbolic-link test-map artifacts and canonicalized repository-local map identity before immutable-selection trust checks.
+
+### Changed
+
+- JSON `schemaVersion: "1.0"` and the historical human meaning of `verified` remain unchanged: **Related test file passed**. These hardening changes do not make declarations proof of coverage and do not claim the broader historical/staged filesystem is snapshot-bound beyond the test-map declaration checks described above.
+
 ## [0.5.0] - 2026-08-15
 
 ### Added
