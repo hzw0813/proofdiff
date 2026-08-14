@@ -9,7 +9,7 @@ import { loadTestMap } from "./test-map.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
 import { compareCodeUnits, stableSort, unique } from "./util.js";
 
-export const VERSION = "0.4.2";
+export const VERSION = "0.5.0";
 
 export interface AnalyzeRepositoryOptions extends AnalyzeOptions {
   testMap?: string;

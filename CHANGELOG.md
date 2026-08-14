@@ -4,6 +4,20 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-15
+
+### Added
+
+- Added bounded user-declared source-to-test relationships through CLI `--test-map`, the library `AnalyzeRepositoryOptions.testMap`, and the composite Action `test-map` input. The exact-path JSON map is parsed as bounded data, rejects escaping/stale/duplicate/unsupported inputs as a whole, and records declaration provenance without pretending ProofDiff independently proved semantic relevance.
+- Added actionable evidence-boundary guidance for relationship gaps: when ProofDiff cannot infer an exact relationship, `nextAction` can point to `--test-map`; a declared-but-unqualified target stops at `runner-qualification`, and a qualified target whose checks were not run stops at `target-invocation`.
+
+### Changed
+
+- User declarations may add a related test candidate to targeted discovery, but they do not bypass runner qualification, explicit exact-target supply, runtime observation, or the non-skipped-pass requirement. A declaration alone cannot create `executedTests` or `verified`, and it does not claim changed-symbol execution, changed-line coverage, assertion relevance, or correctness.
+- Exact targeted checks are associated by their declared/qualified target path even when source and test languages differ, while opaque repository-wide checks remain language-scoped. This supports explicit cross-language integration-test relationships without lending broad test success across languages.
+- Declared-only relationships do not erase the existing risk signal for missing statically inferred test relationships; the report keeps that distinction visible instead of allowing an expert map to game the review score.
+- JSON `schemaVersion: "1.0"` and the historical human meaning of `verified` remain unchanged: **Related test file passed**.
+
 ## [0.4.2] - 2026-08-14
 
 ### Fixed
