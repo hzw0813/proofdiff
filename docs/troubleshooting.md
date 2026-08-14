@@ -45,12 +45,12 @@ A repository-wide command can pass without proving which test file ran. ProofDif
 Exact per-target pass observations are currently supported for:
 
 - Node.js built-in test runner (`node --test`)
-- Jest for bounded root scripts such as `jest`, `jest --ci`, and `jest --runInBand`, with a locally installed `node_modules/jest` runner
-- Vitest for bounded root scripts `vitest`, `vitest run`, or `vitest --run`, with a locally installed `node_modules/vitest` runner
+- Jest for bounded root scripts such as `jest`, `jest --ci`, and `jest --runInBand`, optionally preceded by up to four literal `NAME=value` assignments or by a locally installed `cross-env` plus those assignments
+- Vitest for bounded root scripts `vitest`, `vitest run`, or `vitest --run`, with the same bounded literal environment-prefix and local `cross-env` support
 - pytest
 - Python `unittest`
 
-For Jest and Vitest, ProofDiff explicitly supplies the qualified related targets and consumes a bounded JSON result artifact. Missing, malformed, oversized, duplicate, or unmatched per-file results cannot strengthen evidence. Custom wrappers, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners may still execute as deterministic repository checks, but remain partial or unverified when ProofDiff cannot establish exact target identity and a trustworthy non-skipped pass. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
+For Jest and Vitest, recognized literal environment values are preserved in the exact-target child process. ProofDiff explicitly supplies the qualified related targets and consumes a bounded JSON result artifact. Missing, malformed, oversized, duplicate, or unmatched per-file results cannot strengthen evidence. Shell substitution/chaining, duplicate or excessive environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, arbitrary wrappers, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners may still execute as deterministic repository checks, but remain partial or unverified when ProofDiff cannot establish exact target identity and a trustworthy non-skipped pass. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
 
 ## A helper under `tests/` is related but not executed
 
