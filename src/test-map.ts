@@ -1,6 +1,5 @@
 import path from "node:path";
 import { readFile, stat } from "node:fs/promises";
-import type { RepositoryGraph } from "./graph.js";
 import { isTestLikePath, normalizeRepoPath, SOURCE_EXTENSIONS } from "./util.js";
 
 const MAX_TEST_MAP_BYTES = 256 * 1024;
@@ -102,18 +101,4 @@ export async function loadTestMap(root: string, file: string, repositoryFiles: s
     relationships: bySource.size,
     testPaths,
   };
-}
-
-export function applyTestMap(graph: RepositoryGraph, testMap: LoadedTestMap): void {
-  for (const [source, tests] of testMap.bySource) {
-    for (const testPath of tests) {
-      const reverse = graph.dependents.get(source) ?? new Set<string>();
-      reverse.add(testPath);
-      graph.dependents.set(source, reverse);
-
-      const dependencies = graph.dependencies.get(testPath) ?? new Set<string>();
-      dependencies.add(source);
-      graph.dependencies.set(testPath, dependencies);
-    }
-  }
 }
