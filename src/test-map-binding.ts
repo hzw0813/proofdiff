@@ -1,3 +1,4 @@
+import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { diffTargetCommit, gitNullDevice } from "./git.js";
 import { runProcess, safeExecutablePath } from "./process.js";
@@ -78,9 +79,10 @@ export async function bindTestMapToSelectionSnapshot(
     return { matched: false, target, detail: `The repository-local test map is not a readable JSON blob in the selected ${target === "index" ? "index" : "target commit"} snapshot.` };
   }
 
+  const currentFile = path.isAbsolute(worktreeFile) ? worktreeFile : path.resolve(root, worktreeFile);
   let current: string;
   try {
-    current = await readFile(worktreeFile, "utf8");
+    current = await readFile(currentFile, "utf8");
   } catch {
     return { matched: false, target, detail: "The current test map could not be read for immutable snapshot binding." };
   }
