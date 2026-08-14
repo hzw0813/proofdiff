@@ -50,7 +50,7 @@ Exact per-target pass observations are currently supported for:
 - pytest
 - Python `unittest`
 
-For Jest and Vitest, recognized literal environment values are preserved in the exact-target child process. ProofDiff explicitly supplies the qualified related targets and consumes a bounded JSON result artifact. Missing, malformed, oversized, duplicate, or unmatched per-file results cannot strengthen evidence. Shell substitution/chaining, duplicate or excessive environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, arbitrary wrappers, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners may still execute as deterministic repository checks, but remain partial or unverified when ProofDiff cannot establish exact target identity and a trustworthy non-skipped pass. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
+For Jest and Vitest, recognized literal environment values are preserved in the exact-target child process; sensitive propagated environment names are called out in check provenance without exposing their values. ProofDiff explicitly supplies the qualified related targets and consumes a bounded JSON result artifact. Missing, malformed, oversized, or unmatched per-file results cannot strengthen evidence. Duplicate Jest target results remain fail-closed. For Vitest multi-project output, multiple valid records that resolve to the same already-qualified exact physical target are aggregated; any failing duplicate fails that target, and malformed or overflowed aggregation still fails closed. Shell substitution/chaining, duplicate or excessive environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, arbitrary wrappers, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners may still execute as deterministic repository checks, but remain partial or unverified when ProofDiff cannot establish exact target identity and a trustworthy non-skipped pass. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
 
 ## A helper under `tests/` is related but not executed
 
@@ -64,7 +64,7 @@ Even when an alias or self-export is found, it adds only a static graph edge. It
 
 ## A targeted check passed but the result is still partial or unverified
 
-Inspect `targetObservations` in JSON or expand the check in the HTML report. A runner process can succeed after collecting zero tests, filtering every test, or skipping every test. Missing, malformed, truncated, duplicate, or unmatched observer records are also rejected. None of those outcomes produces `executedTests`. If another applicable opaque command passed the file is partial; otherwise it remains unverified.
+Inspect `targetObservations` in JSON or expand the check in the HTML report. A runner process can succeed after collecting zero tests, filtering every test, or skipping every test. Missing, malformed, truncated, or unmatched observer records are also rejected. Duplicate Jest observations are rejected; valid duplicate Vitest observations for the same already-qualified exact physical path are aggregated, but malformed duplicates still fail closed. None of the rejected or zero/skip-only outcomes produces `executedTests`. If another applicable opaque command passed the file is partial; otherwise it remains unverified.
 
 ## A related test file passed, but the changed symbol may not have run
 
