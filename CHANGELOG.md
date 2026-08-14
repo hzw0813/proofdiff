@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-14
+
+### Changed
+
+- Expanded bounded Jest/Vitest exact-target recognition to accept up to four literal `NAME=value` environment prefixes and an optional leading `cross-env` wrapper when `cross-env` is locally installed. Recognized environment values are preserved in the targeted runner process; the existing Jest/Vitest runner and option allowlists, exact-target identity, non-skipped-pass requirement, failure attribution, and JSON fail-closed behavior are unchanged.
+- Shell substitution and chaining, duplicate/excessive environment assignments, `cross-env-shell`, `dotenv`, `concurrently`, unsupported Jest/Vitest options/config shapes, and other ambiguous wrappers remain opaque instead of being guessed. JSON `schemaVersion: "1.0"` and the historical `verified` meaning remain unchanged.
+
 ## [0.4.0] - 2026-08-14
 
 ### Added
