@@ -8,7 +8,7 @@ import { targetedJsFrameworkChecks } from "./js-runners.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
 import { compareCodeUnits, stableSort } from "./util.js";
 
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 
 const statusRank: Record<VerificationStatus, number> = {
   "verification-failed": 5,
@@ -96,7 +96,7 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
         ],
       };
     }),
-    (a, b) => riskRank[b.risk] - riskRank[a.risk] || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path),
+    (a, b) => riskRank[b.risk] - a.riskScore || b.riskScore - a.riskScore || statusRank[b.status] - statusRank[a.status] || compareCodeUnits(a.file.path, b.file.path),
   );
   const checksRun = checks.filter((check) => check.status !== "not-run").length;
   const notes = [...discovery.notes, ...graph.diagnostics];
