@@ -12,6 +12,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 - Hardened Git provenance against local replacement objects by disabling `.git/refs/replace` semantics for ProofDiff Git inspection and test-map snapshot reads. Real regression tests confirm ordinary Git can be spoofed by a replacement blob while ProofDiff still observes the original committed content.
 - Fixed test-map visibility in repositories whose static graph inventory exceeds 5,000 paths. Relationship validation now uses a separate bounded Git-visible inventory, and fails closed if even that inventory exceeds the underlying Git-output bound instead of treating a partial list as authoritative.
 - Rejected symbolic-link test-map artifacts and canonicalized repository-local map identity before immutable-selection trust checks.
+- Made Python AST interpreter discovery resilient across platforms: Windows now prefers `python` before `python3`, other platforms retain `python3` first, and a missing, timed-out, nonzero, or malformed-output candidate no longer prevents ProofDiff from trying the alternate interpreter before visibly falling back to lexical analysis.
 
 ### Changed
 
