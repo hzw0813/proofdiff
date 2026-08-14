@@ -1,0 +1,51 @@
+name: Prepare v0.5.2 once
+
+on:
+  push:
+    branches: [release/v0.5.2]
+    paths:
+      - .github/workflows/prepare-v0.5.2-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: release/v0.5.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Add v0.5.2 changelog entry
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'CHANGELOG.md';
+          const text = fs.readFileSync(path, 'utf8');
+          const marker = '## [Unreleased]\n';
+          if (!text.includes(marker)) throw new Error('Unreleased marker not found');
+          if (text.includes('## [0.5.2]')) process.exit(0);
+          const section = `\n## [0.5.2] - 2026-08-15\n\n### Fixed\n\n- Restored repository Action/runtime parity by clean-regenerating the tracked \`dist/\` tree from the current source. The composite Action executes tracked \`dist/cli.js\` directly, while npm release packaging rebuilds \`dist\`; keeping these trees synchronized prevents a GitHub Action tag and npm package with the same version from carrying different runtime code.\n- Added a permanent clean-build \`Generated dist / source parity\` CI gate. CI removes generated output, rebuilds it, and requires the committed \`dist/\` tree to match exactly, including detection of stale orphaned generated files.\n- Bound immutable \`--base\`, \`--range\`, and \`--staged\` analysis to the checked-out filesystem state consumed by graph analysis, check discovery, runner qualification, and optional execution. Base/range targets must match checked-out HEAD; tracked drift, Git-visible untracked inputs, and discovery-sensitive ignored metadata/tests fail closed; staged analysis requires worktree/index alignment.\n- Tightened immutable \`--run-checks\` workspace trust: ignored repository-local runtime inputs are rejected before repository code execution, while bounded dependency/cache directories remain environment inputs. Static-only analysis uses the narrower discovery-sensitive ignored-input boundary.\n- Preserved explicit LCOV semantics under the workspace gate: only the exact supplied LCOV data artifact may be exempt from generic untracked/ignored rejection, it still undergoes declared-commit and bounded parsing checks, and sibling files or discovery-sensitive metadata/test paths receive no exemption. Historical range targets that are not checked out now fail closed with guidance to use the matching checkout or a separate worktree rather than mixing snapshots.\n\n### Changed\n\n- JSON \`schemaVersion: "1.0"\` and the human meaning of \`verified\` remain unchanged: **Related test file passed**. These changes strengthen runtime/provenance boundaries and do not claim changed-symbol execution, changed-line execution, assertion relevance, coverage completeness, or correctness.\n`;
+          fs.writeFileSync(path, text.replace(marker, marker + section), 'utf8');
+          NODE
+      - run: npm run clean
+      - run: npm run build
+      - name: Commit changelog and clean generated dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md dist
+          if git diff --cached --quiet; then
+            echo "release prep already synchronized"
+            exit 0
+          fi
+          git commit -m "Prepare generated artifacts for v0.5.2"
+          git push origin HEAD:release/v0.5.2
