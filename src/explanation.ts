@@ -1,7 +1,7 @@
 import type { CheckResult, EvidenceBoundary, EvidenceNextAction, FileAssessment } from "./types.js";
 
 function checkApplies(check: CheckResult, item: FileAssessment): boolean {
-  if (check.targetFiles && !check.targetFiles.some((target) => item.relatedTests.includes(target))) return false;
+  if (check.targetFiles) return check.targetFiles.some((target) => item.relatedTests.includes(target));
   if (check.id.startsWith("js:")) return item.file.language === "javascript" || item.file.language === "typescript";
   if (check.id.startsWith("python:")) return item.file.language === "python";
   return true;
