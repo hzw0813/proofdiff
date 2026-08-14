@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import path from "node:path";
+import { rm, symlink } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
-import { loadTestMap, TestMapError } from "../src/test-map.js";
-import { initializeRepository, writeFiles } from "./helpers.js";
+import { listRepositoryFiles } from "../src/git.js";
+import { loadTestMap, TestMapError, testMapRepositoryPath } from "../src/test-map.js";
+import { git, initializeRepository, writeFiles } from "./helpers.js";
 
 function mapFor(source: string, tests: string[]): string {
   return JSON.stringify({ version: 1, relationships: [{ source, tests }] }, null, 2);
@@ -67,6 +69,73 @@ test("an exact declared target can apply across source and test languages withou
   assert.deepEqual(assessment?.executedTests, ["test/integration.test.js"]);
   assert.ok(report.checks.some((check) => check.targetFiles?.includes("test/integration.test.js") && check.status === "passed"));
   assert.match(assessment?.reasons.join("\n") ?? "", /user-declared relationship provenance does not remove this review signal/);
+});
+
+test("immutable selections reject a test map modified by the same selection", async (context) => {
+  const root = await initializeRepository({
+    "src/value.js": "export const value = 1;\n",
+    "test/value.test.js": "export const observed = true;\n",
+    "proofdiff.test-map.json": mapFor("src/value.js", ["test/value.test.js"]),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const base = git(root, "rev-parse", "HEAD").trim();
+
+  await writeFiles(root, {
+    "src/value.js": "export const value = 2;\n",
+    "proofdiff.test-map.json": `${mapFor("src/value.js", ["test/value.test.js"])}\n`,
+  });
+
+  const workingTree = await analyzeRepository({ repo: root, testMap: "proofdiff.test-map.json" });
+  assert.match(workingTree.notes.join("\n"), /part of the mutable working-tree selection/);
+  assert.match(workingTree.trust.statement, /immutable diff selections reject this self-modifying declaration pattern/);
+
+  git(root, "add", ".");
+  git(root, "commit", "-qm", "change source and declaration");
+  await assert.rejects(
+    () => analyzeRepository({ repo: root, base, testMap: "proofdiff.test-map.json" }),
+    (error: unknown) => {
+      assert.ok(error instanceof TestMapError);
+      assert.match(error.message, /part of the selected base diff/);
+      assert.match(error.message, /cannot strengthen the same immutable change/);
+      return true;
+    },
+  );
+});
+
+test("test-map visibility can use the complete Git inventory independently of a truncated analysis slice", async (context) => {
+  const root = await initializeRepository({
+    "a-first.js": "export const first = true;\n",
+    "src/value.js": "export const value = 1;\n",
+    "zz/value.test.js": "export const observed = true;\n",
+    "proofdiff.test-map.json": mapFor("src/value.js", ["zz/value.test.js"]),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+
+  const limited = await listRepositoryFiles(root, 1);
+  assert.equal(limited.truncated, true);
+  assert.equal(limited.files.length, 1);
+  await assert.rejects(() => loadTestMap(root, "proofdiff.test-map.json", limited.files), /not Git-visible/);
+
+  const complete = await listRepositoryFiles(root, Number.MAX_SAFE_INTEGER);
+  assert.equal(complete.truncated, false);
+  const loaded = await loadTestMap(root, "proofdiff.test-map.json", complete.files);
+  assert.deepEqual(loaded.bySource.get("src/value.js"), ["zz/value.test.js"]);
+});
+
+test("test map artifact paths are bounded and symbolic-link maps are rejected", async (context) => {
+  const root = await initializeRepository({
+    "src/value.js": "export const value = 1;\n",
+    "test/value.test.js": "export const observed = true;\n",
+    "real-map.json": mapFor("src/value.js", ["test/value.test.js"]),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+
+  assert.equal(testMapRepositoryPath(root, "real-map.json"), "real-map.json");
+  assert.equal(testMapRepositoryPath(root, path.join("..", "outside-map.json")), null);
+
+  if (process.platform === "win32") return;
+  await symlink("real-map.json", path.join(root, "linked-map.json"));
+  await assert.rejects(() => loadTestMap(root, "linked-map.json", ["src/value.js", "test/value.test.js"]), /must not be a symbolic link/);
 });
 
 test("test maps reject unsafe, stale, non-test-like, and ambiguous declarations", async (context) => {
