@@ -103,7 +103,7 @@ Inferred impact and test-like relationships are explicitly labeled static estima
 
 ## Use it in GitHub Actions
 
-The released composite Action is available at `hzw0813/proofdiff@v0.4.2`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. On `pull_request`, the Action can auto-resolve the exact PR base SHA when `base` is omitted; explicit `base` still wins. The source-tree Action also exposes a `test-map` input for bounded declared relationship data; use a release containing that input before relying on it in a pinned external workflow. See the [complete workflow and trust guidance](docs/github-actions.md).
+The released composite Action is available at `hzw0813/proofdiff@v0.5.0`. Use the released tag for normal stable integration, or the reviewed full commit SHA for an immutable security-sensitive pin. On `pull_request`, the Action can auto-resolve the exact PR base SHA when `base` is omitted; explicit `base` still wins. The released Action includes the `test-map` input for bounded declared relationship data. See the [complete workflow and trust guidance](docs/github-actions.md).
 
 The released Action writes a concise, bounded **ProofDiff · Change Evidence** job summary by default, so reviewers can see changed-file evidence without opening logs. It uses the same report as terminal/JSON/HTML output, requires no write token, and does not create PR comments. Full provenance remains in the log and optional HTML artifact.
 
