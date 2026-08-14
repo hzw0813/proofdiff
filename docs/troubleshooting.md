@@ -45,14 +45,16 @@ A repository-wide command can pass without proving which test file ran. ProofDif
 Exact per-target pass observations are currently supported for:
 
 - Node.js built-in test runner (`node --test`)
+- Jest for bounded root scripts such as `jest`, `jest --ci`, and `jest --runInBand`, with a locally installed `node_modules/jest` runner
+- Vitest for bounded root scripts `vitest`, `vitest run`, or `vitest --run`, with a locally installed `node_modules/vitest` runner
 - pytest
 - Python `unittest`
 
-Jest, Vitest, Mocha, AVA, and other runners are not yet supported for exact per-target pass evidence. A command using one of those runners may still execute successfully as a deterministic repository check, but that process success alone cannot identify which exact related test target produced a non-skipped passing observation. ProofDiff therefore remains partial or unverified instead of strengthening the claim. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
+For Jest and Vitest, ProofDiff explicitly supplies the qualified related targets and consumes a bounded JSON result artifact. Missing, malformed, oversized, duplicate, or unmatched per-file results cannot strengthen evidence. Custom wrappers, unsupported CLI/config shapes, package-manager layouts without a local `node_modules/<runner>` package, Mocha, AVA, and other runners may still execute as deterministic repository checks, but remain partial or unverified when ProofDiff cannot establish exact target identity and a trustworthy non-skipped pass. See [verification-model.md](verification-model.md) for the runner semantics and limitations.
 
 ## A helper under `tests/` is related but not executed
 
-This is intentional. Directory placement is useful for static “test-like” discovery but does not establish runnable target identity. Node's default runner discovers JavaScript under `test/` (singular), not every arbitrary helper under `tests/`; pytest and unittest use their filename configuration/conventions. The report keeps the helper visible while explaining why it was not qualified.
+This is intentional. Directory placement is useful for static “test-like” discovery but does not establish runnable target identity. Node's default runner discovers JavaScript under `test/` (singular), not every arbitrary helper under `tests/`; pytest and unittest use their filename configuration/conventions. Jest and Vitest support is also conservative: a path must first be statically related and test-like, then be explicitly supplied to a recognized bounded runner shape, and finally produce an exact per-file runtime observation. The report keeps unsupported helpers visible without treating directory placement as execution evidence.
 
 ## A TypeScript alias or package self-reference is still missing
 
@@ -62,11 +64,11 @@ Even when an alias or self-export is found, it adds only a static graph edge. It
 
 ## A targeted check passed but the result is still partial or unverified
 
-Inspect `targetObservations` in JSON or expand the check in the HTML report. A runner process can succeed after collecting zero tests, filtering every test, or skipping every test. Missing, malformed, truncated, or unmatched observer records are also rejected. None of those outcomes produces `executedTests`. If another applicable opaque command passed the file is partial; otherwise it remains unverified.
+Inspect `targetObservations` in JSON or expand the check in the HTML report. A runner process can succeed after collecting zero tests, filtering every test, or skipping every test. Missing, malformed, truncated, duplicate, or unmatched observer records are also rejected. None of those outcomes produces `executedTests`. If another applicable opaque command passed the file is partial; otherwise it remains unverified.
 
 ## A related test file passed, but the changed symbol may not have run
 
-This is expected under the current file-level evidence model. ProofDiff observes a runner-qualified exact target and at least one non-skipped passing test for that file. It does not ingest runtime coverage, so it cannot tell whether a changed symbol, line, branch, or relevant assertion executed. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
+This is expected under the current file-level evidence model. ProofDiff observes a runner-qualified exact target and at least one non-skipped passing test for that file. It does not use that fact to claim that a changed symbol, line, branch, relevant assertion, or behavior ran. Optional LCOV coverage-artifact evidence is reported separately and does not change the historical `verified` status. The terminal and HTML reports display this result as **Related test file passed**; the stable JSON value remains `verified`.
 
 ## Unexpected `node_modules` or generated files appear
 
@@ -74,7 +76,7 @@ Working-tree analysis follows Git: it includes untracked, non-ignored files. Pro
 
 ## Python analysis is degraded
 
-Install Python 3 and ensure `python3` or `python` is available on `PATH`. Without it, ProofDiff keeps file-level and lexical analysis useful but labels the lower confidence. ProofDiff invokes Python in isolated mode and never imports repository modules.
+Install Python 3 and ensure `python3` or `python` is available on `PATH`. Without it, ProofDiff keeps file-level and lexical analysis useful but labels the lower confidence. ProofDiff invokes Python in isolated mode and never imports repository modules during static analysis.
 
 ## A check timed out or produced truncated output
 
