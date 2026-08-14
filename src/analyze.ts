@@ -5,10 +5,15 @@ import { explainEvidenceBoundary } from "./explanation.js";
 import { buildRepositoryGraph, impactedFiles } from "./graph.js";
 import { changedFiles, findRepository, listRepositoryFiles, listUntrackedFiles, repositoryInfo, selectDiff } from "./git.js";
 import { targetedJsFrameworkChecks } from "./js-runners.js";
+import { loadTestMap } from "./test-map.js";
 import type { AnalysisReport, AnalysisSummary, AnalyzeOptions, FileAssessment, RiskLevel, VerificationStatus } from "./types.js";
-import { compareCodeUnits, stableSort } from "./util.js";
+import { compareCodeUnits, stableSort, unique } from "./util.js";
 
 export const VERSION = "0.4.2";
+
+export interface AnalyzeRepositoryOptions extends AnalyzeOptions {
+  testMap?: string;
+}
 
 const statusRank: Record<VerificationStatus, number> = {
   "verification-failed": 5,
@@ -47,7 +52,7 @@ function summarize(assessments: FileAssessment[], checksRun: number, discovered:
   };
 }
 
-export async function analyzeRepository(options: AnalyzeOptions): Promise<AnalysisReport> {
+export async function analyzeRepository(options: AnalyzeRepositoryOptions): Promise<AnalysisReport> {
   const root = await findRepository(options.repo);
   const { selection, args } = await selectDiff(root, options);
   const includeUntracked = selection.mode === "working-tree";
@@ -57,9 +62,14 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
     throw new CoverageError("Coverage evidence requires both coverageLcov and coverageCommit.");
   }
   const inventory = await listRepositoryFiles(root);
+  const testMap = options.testMap === undefined ? undefined : await loadTestMap(root, options.testMap, inventory.files);
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
-  const impactedPaths = files.flatMap((file) => [file.path, ...impactedFiles(graph, file.path, 5_000).files]);
+  const impactedPaths = unique(files.flatMap((file) => [
+    file.path,
+    ...impactedFiles(graph, file.path, 5_000).files,
+    ...(testMap?.bySource.get(file.path) ?? []),
+  ]));
   const targeted = await targetedTestChecks(root, discovery.checks, impactedPaths);
   const jsFrameworkTargeted = await targetedJsFrameworkChecks(root, discovery.checks, impactedPaths);
   const allChecks = [...discovery.checks, ...targeted.checks, ...jsFrameworkTargeted.checks];
@@ -75,8 +85,9 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
     : undefined;
   const assessments = stableSort(
     files.map((file) => {
+      const declaredTests = testMap?.bySource.get(file.path) ?? [];
       const assessment = attachCoverageEvidence(
-        assessFile(file, graph, checks),
+        assessFile(file, graph, checks, declaredTests),
         coverage?.byPath.get(file.path),
       );
       const evidenceBoundary = explainEvidenceBoundary(assessment, checks);
@@ -106,8 +117,12 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
     const directoryList = directories.map((directory) => `${directory}/`).join(", ");
     notes.push(`Working-tree selection includes ${generatedUntracked.length} Git-visible untracked file${generatedUntracked.length === 1 ? "" : "s"} under ${directoryList}. ProofDiff did not hide them; review git status and .gitignore if they are unintended.`);
   }
+  if (testMap) {
+    const matched = files.filter((file) => testMap.bySource.has(file.path)).length;
+    notes.push(`Loaded ${testMap.artifact}: ${testMap.relationships} user-declared source relationship${testMap.relationships === 1 ? "" : "s"} with ${testMap.testPaths} test path${testMap.testPaths === 1 ? "" : "s"}; ${matched} selected changed source${matched === 1 ? "" : "s"} matched. Declarations provide relationship provenance only; ProofDiff does not independently attest semantic relevance, runner identity, execution, coverage, or correctness.`);
+  }
   if (inventory.truncated) notes.push("Repository source analysis was limited to the first 5,000 tracked/unignored files.");
-  if (targeted.truncated || jsFrameworkTargeted.truncated) notes.push("Runner-qualified targeted test execution was limited to the first 100 statically impacted paths.");
+  if (targeted.truncated || jsFrameworkTargeted.truncated) notes.push("Runner-qualified targeted test execution was limited to the first 100 statically impacted or user-declared paths.");
   if (files.length === 0) notes.push("No changes matched the selected diff.");
   if (!options.runChecks && allChecks.length > 0) notes.push("Checks were discovered but not executed. Repository code execution requires explicit --run-checks consent.");
   if (options.runChecks && allChecks.length === 0) notes.push("Check execution was requested, but no supported checks were discovered.");
@@ -130,6 +145,8 @@ export async function analyzeRepository(options: AnalyzeOptions): Promise<Analys
         ? "Repository-defined checks were executed because --run-checks was explicitly supplied. Output was bounded, the repository root and common secret patterns were redacted; this is not an operating-system sandbox."
         : "No repository code was executed. Git inspection and language parsing were performed locally."}${coverage?.summary.accepted
         ? " A declared-commit-matched LCOV artifact was parsed as bounded data; ProofDiff did not execute code to produce it."
+        : ""}${testMap
+        ? " A user-supplied test map was parsed as bounded data. Its source-to-test relationships are declarations, not independently verified semantic relevance."
         : ""}`,
     },
   };
