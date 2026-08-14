@@ -62,7 +62,9 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
     throw new CoverageError("Coverage evidence requires both coverageLcov and coverageCommit.");
   }
   const inventory = await listRepositoryFiles(root);
-  const testMap = options.testMap === undefined ? undefined : await loadTestMap(root, options.testMap, inventory.files);
+  const testMap = options.testMap === undefined
+    ? undefined
+    : await loadTestMap(root, options.testMap, inventory.files, files.map((file) => file.path));
   const graph = await buildRepositoryGraph(root, inventory.files, files);
   const discovery = await discoverChecks(root);
   const impactedPaths = unique(files.flatMap((file) => [
