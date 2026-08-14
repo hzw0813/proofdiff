@@ -40,7 +40,8 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Create syntax-preserving source mutation
         shell: bash
-        run: printf '\n// ProofDiff runtime adoption validation: syntax-preserving no-op.\n' >> work/zod/packages/zod/src/v3/types.ts
+        run: |
+          printf '\n// ProofDiff runtime adoption validation: syntax-preserving no-op.\n' >> work/zod/packages/zod/src/v3/types.ts
       - name: Run only ProofDiff exact-target Vitest evidence
         shell: bash
         run: |
