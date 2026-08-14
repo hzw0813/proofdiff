@@ -117,7 +117,7 @@ try {
   assert.match(pullRequestTarget.stderr, /Use pull_request for untrusted changes/);
 
   const missingBaseEvent = path.join(temporaryRoot, "missing-base-event.json");
-  await writeFile(missingBaseEvent, `${JSON.stringify({ pull_request: { base: {} } } })}\n`, "utf8");
+  await writeFile(missingBaseEvent, `${JSON.stringify({ pull_request: { base: {} } })}\n`, "utf8");
   const missingBase = await run(process.execPath, [resolver], fixtureRoot, {
     expectedCode: 2,
     env: { ...process.env, PROOFDIFF_BASE: "", GITHUB_EVENT_NAME: "pull_request", GITHUB_EVENT_PATH: missingBaseEvent },
