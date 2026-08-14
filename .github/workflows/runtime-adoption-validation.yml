@@ -1,0 +1,132 @@
+name: Runtime adoption validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/runtime-adoption-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  zod-vitest:
+    name: Real repo / Zod / targeted Vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+          run_install: false
+      - name: Acquire pinned Zod
+        shell: bash
+        run: |
+          mkdir -p work/zod
+          cd work/zod
+          git init -q
+          git remote add origin https://github.com/colinhacks/zod.git
+          git fetch --quiet --depth=1 origin 2d90846af918af9602e088812d63a035d47cdbe4
+          git checkout --quiet --detach 2d90846af918af9602e088812d63a035d47cdbe4
+          test "$(git rev-parse HEAD)" = "2d90846af918af9602e088812d63a035d47cdbe4"
+      - name: Install pinned repository dependencies
+        working-directory: work/zod
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Create syntax-preserving source mutation
+        shell: bash
+        run: printf '\n// ProofDiff runtime adoption validation: syntax-preserving no-op.\n' >> work/zod/packages/zod/src/v3/types.ts
+      - name: Run only ProofDiff exact-target Vitest evidence
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import path from 'node:path';
+          import { analyzeRepository } from './dist/analyze.js';
+
+          const root = path.resolve('work/zod');
+          const changedPath = 'packages/zod/src/v3/types.ts';
+          const expectedTest = 'packages/zod/src/v3/tests/string.test.ts';
+          const targetId = 'js:test:test:targeted:vitest';
+
+          const staticReport = await analyzeRepository({ repo: root, runChecks: false });
+          const target = staticReport.discoveredChecks.find((check) => check.id === targetId);
+          if (!target) throw new Error(`Missing ${targetId}`);
+          if (!(target.targetFiles ?? []).includes(expectedTest)) {
+            throw new Error(`Expected ${expectedTest} in targeted files; got ${(target.targetFiles ?? []).join(', ')}`);
+          }
+          console.log('Targeted check discovered:', target.id);
+          console.log('Target count:', target.targetFiles?.length ?? 0);
+          console.log('Includes expected test:', expectedTest);
+
+          const report = await analyzeRepository({
+            repo: root,
+            runChecks: true,
+            selectedChecks: [targetId],
+            timeoutMs: 180_000,
+            maxOutputBytes: 512_000,
+          });
+          const result = report.checks.find((check) => check.id === targetId);
+          if (!result) throw new Error(`Missing executed ${targetId}`);
+          console.log('Targeted check status:', result.status);
+          const expectedObservation = result.targetObservations?.find((item) => item.path === expectedTest || item.runnerPath === expectedTest);
+          if (!expectedObservation) throw new Error(`No exact observation for ${expectedTest}`);
+          console.log('Expected target observation:', JSON.stringify(expectedObservation));
+          if (expectedObservation.outcome !== 'passed') {
+            throw new Error(`Expected exact target to pass, got ${expectedObservation.outcome}`);
+          }
+          const assessment = report.assessments.find((item) => item.file.path === changedPath);
+          if (!assessment) throw new Error(`Missing assessment for ${changedPath}`);
+          console.log('Changed source assessment:', assessment.status);
+          console.log('Strongest evidence:', assessment.evidenceBoundary?.strongestEvidence);
+          if (assessment.status !== 'verified') {
+            throw new Error(`Expected real-repo source assessment to be verified, got ${assessment.status}`);
+          }
+          if (assessment.evidenceBoundary?.strongestEvidence !== 'related-test-file-passed') {
+            throw new Error(`Unexpected strongest evidence: ${assessment.evidenceBoundary?.strongestEvidence}`);
+          }
+          NODE
+
+  vitest-monorepo-negative:
+    name: Real repo / Vitest monorepo / orchestration stays opaque
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Acquire pinned Vitest monorepo without installing dependencies
+        shell: bash
+        run: |
+          mkdir -p work/vitest
+          cd work/vitest
+          git init -q
+          git remote add origin https://github.com/vitest-dev/vitest.git
+          git fetch --quiet --depth=1 --filter=blob:none origin 667c13954daff2d1bec8a866702da8934b9ce539
+          git checkout --quiet --detach 667c13954daff2d1bec8a866702da8934b9ce539
+          test "$(git rev-parse HEAD)" = "667c13954daff2d1bec8a866702da8934b9ce539"
+          printf '\n// ProofDiff runtime adoption validation: syntax-preserving no-op.\n' >> packages/utils/src/error.ts
+      - name: Verify root workspace orchestration is not invented as exact Vitest evidence
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import path from 'node:path';
+          import { analyzeRepository } from './dist/analyze.js';
+
+          const root = path.resolve('work/vitest');
+          const report = await analyzeRepository({ repo: root, runChecks: false });
+          const rootTest = report.discoveredChecks.find((check) => check.id === 'js:test:test');
+          if (!rootTest) throw new Error('Expected root test check discovery');
+          const invented = report.discoveredChecks.filter((check) => check.id.startsWith('js:test:test:targeted:'));
+          console.log('Root test origin:', rootTest.origin);
+          console.log('Root test command:', rootTest.command, ...(rootTest.args ?? []));
+          console.log('Invented exact-target checks:', invented.length);
+          if (invented.length !== 0) throw new Error(`Workspace orchestration unexpectedly became exact-target evidence: ${invented.map((item) => item.id).join(', ')}`);
+          NODE
