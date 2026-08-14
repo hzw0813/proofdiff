@@ -36,6 +36,16 @@ For a repository you explicitly trust:
 npx proofdiff --run-checks --html proofdiff-report.html
 ```
 
+### Exact test-target evidence support
+
+ProofDiff can discover and run broader repository checks, but **Related test file passed** requires runner-qualified, per-target observations. Today, exact test-target pass evidence is supported for:
+
+- Node.js built-in test runner (`node --test`)
+- pytest
+- Python `unittest`
+
+Jest, Vitest, Mocha, AVA, and other runners are not yet supported for exact per-target pass evidence. Their repository commands may still run as deterministic checks, but ProofDiff will fail closed rather than upgrade a file to **Related test file passed** when it cannot prove which exact test target produced a non-skipped passing observation. See the [verification model](docs/verification-model.md) and [troubleshooting guide](docs/troubleshooting.md).
+
 ## Why ProofDiff?
 
 AI review and ProofDiff answer different questions. AI reviewers can suggest possible issues; ProofDiff records reproducible evidence: the selected diff, statically related test-like paths, runner-qualified targets, per-target observations, checks, and the gaps that remain. Each file also carries an evidence boundary showing the strongest evidence actually observed, where stronger evidence stopped, whether ProofDiff failed closed, and a bounded next action. It never treats directory placement or process exit alone as test execution, turns a passing target into changed-symbol coverage, or claims that a change is safe.
