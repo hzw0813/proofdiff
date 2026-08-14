@@ -23,7 +23,11 @@ const IGNORED_DISCOVERY_PATHS = [
     ":(glob)**/*_test.pyi",
     ":(glob)**/*_spec.pyi",
 ];
-const PYTHON_SCAN_EXCLUDED_DIRECTORIES = new Set(["node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"]);
+const PYTHON_SCAN_EXCLUDED_DIRECTORIES = ["node_modules", "__pycache__", ".venv", "venv", "dist", "build"];
+const IGNORED_DISCOVERY_EXCLUSIONS = PYTHON_SCAN_EXCLUDED_DIRECTORIES.flatMap((directory) => [
+    `:(exclude,glob)${directory}/**`,
+    `:(exclude,glob)**/${directory}/**`,
+]);
 function gitEnvironment() {
     const env = {
         PATH: safeExecutablePath(),
@@ -77,10 +81,6 @@ async function trackedFilesystemMatches(root, target) {
     const message = result.stderr.trim() || result.error || `git diff exited with ${String(result.exitCode)}`;
     throw new GitError(`Could not establish immutable snapshot/workspace alignment: ${message}`);
 }
-function outsidePythonDiscoveryExcludedDirectory(file) {
-    const segments = file.replaceAll("\\", "/").split("/");
-    return !segments.slice(0, -1).some((segment) => PYTHON_SCAN_EXCLUDED_DIRECTORIES.has(segment));
-}
 async function ignoredDiscoveryInputs(root) {
     const result = await runGit(root, [
         "ls-files",
@@ -90,6 +90,7 @@ async function ignoredDiscoveryInputs(root) {
         "-z",
         "--",
         ...IGNORED_DISCOVERY_PATHS,
+        ...IGNORED_DISCOVERY_EXCLUSIONS,
     ], 512_000);
     if (result.timedOut || result.truncated) {
         throw new GitError("Could not completely establish whether ignored files can influence immutable check discovery within ProofDiff's bounded Git limits.");
@@ -98,7 +99,7 @@ async function ignoredDiscoveryInputs(root) {
         const message = result.stderr.trim() || result.error || `git ls-files exited with ${String(result.exitCode)}`;
         throw new GitError(`Could not inspect ignored check-discovery inputs: ${message}`);
     }
-    return [...new Set(result.stdout.split("\0").filter(Boolean).map((file) => file.replaceAll("\\", "/")).filter(outsidePythonDiscoveryExcludedDirectory))].sort();
+    return [...new Set(result.stdout.split("\0").filter(Boolean).map((file) => file.replaceAll("\\", "/")))].sort();
 }
 function boundedDetail(files) {
     const shown = files.slice(0, 5);
