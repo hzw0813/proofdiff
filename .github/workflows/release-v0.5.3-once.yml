@@ -1,0 +1,44 @@
+name: Dispatch v0.5.3 release once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-v0.5.3-once.yml
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: v0.5.3
+      RELEASE_SHA: d5fe3da78400a1b4d4154c0ddd9b84c3ef662e06
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Create or verify exact annotated release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            git cat-file -e "${RELEASE_TAG}^{tag}"
+            test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$RELEASE_SHA"
+          else
+            git cat-file -e "${RELEASE_SHA}^{commit}"
+            git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "ProofDiff $RELEASE_TAG"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+      - name: Dispatch standard release workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f release_tag="$RELEASE_TAG" \
+            -f publish_npm=true
