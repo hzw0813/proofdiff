@@ -241,7 +241,7 @@ function classifyScript(name: string): CheckDefinition["kind"] | null {
 function targetingForScript(kind: CheckDefinition["kind"], command: string): Pick<CheckDefinition, "targetRunner" | "targetRunnerArgs" | "targetPattern" | "targetPatterns"> | null {
   if (kind !== "test") return null;
   const normalized = command.trim().replaceAll(/\s+/g, " ");
-  const invocation = normalized.match(/(?:^|&& )(?:node|node\.exe) --test(?: (.+))?$/);
+  const invocation = normalized.match(/^(?:node|node\.exe) --test(?: (.+))?$/);
   if (!invocation) return null;
   const runnerArgs: string[] = [];
   const targetArguments: string[] = [];
