@@ -1,0 +1,120 @@
+name: Python exit-five corroboration updater
+
+on:
+  push:
+    branches:
+      - fix/unittest-exit-five-semantics
+    paths:
+      - .github/workflows/one-time-python-exit-five-v4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/unittest-exit-five-semantics
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Require observer corroboration for Python exit five
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          current = '\n'.join([
+              'function isRecognizedNoTestsExit(check: CheckResult, checks: CheckResult[]): boolean {',
+              '  if (check.status !== "failed" || check.exitCode !== 5) return false;',
+              '  if (check.targetRunner === "pytest") return true;',
+              '  if (check.targetRunner !== "unittest" || check.targetQualifications !== undefined) return false;',
+              '  const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);',
+              '  const observations = targeted?.targetObservations ?? [];',
+              '  return targeted?.status === "passed"',
+              '    && observations.length > 0',
+              '    && observations.every((observation) => observation.outcome === "zero-tests"',
+              '      && targeted.targetQualifications?.some((qualification) => qualification.confidence === "high"',
+              '        && qualification.path === observation.path',
+              '        && qualification.runnerPath === observation.runnerPath) === true);',
+              '}',
+          ])
+          refined = '\n'.join([
+              'function hasExactZeroTestObservations(check: CheckResult): boolean {',
+              '  const observations = check.targetObservations ?? [];',
+              '  return observations.length > 0',
+              '    && observations.every((observation) => observation.outcome === "zero-tests"',
+              '      && check.targetQualifications?.some((qualification) => qualification.confidence === "high"',
+              '        && qualification.path === observation.path',
+              '        && qualification.runnerPath === observation.runnerPath) === true);',
+              '}',
+              '',
+              'function isRecognizedNoTestsExit(check: CheckResult, checks: CheckResult[]): boolean {',
+              '  if (check.status !== "failed" || check.exitCode !== 5 || (check.targetRunner !== "pytest" && check.targetRunner !== "unittest")) return false;',
+              '  if (check.targetQualifications !== undefined) {',
+              '    return check.targetRunner === "pytest" && hasExactZeroTestObservations(check);',
+              '  }',
+              '  const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);',
+              '  if (targeted === undefined || !hasExactZeroTestObservations(targeted)) return false;',
+              '  return targeted.status === "passed"',
+              '    || (targeted.status === "failed" && targeted.exitCode === 5 && targeted.targetRunner === "pytest");',
+              '}',
+          ])
+          for name in ['src/evidence.ts', 'src/explanation.ts']:
+              path = Path(name)
+              text = path.read_text()
+              old = current if name.endswith('evidence.ts') else current.replace('isRecognizedNoTestsExit', 'recognizedNoTestsExit')
+              new = refined if name.endswith('evidence.ts') else refined.replace('isRecognizedNoTestsExit', 'recognizedNoTestsExit')
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one current helper in {name}, found {text.count(old)}')
+              path.write_text(text.replace(old, new))
+
+          test_path = Path('tests/analyze.test.ts')
+          text = test_path.read_text()
+          marker = 'test("unittest exit 5 requires corroborating zero-test observations instead of being blindly suppressed", async (context) => {'
+          if text.count(marker) != 1:
+              raise SystemExit('unittest exit-five regression marker was not unique')
+          block = '\n'.join([
+              'test("pytest exit 5 without lifecycle observations remains a verification failure", async (context) => {',
+              '  const root = await initializeRepository({',
+              '    "pyproject.toml": "[tool.pytest]\\n",',
+              '    "pytest.py": "raise SystemExit(5)\\n",',
+              '    "value.py": "def value():\\n    return 1\\n",',
+              '    "tests/test_value.py": "from value import value\\ndef test_value():\\n    assert value() == 2\\n",',
+              '  });',
+              '  context.after(() => rm(root, { recursive: true, force: true }));',
+              '  await writeFiles(root, { "value.py": "def value():\\n    return 2\\n" });',
+              '  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });',
+              '  const pytestChecks = report.checks.filter((check) => check.targetRunner === "pytest" && check.exitCode === 5);',
+              '  assert.ok(pytestChecks.length >= 1);',
+              '  assert.ok(pytestChecks.some((check) => check.targetQualifications !== undefined && check.targetObservations?.[0]?.outcome === "not-observed"));',
+              '  assert.equal(report.assessments[0]?.status, "verification-failed");',
+              '  assert.ok(report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));',
+              '  assert.equal(report.assessments[0]?.evidenceBoundary?.reason, "failure-unattributed");',
+              '});',
+              '',
+              '',
+          ])
+          test_path.write_text(text.replace(marker, block + marker))
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          old = '- Tightened `unittest` exit-code 5 handling. The stdlib CLI uses code 5 when zero tests run, but a repository-local module can also make `python -m unittest` exit 5 before the real runner starts. ProofDiff now treats an opaque `unittest` exit 5 as benign only when the paired high-confidence targeted observer independently succeeds with exact zero-test observations; targeted or uncorroborated exit-5 failures remain verification failures. Pytest\'s exit-5 no-collection handling is unchanged.\n'
+          new = '- Tightened Python test-runner exit-code 5 handling. Pytest and the stdlib `unittest` CLI use code 5 for no-test outcomes, but repository-local modules can also terminate runner imports with code 5 before trustworthy lifecycle observation. ProofDiff now accepts exit 5 as non-failing only when high-confidence exact zero-test observer data corroborates it: directly for targeted pytest, or through the paired targeted observer for opaque pytest/unittest commands. Uncorroborated exit-5 failures remain verification failures.\n'
+          if text.count(old) != 1:
+              raise SystemExit('expected one previous exit-five changelog bullet')
+          changelog.write_text(text.replace(old, new))
+          PY
+      - run: npm test
+      - run: npm run clean && npm run build
+      - run: git diff --check
+      - name: Commit refined change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/evidence.ts src/explanation.ts tests/analyze.test.ts CHANGELOG.md dist
+          git commit -m "Require evidence for Python no-test exit five"
+          git push origin HEAD:fix/unittest-exit-five-semantics
