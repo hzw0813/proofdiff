@@ -62,6 +62,33 @@ test("a passing related test file does not claim that the changed symbol execute
   assert.match(assessment?.limitations.find((item) => item.includes("did not observe whether changed symbols")) ?? "", /did not observe whether changed symbols/);
 });
 
+test("filename-only compiled mappings cannot promote stale runner output to verified", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ name: "compiled-boundary", private: true, type: "module", scripts: { test: "node --test dist-test/tests/value.test.js" } }),
+    "src/value.ts": "export const value = 1;\n",
+    "tests/value.test.ts": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.ts'; test('value', () => assert.equal(value, 2));\n",
+    "dist-test/tests/value.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; test('stale compiled artifact', () => assert.equal(1, 1));\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "src/value.ts": "export const value = 2;\n" });
+
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const assessment = report.assessments[0];
+  const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+  assert.equal(targeted?.targetQualifications?.[0]?.basis, "compiled-source-map");
+  assert.equal(targeted?.targetQualifications?.[0]?.confidence, "medium");
+  assert.equal(targeted?.targetObservations?.[0]?.outcome, "passed");
+  assert.equal(assessment?.status, "partially-verified");
+  assert.deepEqual(assessment?.relatedTests, ["tests/value.test.ts"]);
+  assert.deepEqual(assessment?.executedTests, []);
+  assert.deepEqual(assessment?.testExecutions, []);
+  assert.match(assessment?.evidence.find((item) => item.label.includes("medium-confidence target identity"))?.detail ?? "", /cannot strengthen this source path to verified/);
+  assert.match(assessment?.limitations.join("\n") ?? "", /no high-confidence runner-qualified source target/);
+  assert.equal(assessment?.evidenceBoundary?.stage, "runner-qualification");
+  assert.equal(assessment?.evidenceBoundary?.reason, "opaque-passing-check");
+  assert.match(assessment?.evidenceBoundary?.detail ?? "", /high-confidence qualification/);
+});
+
 test("failing verification cannot be mistaken for success", async (context) => {
   const root = await initializeRepository(baseline);
   context.after(() => rm(root, { recursive: true, force: true }));

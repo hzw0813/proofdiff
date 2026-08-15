@@ -16,20 +16,23 @@ function action(kind, detail, requiresRepositoryCodeExecution = false) {
 export function explainEvidenceBoundary(item, checks) {
     const executed = checks.filter((check) => check.status !== "not-run");
     const applicable = executed.filter((check) => checkApplies(check, item));
-    const qualifiedPaths = new Set(checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => item.relatedTests.includes(candidate)));
-    const targetedForRelated = checks.filter((check) => (check.targetQualifications ?? []).some((qualification) => item.relatedTests.includes(qualification.path)));
+    const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => item.relatedTests.includes(qualification.path));
+    const qualifiedPaths = new Set(relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path));
+    const targetedForRelated = checks.filter((check) => (check.targetQualifications ?? []).some((qualification) => qualification.confidence === "high" && item.relatedTests.includes(qualification.path)));
     const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
         .filter((observation) => item.relatedTests.includes(observation.path))
         .map((observation) => ({ check, observation })));
-    const failedObservation = observations.find(({ observation }) => observation.outcome === "failed");
-    const unavailableObservation = observations.find(({ observation }) => observation.outcome === "not-observed");
-    const zeroObservation = observations.find(({ observation }) => observation.outcome === "zero-tests");
-    const skippedObservation = observations.find(({ observation }) => observation.outcome === "skipped");
+    const qualificationForObservation = (check, observation) => check.targetQualifications?.find((qualification) => qualification.path === observation.path && qualification.runnerPath === observation.runnerPath);
+    const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+    const failedObservation = exactObservations.find(({ observation }) => observation.outcome === "failed");
+    const unavailableObservation = exactObservations.find(({ observation }) => observation.outcome === "not-observed");
+    const zeroObservation = exactObservations.find(({ observation }) => observation.outcome === "zero-tests");
+    const skippedObservation = exactObservations.find(({ observation }) => observation.outcome === "skipped");
     const unlocalizedTargetFailure = applicable.some((check) => check.targetQualifications !== undefined
         && check.status === "failed"
         && !recognizedNoTestsExit(check)
-        && (check.targetObservations?.some((observation) => observation.outcome === "failed") !== true
-            || check.targetObservations?.some((observation) => item.relatedTests.includes(observation.path) && observation.outcome === "not-observed") === true));
+        && (check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") !== true
+            || check.targetObservations?.some((observation) => item.relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true));
     const passingOpaqueCheck = applicable.some((check) => check.status === "passed" && check.targetQualifications === undefined);
     const unsupportedSemantics = item.file.language === "unknown"
         || item.file.binary
@@ -133,10 +136,10 @@ export function explainEvidenceBoundary(item, checks) {
             stage: "runner-qualification",
             reason: passingOpaqueCheck ? "opaque-passing-check" : "runner-unqualified",
             detail: passingOpaqueCheck
-                ? "A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner."
-                : "Related test-like paths were found or declared, but none were qualified as exact targets for a recognized runner.",
+                ? "A repository command passed, but no related test-like path had high-confidence qualification as an exact source target for a recognized runner."
+                : "Related test-like paths were found or declared, but none had high-confidence qualification as exact source targets for a recognized runner.",
             proofdiffFailClosed: true,
-            nextAction: action("qualify-related-test", "Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file. A --test-map declaration does not bypass runner qualification."),
+            nextAction: action("qualify-related-test", "Use a supported runner convention or explicit source target so ProofDiff can bind runtime observation to the related test file with high confidence. A --test-map declaration does not bypass runner qualification."),
         };
     }
     if (targetedForRelated.length > 0 && targetedForRelated.every((check) => check.status === "not-run")) {
