@@ -9,7 +9,7 @@ import { assertSelectionWorkspaceAligned } from "./selection-workspace.js";
 import { bindTestMapToSelectionSnapshot } from "./test-map-binding.js";
 import { loadTestMap, TestMapError, testMapRepositoryPath } from "./test-map.js";
 import { compareCodeUnits, stableSort, unique } from "./util.js";
-export const VERSION = "0.5.2";
+export const VERSION = "0.5.3";
 const statusRank = {
     "verification-failed": 5,
     unverified: 4,
