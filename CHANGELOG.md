@@ -6,6 +6,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Preserved precise changed-line hunks across renames by scoping per-file Git diffs to both the previous and current path. This prevents a rename with content edits from being reinterpreted as a whole-file addition and overstating changed-line or call-reference evidence.
 - Preserved trailing whitespace in Git repository-root paths. `findRepository()` now removes only Git's record line terminator instead of applying JavaScript `String.trim()`, preventing a repository such as `repository ` from being silently redirected to a sibling path with the trimmed spelling.
 - Tightened Python test-runner exit-code 5 handling. Pytest and the stdlib `unittest` CLI use code 5 for no-test outcomes, but repository-local modules can also terminate runner imports with code 5 before trustworthy lifecycle observation. ProofDiff now accepts exit 5 as non-failing only when high-confidence exact zero-test observer data corroborates it: directly for targeted pytest, or through the paired targeted observer for opaque pytest/unittest commands. Uncorroborated exit-5 failures remain verification failures.
 - Preserved LCOV `SF:` source paths exactly instead of applying JavaScript-style whitespace trimming. Leading or trailing spaces and Unicode whitespace are valid path characters, so silently erasing them could alias artifact coverage for one path onto a different changed repository file and overstate changed-line evidence.

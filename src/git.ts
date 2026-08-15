@@ -271,7 +271,8 @@ export async function changedFiles(root: string, diffArgs: string[], includeUntr
       metric = { additions: lines, deletions: 0, binary };
       patch = content === null ? "" : `@@ -0,0 +1,${lines} @@\n${content.split("\n").map((line) => `+${line}`).join("\n")}`;
     } else {
-      patch = await git(root, ["diff", ...safeDiffOptions, "--unified=0", "--find-renames", ...diffArgs, "--", entry.path], true);
+      const pathspec = entry.previousPath === undefined ? [entry.path] : [entry.previousPath, entry.path];
+      patch = await git(root, ["diff", ...safeDiffOptions, "--unified=0", "--find-renames", ...diffArgs, "--", ...pathspec], true);
     }
     files.push({
       path: entry.path,
