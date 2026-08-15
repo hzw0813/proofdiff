@@ -20,9 +20,12 @@ function verificationFor(file, relatedTests, checks, declaredTests) {
     const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
         .filter((observation) => relatedTests.includes(observation.path))
         .map((observation) => ({ check, observation })));
-    const targetedFailures = observations.filter(({ observation }) => observation.outcome === "failed");
-    const hasExactTargetFailure = (check) => check.targetObservations?.some((observation) => observation.outcome === "failed") === true;
-    const hasUnavailableRelatedTarget = (check) => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed") === true;
+    const qualificationForObservation = (check, observation) => check.targetQualifications?.find((qualification) => qualification.path === observation.path && qualification.runnerPath === observation.runnerPath);
+    const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+    const provisionalObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence !== "high");
+    const targetedFailures = exactObservations.filter(({ observation }) => observation.outcome === "failed");
+    const hasExactTargetFailure = (check) => check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
+    const hasUnavailableRelatedTarget = (check) => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
     const localizedTargetedProcessFailures = applicable.filter((check) => check.targetQualifications !== undefined
         && check.status === "failed"
         && !isRecognizedNoTestsExit(check)
@@ -38,10 +41,10 @@ function verificationFor(file, relatedTests, checks, declaredTests) {
         && !isRecognizedNoTestsExit(check));
     const operationalFailures = applicable.filter((check) => check.targetQualifications !== undefined && ["error", "timed-out"].includes(check.status));
     const passing = applicable.filter((check) => check.status === "passed" && check.targetQualifications === undefined);
-    const testExecutions = observations
+    const testExecutions = exactObservations
         .filter(({ observation }) => observation.outcome === "passed" || observation.outcome === "failed")
         .map(({ check, observation }) => ({ path: observation.path, status: observation.outcome === "passed" ? "passed" : "failed", checkId: check.id }));
-    const executedTests = unique(observations.filter(({ observation }) => observation.outcome === "passed" && observation.testsObserved > 0).map(({ observation }) => observation.path)).sort();
+    const executedTests = unique(exactObservations.filter(({ observation }) => observation.outcome === "passed" && observation.testsObserved > 0).map(({ observation }) => observation.path)).sort();
     for (const check of [...opaqueFailures, ...operationalFailures]) {
         evidence.push({
             kind: "failing-check",
@@ -100,12 +103,22 @@ function verificationFor(file, relatedTests, checks, declaredTests) {
     if (executedTests.length > 0) {
         evidence.push({
             kind: "executed-test",
-            label: `${executedTests.length} qualified related target${executedTests.length === 1 ? "" : "s"} observed passing`,
-            detail: "ProofDiff explicitly supplied each qualified target and observed at least one non-skipped passing test for that exact path. This is file-scoped test evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
+            label: `${executedTests.length} high-confidence qualified related target${executedTests.length === 1 ? "" : "s"} observed passing`,
+            detail: "ProofDiff explicitly supplied each high-confidence qualified target and observed at least one non-skipped passing test for that exact source path. This is file-scoped test evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
             confidence: "high",
         });
     }
-    for (const { check, observation } of observations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
+    for (const { check, observation } of provisionalObservations) {
+        const qualification = qualificationForObservation(check, observation);
+        evidence.push({
+            kind: "limitation",
+            label: `${observation.path}: ${qualification?.confidence ?? "unknown"}-confidence target identity`,
+            detail: `${observation.detail} ${qualification?.limitation ?? "The source-to-runner target identity was not established with high confidence."} The runtime observation remains available on the check, but it cannot strengthen this source path to verified without high-confidence target identity.`,
+            confidence: "high",
+            checkId: check.id,
+        });
+    }
+    for (const { check, observation } of exactObservations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
         evidence.push({ kind: "limitation", label: `${observation.path}: ${observation.outcome}`, detail: observation.detail, confidence: "high", checkId: check.id });
     }
     if (targetedFailures.length > 0 || unlocalizedTargetedFailures.length > 0 || opaqueFailures.length > 0 || operationalFailures.length > 0)
@@ -221,7 +234,9 @@ export function assessFile(file, graph, checks, declaredTests = []) {
     if (isTestLikePath(file.path))
         staticallyTestLike.unshift(file.path);
     const declaredSet = new Set(declaredTests);
-    const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate) || declaredSet.has(candidate));
+    const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => impactedSet.has(qualification.path) || declaredSet.has(qualification.path));
+    const qualified = relevantQualifications.map((qualification) => qualification.path);
+    const stronglyQualified = relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path);
     const relatedTests = unique([...staticallyTestLike, ...qualified, ...declaredTests]).sort();
     const changedCallSites = callsInChangedLines(file, analysis);
     const verification = verificationFor(file, relatedTests, checks, declaredTests);
@@ -248,15 +263,15 @@ export function assessFile(file, graph, checks, declaredTests = []) {
     if (relatedTests.length === 0)
         limitations.push("No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically.");
     else if (verification.executedTests.length === 0)
-        limitations.push("Related test-like paths were found or declared, but no runner-qualified exact target produced a non-skipped passing test observation.");
+        limitations.push("Related test-like paths were found or declared, but no high-confidence runner-qualified source target produced a non-skipped passing test observation.");
     else
-        limitations.push("Qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
-    const unqualifiedTestLike = staticallyTestLike.filter((candidate) => !qualified.includes(candidate));
+        limitations.push("High-confidence qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
+    const unqualifiedTestLike = staticallyTestLike.filter((candidate) => !stronglyQualified.includes(candidate));
     if (unqualifiedTestLike.length > 0)
-        limitations.push(`${unqualifiedTestLike.length} statically related test-like path${unqualifiedTestLike.length === 1 ? " was" : "s were"} not qualified by a recognized runner convention or configuration.`);
-    const unqualifiedDeclared = declaredTests.filter((candidate) => !qualified.includes(candidate));
+        limitations.push(`${unqualifiedTestLike.length} statically related test-like path${unqualifiedTestLike.length === 1 ? " was" : "s were"} not qualified with high confidence by a recognized runner convention or configuration.`);
+    const unqualifiedDeclared = declaredTests.filter((candidate) => !stronglyQualified.includes(candidate));
     if (unqualifiedDeclared.length > 0)
-        limitations.push(`${unqualifiedDeclared.length} user-declared related test path${unqualifiedDeclared.length === 1 ? " was" : "s were"} not qualified by a recognized runner convention or configuration; declarations do not bypass runner qualification.`);
+        limitations.push(`${unqualifiedDeclared.length} user-declared related test path${unqualifiedDeclared.length === 1 ? " was" : "s were"} not qualified with high confidence by a recognized runner convention or configuration; declarations do not bypass runner qualification.`);
     const evidence = [...verification.evidence];
     if (changedCallSites.calls.length > 0) {
         const names = unique(changedCallSites.calls.map((site) => site.name)).slice(0, 8);
