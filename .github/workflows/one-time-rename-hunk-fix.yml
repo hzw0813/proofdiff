@@ -1,0 +1,129 @@
+name: One-time rename hunk fix
+
+on:
+  push:
+    branches:
+      - fix/rename-hunk-pathspec
+    paths:
+      - .github/workflows/one-time-rename-hunk-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/rename-hunk-pathspec
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply permanent fix and regressions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          git_path = Path('src/git.ts')
+          git_text = git_path.read_text()
+          old = '''    } else {
+              patch = await git(root, ["diff", ...safeDiffOptions, "--unified=0", "--find-renames", ...diffArgs, "--", entry.path], true);
+            }
+          '''
+          new = '''    } else {
+              const pathspec = entry.previousPath === undefined ? [entry.path] : [entry.previousPath, entry.path];
+              patch = await git(root, ["diff", ...safeDiffOptions, "--unified=0", "--find-renames", ...diffArgs, "--", ...pathspec], true);
+            }
+          '''
+          if old not in git_text:
+              raise SystemExit('src/git.ts patch target not found')
+          git_path.write_text(git_text.replace(old, new, 1))
+
+          test_path = Path('tests/git.test.ts')
+          test_text = test_path.read_text()
+          old_test = '''  assert.equal(file?.change, "renamed");
+            assert.equal(file?.previousPath, "src/old name.ts");
+            assert.equal(file?.path, "src/new name.ts");
+          });
+          '''
+          new_test = '''  assert.equal(file?.change, "renamed");
+            assert.equal(file?.previousPath, "src/old name.ts");
+            assert.equal(file?.path, "src/new name.ts");
+            assert.deepEqual(file?.hunks, []);
+          });
+
+          test("rename with content modification preserves the minimal changed hunk", async (context) => {
+            const root = await initializeRepository({
+              "src/foo.js": [
+                "export function helperA() { return 1; }",
+                "",
+                "export function target() {",
+                "  helperA();",
+                "  const x = 1;",
+                "  const y = 2;",
+                "  return x + y;",
+                "}",
+                "",
+              ].join("\\n"),
+            });
+            context.after(() => rm(root, { recursive: true, force: true }));
+            git(root, "mv", "src/foo.js", "src/bar.js");
+            await writeFiles(root, {
+              "src/bar.js": [
+                "export function helperA() { return 1; }",
+                "",
+                "export function target() {",
+                "  helperA();",
+                "  const x = 1;",
+                "  const y = 3;",
+                "  return x + y;",
+                "}",
+                "",
+              ].join("\\n"),
+            });
+            const { args } = await selectDiff(root, {});
+            const [file] = await changedFiles(root, args, true);
+            assert.equal(file?.change, "renamed");
+            assert.equal(file?.previousPath, "src/foo.js");
+            assert.equal(file?.path, "src/bar.js");
+            assert.equal(file?.additions, 1);
+            assert.equal(file?.deletions, 1);
+            assert.deepEqual(file?.hunks, [{
+              oldRange: { start: 6, end: 6 },
+              newRange: { start: 6, end: 6 },
+            }]);
+          });
+          '''
+          if old_test not in test_text:
+              raise SystemExit('tests/git.test.ts insertion target not found')
+          test_path.write_text(test_text.replace(old_test, new_test, 1))
+
+          changelog = Path('CHANGELOG.md')
+          changelog_text = changelog.read_text()
+          marker = '### Fixed\n\n'
+          entry = '- Preserved precise changed-line hunks across renames by scoping per-file Git diffs to both the previous and current path. This prevents a rename with content edits from being reinterpreted as a whole-file addition and overstating changed-line or call-reference evidence.\n'
+          if entry not in changelog_text:
+              if marker not in changelog_text:
+                  raise SystemExit('CHANGELOG.md Fixed marker not found')
+              changelog.write_text(changelog_text.replace(marker, marker + entry, 1))
+          PY
+      - name: Run full tests
+        run: npm test
+      - name: Rebuild tracked dist cleanly
+        run: |
+          npm run clean
+          npm run build
+      - name: Validate patch
+        run: git diff --check
+      - name: Commit permanent changes
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add CHANGELOG.md src/git.ts tests/git.test.ts dist
+          git commit -m "Preserve rename-aware changed hunks"
+          git push origin HEAD:fix/rename-hunk-pathspec
