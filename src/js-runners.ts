@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { CheckDefinition, TestTargetQualification } from "./types.js";
-import { isTestLikePath, pathExists, readUtf8File, unique } from "./util.js";
+import { isRegularFileNoFollow, isTestLikePath, pathExists, readUtf8File, unique } from "./util.js";
 
 type SupportedJsRunner = "jest" | "vitest";
 type PackageJson = { scripts?: Record<string, unknown> };
@@ -220,7 +220,7 @@ export async function targetedJsFrameworkChecks(
     const qualified: TestTargetQualification[] = [];
     for (const file of sorted) {
       const qualification = qualifyTarget(recognized.runner, file);
-      if (qualification && await pathExists(path.join(root, qualification.runnerPath))) qualified.push(qualification);
+      if (qualification && await isRegularFileNoFollow(path.join(root, qualification.runnerPath))) qualified.push(qualification);
     }
     if (qualified.length === 0) continue;
     const selected = qualified.slice(0, limit);

@@ -3,7 +3,7 @@ import { readdir } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { CheckDefinition, CheckResult, TestTargetObservation, TestTargetQualification } from "./types.js";
 import { constrainedCheckEnvironment, runProcess } from "./process.js";
-import { pathExists, readUtf8File, sanitizeControlCharacters, unique } from "./util.js";
+import { isRegularFileNoFollow, pathExists, readUtf8File, sanitizeControlCharacters, unique } from "./util.js";
 
 type PackageJson = { scripts?: Record<string, unknown>; packageManager?: string; workspaces?: unknown };
 
@@ -291,11 +291,11 @@ export async function discoverChecks(root: string): Promise<{ checks: CheckDefin
   }
 
   const localTsc = path.join(root, "node_modules", "typescript", "bin", "tsc");
-  if (!checks.some((check) => check.kind === "typecheck") && await pathExists(path.join(root, "tsconfig.json")) && await pathExists(localTsc)) {
+  if (!checks.some((check) => check.kind === "typecheck") && await isRegularFileNoFollow(path.join(root, "tsconfig.json")) && await pathExists(localTsc)) {
     checks.push({ id: "js:typecheck:tsc", label: "typecheck: tsc --noEmit", kind: "typecheck", command: "node", args: [path.join("node_modules", "typescript", "bin", "tsc"), "--noEmit", "--pretty", "false"], origin: "tsconfig.json + local TypeScript binary", executesRepositoryCode: true });
   }
 
-  const hasPythonProject = await pathExists(path.join(root, "pyproject.toml"));
+  const hasPythonProject = await isRegularFileNoFollow(path.join(root, "pyproject.toml"));
   const pyproject = hasPythonProject ? await readUtf8File(path.join(root, "pyproject.toml")) : null;
   const pytestConfiguration = await readPytestConfiguration(root);
   const explicitPytest = pytestConfiguration !== null;
@@ -388,7 +388,7 @@ export async function targetedTestChecks(root: string, definitions: CheckDefinit
     const qualifiedCandidates: TestTargetQualification[] = [];
     for (const file of sorted) {
       const qualification = definition.targetRunner === "node-test" ? nodeQualification(definition, file) : pythonQualification(definition, file);
-      if (qualification && await pathExists(path.join(root, qualification.runnerPath))) qualifiedCandidates.push(qualification);
+      if (qualification && await isRegularFileNoFollow(path.join(root, qualification.runnerPath))) qualifiedCandidates.push(qualification);
     }
     const runnerPathCounts = new Map<string, number>();
     for (const qualification of qualifiedCandidates) runnerPathCounts.set(qualification.runnerPath, (runnerPathCounts.get(qualification.runnerPath) ?? 0) + 1);

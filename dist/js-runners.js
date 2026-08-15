@@ -1,5 +1,5 @@
 import path from "node:path";
-import { isTestLikePath, pathExists, readUtf8File, unique } from "./util.js";
+import { isRegularFileNoFollow, isTestLikePath, pathExists, readUtf8File, unique } from "./util.js";
 const JS_TEST_EXTENSION = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const JEST_SAFE_ARGS = new Set(["--ci", "--runInBand"]);
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -209,7 +209,7 @@ export async function targetedJsFrameworkChecks(root, definitions, impactedPaths
         const qualified = [];
         for (const file of sorted) {
             const qualification = qualifyTarget(recognized.runner, file);
-            if (qualification && await pathExists(path.join(root, qualification.runnerPath)))
+            if (qualification && await isRegularFileNoFollow(path.join(root, qualification.runnerPath)))
                 qualified.push(qualification);
         }
         if (qualified.length === 0)

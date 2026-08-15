@@ -2,7 +2,7 @@ import path from "node:path";
 import { readdir } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { constrainedCheckEnvironment, runProcess } from "./process.js";
-import { pathExists, readUtf8File, sanitizeControlCharacters, unique } from "./util.js";
+import { isRegularFileNoFollow, pathExists, readUtf8File, sanitizeControlCharacters, unique } from "./util.js";
 function nodeTestReporter(targets) {
     const source = String.raw `import{writeSync}from"node:fs";import{resolve}from"node:path";import{Readable}from"node:stream";import{fileURLToPath}from"node:url";import{spec}from"node:test/reporters";const targets=${JSON.stringify(targets)};const records=new Map(targets.map(runnerPath=>[resolve(runnerPath),{runnerPath,observed:false,passed:0,failed:0,skipped:0,tests:0}]));export default async function*proofdiff(source){async function*inspect(){for await(const event of source){if(event.type==="test:summary"&&event.data.file){const raw=event.data.file;const key=resolve(raw.startsWith("file:")?fileURLToPath(raw):raw);const item=records.get(key);if(item)Object.assign(item,{observed:true,passed:event.data.counts.passed,failed:event.data.counts.failed,skipped:event.data.counts.skipped,tests:event.data.counts.tests})}else if(event.type==="test:complete"&&event.data.file){const raw=event.data.file;const key=resolve(raw.startsWith("file:")?fileURLToPath(raw):raw);const item=records.get(key);if(item&&typeof event.data.name==="string"&&resolve(event.data.name)===key){item.observed=true;if(event.data.details?.passed===false&&item.failed===0)item.failed=1}}yield event}}for await(const output of Readable.from(inspect()).compose(spec()))yield output;try{writeSync(3,JSON.stringify({version:1,runner:"node-test",unattributedFailures:0,files:[...records.values()]})+"\n")}catch{}}`;
     return `data:text/javascript,${encodeURIComponent(source)}`;
@@ -298,10 +298,10 @@ export async function discoverChecks(root) {
         }
     }
     const localTsc = path.join(root, "node_modules", "typescript", "bin", "tsc");
-    if (!checks.some((check) => check.kind === "typecheck") && await pathExists(path.join(root, "tsconfig.json")) && await pathExists(localTsc)) {
+    if (!checks.some((check) => check.kind === "typecheck") && await isRegularFileNoFollow(path.join(root, "tsconfig.json")) && await pathExists(localTsc)) {
         checks.push({ id: "js:typecheck:tsc", label: "typecheck: tsc --noEmit", kind: "typecheck", command: "node", args: [path.join("node_modules", "typescript", "bin", "tsc"), "--noEmit", "--pretty", "false"], origin: "tsconfig.json + local TypeScript binary", executesRepositoryCode: true });
     }
-    const hasPythonProject = await pathExists(path.join(root, "pyproject.toml"));
+    const hasPythonProject = await isRegularFileNoFollow(path.join(root, "pyproject.toml"));
     const pyproject = hasPythonProject ? await readUtf8File(path.join(root, "pyproject.toml")) : null;
     const pytestConfiguration = await readPytestConfiguration(root);
     const explicitPytest = pytestConfiguration !== null;
@@ -396,7 +396,7 @@ export async function targetedTestChecks(root, definitions, impactedPaths, limit
         const qualifiedCandidates = [];
         for (const file of sorted) {
             const qualification = definition.targetRunner === "node-test" ? nodeQualification(definition, file) : pythonQualification(definition, file);
-            if (qualification && await pathExists(path.join(root, qualification.runnerPath)))
+            if (qualification && await isRegularFileNoFollow(path.join(root, qualification.runnerPath)))
                 qualifiedCandidates.push(qualification);
         }
         const runnerPathCounts = new Map();
