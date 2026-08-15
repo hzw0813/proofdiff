@@ -1,0 +1,110 @@
+name: Refined unittest exit-five updater
+
+on:
+  push:
+    branches:
+      - fix/unittest-exit-five-semantics
+    paths:
+      - .github/workflows/one-time-unittest-exit-five-v3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/unittest-exit-five-semantics
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch corroborated unittest exit-five semantics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          evidence_old = '\n'.join([
+              'function isRecognizedNoTestsExit(check: CheckResult): boolean {',
+              '  return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");',
+              '}',
+          ])
+          evidence_new = '\n'.join([
+              'function isRecognizedNoTestsExit(check: CheckResult, checks: CheckResult[]): boolean {',
+              '  if (check.status !== "failed" || check.exitCode !== 5) return false;',
+              '  if (check.targetRunner === "pytest") return true;',
+              '  if (check.targetRunner !== "unittest" || check.targetQualifications !== undefined) return false;',
+              '  const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);',
+              '  const observations = targeted?.targetObservations ?? [];',
+              '  return targeted?.status === "passed"',
+              '    && observations.length > 0',
+              '    && observations.every((observation) => observation.outcome === "zero-tests"',
+              '      && targeted.targetQualifications?.some((qualification) => qualification.confidence === "high"',
+              '        && qualification.path === observation.path',
+              '        && qualification.runnerPath === observation.runnerPath) === true);',
+              '}',
+          ])
+          explanation_old = evidence_old.replace('isRecognizedNoTestsExit', 'recognizedNoTestsExit')
+          explanation_new = evidence_new.replace('isRecognizedNoTestsExit', 'recognizedNoTestsExit')
+
+          for name, old, new, call, replacement, expected_calls in [
+              ('src/evidence.ts', evidence_old, evidence_new, 'isRecognizedNoTestsExit(check)', 'isRecognizedNoTestsExit(check, applicable)', 3),
+              ('src/explanation.ts', explanation_old, explanation_new, 'recognizedNoTestsExit(check)', 'recognizedNoTestsExit(check, applicable)', 1),
+          ]:
+              path = Path(name)
+              text = path.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one helper block in {name}, found {text.count(old)}')
+              text = text.replace(old, new)
+              if text.count(call) != expected_calls:
+                  raise SystemExit(f'expected {expected_calls} helper calls in {name}, found {text.count(call)}')
+              path.write_text(text.replace(call, replacement))
+
+          test_path = Path('tests/analyze.test.ts')
+          text = test_path.read_text()
+          marker = 'test("a unittest loader failure without an attributable test failure fails closed", async (context) => {'
+          if text.count(marker) != 1:
+              raise SystemExit('unittest loader regression marker was not unique')
+          block = '\n'.join([
+              'test("unittest exit 5 requires corroborating zero-test observations instead of being blindly suppressed", async (context) => {',
+              '  const root = await initializeRepository({',
+              '    "unittest.py": "raise SystemExit(5)\\n",',
+              '    "value.py": "def value():\\n    return 1\\n",',
+              '    "tests/test_value.py": "import unittest\\nfrom value import value\\nclass ValueTest(unittest.TestCase):\\n    def test_value(self):\\n        self.assertEqual(value(), 2)\\n",',
+              '  });',
+              '  context.after(() => rm(root, { recursive: true, force: true }));',
+              '  await writeFiles(root, { "value.py": "def value():\\n    return 2\\n" });',
+              '  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });',
+              '  const unittestChecks = report.checks.filter((check) => check.targetRunner === "unittest" && check.exitCode === 5);',
+              '  assert.ok(unittestChecks.length >= 1);',
+              '  assert.ok(unittestChecks.every((check) => check.status === "failed"));',
+              '  assert.equal(report.assessments[0]?.status, "verification-failed");',
+              '  assert.ok(report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));',
+              '  assert.equal(report.assessments[0]?.evidenceBoundary?.reason, "failure-unattributed");',
+              '});',
+              '',
+              '',
+          ])
+          test_path.write_text(text.replace(marker, block + marker))
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          marker = '## [Unreleased]\n\n### Fixed\n\n'
+          if text.count(marker) != 1:
+              raise SystemExit('unreleased changelog marker was not unique')
+          bullet = '- Tightened `unittest` exit-code 5 handling. The stdlib CLI uses code 5 when zero tests run, but a repository-local module can also make `python -m unittest` exit 5 before the real runner starts. ProofDiff now treats an opaque `unittest` exit 5 as benign only when the paired high-confidence targeted observer independently succeeds with exact zero-test observations; targeted or uncorroborated exit-5 failures remain verification failures. Pytest\'s exit-5 no-collection handling is unchanged.\n'
+          changelog.write_text(text.replace(marker, marker + bullet, 1))
+          PY
+      - run: npm test
+      - run: npm run clean && npm run build
+      - run: git diff --check
+      - name: Commit generated change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/evidence.ts src/explanation.ts tests/analyze.test.ts CHANGELOG.md dist
+          git commit -m "Corroborate unittest exit-five no-test results"
+          git push origin HEAD:fix/unittest-exit-five-semantics
