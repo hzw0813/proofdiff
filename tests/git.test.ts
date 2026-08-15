@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { rm, symlink, writeFile } from "node:fs/promises";
 import test from "node:test";
 import path from "node:path";
 import { changedFiles, findRepository, gitNullDevice, repositoryInfo, selectDiff } from "../src/git.js";
-import { pathExists } from "../src/util.js";
+import { pathExists, readUtf8File } from "../src/util.js";
 import { git, initializeRepository, temporaryDirectory, writeFiles } from "./helpers.js";
 
 test("Git uses the native null device accepted by each platform", () => {
@@ -22,6 +22,19 @@ test("working-tree diff includes tracked and untracked files with line counts", 
   assert.equal(files[1]?.change, "added");
   assert.equal(files[1]?.language, "python");
   assert.ok((files[1]?.additions ?? 0) >= 2);
+});
+
+test("working-tree untracked symbolic links are not dereferenced", { skip: process.platform === "win32" }, async (context) => {
+  const root = await initializeRepository({ "tracked.txt": "baseline\n" });
+  const outside = path.join(path.dirname(root), `${path.basename(root)}-outside.js`);
+  context.after(() => Promise.all([rm(root, { recursive: true, force: true }), rm(outside, { force: true })]));
+  await writeFile(outside, "export const outside = 1;\nexport const leaked = 2;\n");
+  await symlink(outside, path.join(root, "leak.js"));
+  const { args } = await selectDiff(root, {});
+  const files = await changedFiles(root, args, true);
+  const leak = files.find((file) => file.path === "leak.js");
+  assert.equal(leak?.additions, 0);
+  assert.equal(await readUtf8File(path.join(root, "leak.js")), null);
 });
 
 test("findRepository accepts a nested directory", async (context) => {

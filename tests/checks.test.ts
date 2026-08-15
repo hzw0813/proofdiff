@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { rm, symlink, writeFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
 import { discoverChecks, packageManagerInvocation, parseTargetObservations, runChecks, targetedTestChecks } from "../src/checks.js";
 import { initializeRepository } from "./helpers.js";
@@ -104,6 +105,28 @@ test("an explicit compiled Node test list maps related TypeScript tests without 
   assert.equal(targeted.checks[0]?.args.at(-1), "dist-test/tests/value.test.js");
   assert.deepEqual(targeted.checks[0]?.targetFiles, ["tests/value.test.ts"]);
   assert.equal(targeted.checks[0]?.targetQualifications?.[0]?.basis, "compiled-source-map");
+});
+
+test("symbolic-link repository metadata cannot enable check discovery", { skip: process.platform === "win32" }, async (context) => {
+  const root = await initializeRepository({ "node_modules/typescript/bin/tsc": "console.log('fixture');\n" });
+  const outside = path.join(path.dirname(root), `${path.basename(root)}-tsconfig.json`);
+  context.after(() => Promise.all([rm(root, { recursive: true, force: true }), rm(outside, { force: true })]));
+  await writeFile(outside, '{"compilerOptions":{}}\n');
+  await symlink(outside, path.join(root, "tsconfig.json"));
+  const { checks } = await discoverChecks(root);
+  assert.equal(checks.some((check) => check.id === "js:typecheck:tsc"), false);
+});
+
+test("targeted execution rejects symbolic-link test paths", { skip: process.platform === "win32" }, async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: { test: "node --test" } }),
+    "real.js": "export const value = true;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await symlink("real.js", path.join(root, "value.test.js"));
+  const { checks } = await discoverChecks(root);
+  const targeted = await targetedTestChecks(root, checks, ["value.test.js"]);
+  assert.deepEqual(targeted.checks, []);
 });
 
 test("unsupported Node test options keep targeted execution disabled", async (context) => {

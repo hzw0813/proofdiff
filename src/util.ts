@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import type { FileHandle } from "node:fs/promises";
-import { access, open, readFile, realpath, stat } from "node:fs/promises";
+import { access, lstat, open, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
 export const SOURCE_EXTENSIONS = new Set([
@@ -20,10 +20,19 @@ export async function pathExists(value: string): Promise<boolean> {
   }
 }
 
+export async function isRegularFileNoFollow(file: string): Promise<boolean> {
+  try {
+    const info = await lstat(file);
+    return info.isFile() && !info.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
 export async function readUtf8File(file: string, limitBytes = 1_000_000): Promise<string | null> {
   try {
-    const info = await stat(file);
-    if (!info.isFile() || info.size > limitBytes) return null;
+    const info = await lstat(file);
+    if (info.isSymbolicLink() || !info.isFile() || info.size > limitBytes) return null;
     const content = await readFile(file);
     if (content.includes(0)) return null;
     return content.toString("utf8");
@@ -35,6 +44,8 @@ export async function readUtf8File(file: string, limitBytes = 1_000_000): Promis
 export async function isLikelyBinaryFile(file: string): Promise<boolean> {
   let handle: FileHandle | undefined;
   try {
+    const info = await lstat(file);
+    if (info.isSymbolicLink() || !info.isFile()) return false;
     handle = await open(file, "r");
     const buffer = Buffer.alloc(8_192);
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);

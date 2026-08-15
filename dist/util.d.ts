@@ -1,6 +1,7 @@
 export declare const SOURCE_EXTENSIONS: Set<string>;
 export declare function compareCodeUnits(left: string, right: string): number;
 export declare function pathExists(value: string): Promise<boolean>;
+export declare function isRegularFileNoFollow(file: string): Promise<boolean>;
 export declare function readUtf8File(file: string, limitBytes?: number): Promise<string | null>;
 export declare function isLikelyBinaryFile(file: string): Promise<boolean>;
 export declare function normalizeRepoPath(value: string): string;
