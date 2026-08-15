@@ -58,6 +58,6 @@ replace_once("tests/checks.test.ts", marker, node_test + marker)
 
 replace_once(
     "CHANGELOG.md",
-    "### Fixed\n\n",
-    "### Fixed\n\n- Restricted recognized Node/Jest/Vitest package-script trimming to ASCII spaces and tabs. JavaScript `String.trim()` also removes non-ASCII whitespace such as NBSP, which shells do not treat as ordinary script separators; leading or trailing Unicode whitespace can therefore no longer be erased into a different executable command and accidentally qualify for exact targeted evidence.\n",
+    "## [Unreleased]\n\n### Fixed\n\n",
+    "## [Unreleased]\n\n### Fixed\n\n- Restricted recognized Node/Jest/Vitest package-script trimming to ASCII spaces and tabs. JavaScript `String.trim()` also removes non-ASCII whitespace such as NBSP, which shells do not treat as ordinary script separators; leading or trailing Unicode whitespace can therefore no longer be erased into a different executable command and accidentally qualify for exact targeted evidence.\n",
 )
