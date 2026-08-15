@@ -6,6 +6,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Restricted recognized Node/Jest/Vitest package-script trimming to ASCII spaces and tabs. JavaScript `String.trim()` also removes non-ASCII whitespace such as NBSP, which shells do not treat as ordinary script separators; leading or trailing Unicode whitespace can therefore no longer be erased into a different executable command and accidentally qualify for exact targeted evidence.
 - Stopped `.pyi` stub files with test-like names from inventing executable pytest or `unittest` checks. Stubs remain available to static Python analysis and relationship discovery, but framework discovery now requires an executable `.py` test file; this prevents `--run-checks` from launching a Python test runner merely because a repository contains test-shaped type stubs.
 - Updated current stable Action guidance and the published-Action CI smoke from v0.5.2 to the already-released v0.5.3 snapshot, including the immutable full-SHA pin, so documentation and release verification no longer lag the latest public release.
 

@@ -91,7 +91,7 @@ test("literal environment prefixes are preserved for targeted Jest execution", a
 if (process.env.NODE_ENV !== "test" || process.env.CI !== "1") process.exit(7);
 ` + JEST_BIN;
   const root = await initializeRepository({
-    "package.json": JSON.stringify({ scripts: { test: "NODE_ENV=test CI=1 jest --ci" } }),
+    "package.json": JSON.stringify({ scripts: { test: " \tNODE_ENV=test CI=1 jest --ci\t " } }),
     "test/env.test.js": "export const env = true;\n",
     "node_modules/jest/package.json": JSON.stringify({ bin: { jest: "./bin/jest.cjs" } }),
     "node_modules/jest/bin/jest.cjs": envAwareJest,
@@ -212,6 +212,8 @@ test("unsafe Jest and Vitest script shapes are individually exercised and stay o
     { label: "too many environment assignments", script: "A=1 B=2 C=3 D=4 E=5 jest" },
     { label: "duplicate environment assignment", script: "CI=1 CI=true jest" },
     { label: "non-ASCII whitespace", script: "jest\u00a0--ci" },
+    { label: "leading non-ASCII whitespace", script: "\u00a0jest --ci" },
+    { label: "trailing non-ASCII whitespace", script: "jest --ci\u00a0" },
   ];
 
   for (const { label, script } of cases) {

@@ -35,7 +35,7 @@ function safeEnvironmentAssignment(token: string): [name: string, value: string]
 
 function recognizedRunnerScript(command: string): RecognizedRunnerScript | null {
   if (/[\r\n]/.test(command)) return null;
-  const tokens = command.trim().replaceAll(/[ \t]+/g, " ").split(" ").filter(Boolean);
+  const tokens = command.replace(/^[ \t]+|[ \t]+$/g, "").replaceAll(/[ \t]+/g, " ").split(" ").filter(Boolean);
   if (tokens.length === 0) return null;
 
   let index = 0;

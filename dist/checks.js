@@ -242,7 +242,7 @@ function targetingForScript(kind, command) {
         return null;
     if (/[\r\n]/.test(command))
         return null;
-    const normalized = command.trim().replaceAll(/[ \t]+/g, " ");
+    const normalized = command.replace(/^[ \t]+|[ \t]+$/g, "").replaceAll(/[ \t]+/g, " ");
     const invocation = normalized.match(/^(?:node|node\.exe) --test(?: (.+))?$/);
     if (!invocation)
         return null;
