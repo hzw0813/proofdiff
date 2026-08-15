@@ -1,0 +1,152 @@
+name: One-time deletion attribution fix
+
+on:
+  push:
+    branches:
+      - fix/deletion-only-line-attribution
+    paths:
+      - .github/workflows/one-time-deletion-attribution-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/deletion-only-line-attribution
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply permanent fix and regression
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          graph_path = Path('src/graph.ts')
+          graph = graph_path.read_text()
+          overlaps = '''function overlaps(a: { start: number; end: number }, b: { start: number; end: number }): boolean {
+            return a.start <= b.end && b.start <= a.end;
+          }
+          '''
+          helper = '''function overlaps(a: { start: number; end: number }, b: { start: number; end: number }): boolean {
+            return a.start <= b.end && b.start <= a.end;
+          }
+
+          export function hasExactCurrentLineHunks(file: ChangedFile): boolean {
+            if (!Number.isSafeInteger(file.additions) || file.additions < 0) return false;
+            let currentLines = 0;
+            for (const hunk of file.hunks) {
+              const { start, end } = hunk.newRange;
+              if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) return false;
+              const span = end - start + 1;
+              if (!Number.isSafeInteger(span) || span > file.additions - currentLines) return false;
+              currentLines += span;
+            }
+            return currentLines === file.additions;
+          }
+          '''
+          if graph.count(overlaps) != 1:
+            raise SystemExit(f'graph overlaps target count was {graph.count(overlaps)}')
+          graph = graph.replace(overlaps, helper, 1)
+          target = '''  if (!analysis || file.binary) return [];
+            const changed = analysis.symbols.filter((symbol) => file.hunks.some((hunk) => overlaps(symbol.range, hunk.newRange)));
+          '''
+          replacement = '''  if (!analysis || file.binary) return [];
+            if (!hasExactCurrentLineHunks(file)) return [];
+            const changed = analysis.symbols.filter((symbol) => file.hunks.some((hunk) => overlaps(symbol.range, hunk.newRange)));
+          '''
+          if graph.count(target) != 1:
+            raise SystemExit(f'graph symbols target count was {graph.count(target)}')
+          graph_path.write_text(graph.replace(target, replacement, 1))
+
+          evidence_path = Path('src/evidence.ts')
+          evidence = evidence_path.read_text()
+          import_old = 'import { impactedFiles, symbolsChanged } from "./graph.js";'
+          import_new = 'import { hasExactCurrentLineHunks, impactedFiles, symbolsChanged } from "./graph.js";'
+          if evidence.count(import_old) != 1:
+            raise SystemExit(f'evidence import target count was {evidence.count(import_old)}')
+          evidence = evidence.replace(import_old, import_new, 1)
+          calls_old = '''  if (!analysis?.callSites || file.binary || file.change === "deleted") return { calls: [], truncated: false };
+            const seen = new Set<string>();
+          '''
+          calls_new = '''  if (!analysis?.callSites || file.binary || file.change === "deleted" || !hasExactCurrentLineHunks(file)) return { calls: [], truncated: false };
+            const seen = new Set<string>();
+          '''
+          if evidence.count(calls_old) != 1:
+            raise SystemExit(f'evidence calls target count was {evidence.count(calls_old)}')
+          evidence = evidence.replace(calls_old, calls_new, 1)
+          limitation_old = '''  if (file.binary) limitations.push("Binary file contents were not inspected.");
+            if (changedCallSites.truncated) limitations.push("Call references in changed lines were limited to the first 100 parser-observed sites.");
+          '''
+          limitation_new = '''  if (file.binary) limitations.push("Binary file contents were not inspected.");
+            if (!file.binary && file.change !== "deleted" && !hasExactCurrentLineHunks(file)) limitations.push("Zero-context diff hunks could not be reconciled exactly with Git's current-line addition count, so changed-symbol and changed-call attribution was withheld.");
+            if (changedCallSites.truncated) limitations.push("Call references in changed lines were limited to the first 100 parser-observed sites.");
+          '''
+          if evidence.count(limitation_old) != 1:
+            raise SystemExit(f'evidence limitation target count was {evidence.count(limitation_old)}')
+          evidence_path.write_text(evidence.replace(limitation_old, limitation_new, 1))
+
+          test_path = Path('tests/analyze.test.ts')
+          tests = test_path.read_text()
+          marker = '''test("passing related test evidence produces a qualified verified status", async (context) => {
+          '''
+          regression = '''test("deletion-only hunks do not attribute unchanged current calls or symbols", async (context) => {
+            const root = await initializeRepository({
+              "src/value.js": "export function helper() { nested(); return 1; }\\nconst removed = 1;\\nexport const keep = 2;\\n",
+            });
+            context.after(() => rm(root, { recursive: true, force: true }));
+            await writeFiles(root, {
+              "src/value.js": "export function helper() { nested(); return 1; }\\nexport const keep = 2;\\n",
+            });
+
+            const report = await analyzeRepository({ repo: root });
+            const assessment = report.assessments[0];
+            assert.equal(assessment?.file.additions, 0);
+            assert.equal(assessment?.file.deletions, 1);
+            assert.deepEqual(assessment?.file.hunks, [{
+              oldRange: { start: 2, end: 2 },
+              newRange: { start: 1, end: 1 },
+            }]);
+            assert.deepEqual(assessment?.changedSymbols, []);
+            assert.deepEqual(assessment?.changedCalls, []);
+            assert.equal(assessment?.evidence.some((item) => item.label.includes("call reference")), false);
+            assert.match(assessment?.limitations.join("\\n") ?? "", /could not be reconciled exactly with Git's current-line addition count/);
+          });
+
+          test("passing related test evidence produces a qualified verified status", async (context) => {
+          '''
+          if tests.count(marker) != 1:
+            raise SystemExit(f'analyze insertion marker count was {tests.count(marker)}')
+          test_path.write_text(tests.replace(marker, regression, 1))
+
+          changelog_path = Path('CHANGELOG.md')
+          changelog = changelog_path.read_text()
+          marker = '### Fixed\n\n'
+          entry = '- Failed closed on deletion-only zero-context hunks when attributing current changed symbols and call references. Git represents a deletion-only hunk with a zero-length new-side range anchored to a neighboring current line; ProofDiff now reconciles reconstructed current-line spans with Git numstat additions before treating those anchors as changed current code.\n'
+          if entry not in changelog:
+            if marker not in changelog:
+              raise SystemExit('CHANGELOG Fixed marker not found')
+            changelog_path.write_text(changelog.replace(marker, marker + entry, 1))
+          PY
+      - name: Run full tests
+        run: npm test
+      - name: Rebuild tracked dist cleanly
+        run: |
+          npm run clean
+          npm run build
+      - name: Validate patch
+        run: git diff --check
+      - name: Commit permanent changes
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add CHANGELOG.md src/graph.ts src/evidence.ts tests/analyze.test.ts dist
+          git commit -m "Fail closed on deletion-only line attribution"
+          git push origin HEAD:fix/deletion-only-line-attribution
