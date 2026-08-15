@@ -70,7 +70,7 @@ test("rename metadata preserves both paths", async (context) => {
   assert.equal(file?.change, "renamed");
   assert.equal(file?.previousPath, "src/old name.ts");
   assert.equal(file?.path, "src/new name.ts");
-assert.deepEqual(file?.hunks, []);
+  assert.deepEqual(file?.hunks, []);
 });
 
 test("rename with content modification preserves the minimal changed hunk", async (context) => {
