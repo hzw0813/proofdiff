@@ -6,6 +6,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Failed closed on unattributed targeted-runner process failures even when another qualified batch target is unavailable. An unavailable target can no longer act as a sink that lets unrelated observed passes survive an ambiguous process-level failure; only explicitly failed targets retain localized failure attribution.
 - Failed closed on deletion-only zero-context hunks when attributing current changed symbols and call references. Git represents a deletion-only hunk with a zero-length new-side range anchored to a neighboring current line; ProofDiff now reconciles reconstructed current-line spans with Git numstat additions before treating those anchors as changed current code.
 - Preserved precise changed-line hunks across renames by scoping per-file Git diffs to both the previous and current path. This prevents a rename with content edits from being reinterpreted as a whole-file addition and overstating changed-line or call-reference evidence.
 - Preserved trailing whitespace in Git repository-root paths. `findRepository()` now removes only Git's record line terminator instead of applying JavaScript `String.trim()`, preventing a repository such as `repository ` from being silently redirected to a sibling path with the trimmed spelling.
