@@ -1,0 +1,35 @@
+name: Apply symlink hardening once
+
+on:
+  push:
+    branches: [agent/reject-repository-symlink-inputs]
+    paths:
+      - .github/workflows/symlink-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/reject-repository-symlink-inputs
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/symlink-hardening-once.mjs
+      - run: npm test
+      - run: npm run clean && npm run build
+      - name: Commit source, tests, and clean generated dist
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/util.ts src/checks.ts src/js-runners.ts tests/checks.test.ts tests/git.test.ts dist
+          git commit -m "Fail closed on repository symlink inputs"
+          git push origin HEAD:agent/reject-repository-symlink-inputs
