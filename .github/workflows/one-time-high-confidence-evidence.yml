@@ -1,0 +1,232 @@
+name: One-time high-confidence target evidence updater
+
+on:
+  push:
+    branches: [fix/high-confidence-target-evidence]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Gate file-level evidence on high-confidence target identity
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function replaceOnce(file, before, after) {
+            const source = fs.readFileSync(file, 'utf8');
+            const count = source.split(before).length - 1;
+            if (count !== 1) throw new Error(`${file}: expected exactly one replacement target, found ${count}`);
+            fs.writeFileSync(file, source.replace(before, after));
+          }
+
+          const evidenceBefore = `  const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
+            .filter((observation) => relatedTests.includes(observation.path))
+            .map((observation) => ({ check, observation })));
+          const targetedFailures = observations.filter(({ observation }) => observation.outcome === "failed");
+          const hasExactTargetFailure = (check: CheckResult): boolean => check.targetObservations?.some((observation) => observation.outcome === "failed") === true;
+          const hasUnavailableRelatedTarget = (check: CheckResult): boolean => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed") === true;`;
+          const evidenceAfter = `  const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
+            .filter((observation) => relatedTests.includes(observation.path))
+            .map((observation) => ({ check, observation })));
+          const qualificationForObservation = (check: CheckResult, observation: NonNullable<CheckResult["targetObservations"]>[number]) => check.targetQualifications?.find((qualification) => qualification.path === observation.path && qualification.runnerPath === observation.runnerPath);
+          const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+          const provisionalObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence !== "high");
+          const targetedFailures = exactObservations.filter(({ observation }) => observation.outcome === "failed");
+          const hasExactTargetFailure = (check: CheckResult): boolean => check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
+          const hasUnavailableRelatedTarget = (check: CheckResult): boolean => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true;`;
+          replaceOnce('src/evidence.ts', evidenceBefore, evidenceAfter);
+
+          const executionBefore = `  const testExecutions: FileAssessment["testExecutions"] = observations
+            .filter(({ observation }) => observation.outcome === "passed" || observation.outcome === "failed")
+            .map(({ check, observation }) => ({ path: observation.path, status: observation.outcome === "passed" ? "passed" : "failed", checkId: check.id }));
+          const executedTests = unique(observations.filter(({ observation }) => observation.outcome === "passed" && observation.testsObserved > 0).map(({ observation }) => observation.path)).sort();`;
+          const executionAfter = `  const testExecutions: FileAssessment["testExecutions"] = exactObservations
+            .filter(({ observation }) => observation.outcome === "passed" || observation.outcome === "failed")
+            .map(({ check, observation }) => ({ path: observation.path, status: observation.outcome === "passed" ? "passed" : "failed", checkId: check.id }));
+          const executedTests = unique(exactObservations.filter(({ observation }) => observation.outcome === "passed" && observation.testsObserved > 0).map(({ observation }) => observation.path)).sort();`;
+          replaceOnce('src/evidence.ts', executionBefore, executionAfter);
+
+          const executedEvidenceBefore = `  if (executedTests.length > 0) {
+            evidence.push({
+              kind: "executed-test",
+              label: \`${'${executedTests.length}'} qualified related target${'${executedTests.length === 1 ? "" : "s"}'} observed passing\`,
+              detail: "ProofDiff explicitly supplied each qualified target and observed at least one non-skipped passing test for that exact path. This is file-scoped test evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
+              confidence: "high",
+            });
+          }
+
+          for (const { check, observation } of observations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
+            evidence.push({ kind: "limitation", label: \`${'${observation.path}'}: ${'${observation.outcome}'}\`, detail: observation.detail, confidence: "high", checkId: check.id });
+          }`;
+          const executedEvidenceAfter = `  if (executedTests.length > 0) {
+            evidence.push({
+              kind: "executed-test",
+              label: \`${'${executedTests.length}'} high-confidence qualified related target${'${executedTests.length === 1 ? "" : "s"}'} observed passing\`,
+              detail: "ProofDiff explicitly supplied each high-confidence qualified target and observed at least one non-skipped passing test for that exact source path. This is file-scoped test evidence, not changed-symbol, changed-line, branch, assertion, or behavioral coverage.",
+              confidence: "high",
+            });
+          }
+
+          for (const { check, observation } of provisionalObservations) {
+            const qualification = qualificationForObservation(check, observation);
+            evidence.push({
+              kind: "limitation",
+              label: \`${'${observation.path}'}: ${'${qualification?.confidence ?? "unknown"}'}-confidence target identity\`,
+              detail: \`${'${observation.detail}'} ${'${qualification?.limitation ?? "The source-to-runner target identity was not established with high confidence."}'} The runtime observation remains available on the check, but it cannot strengthen this source path to verified without high-confidence target identity.\`,
+              confidence: "high",
+              checkId: check.id,
+            });
+          }
+
+          for (const { check, observation } of exactObservations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
+            evidence.push({ kind: "limitation", label: \`${'${observation.path}'}: ${'${observation.outcome}'}\`, detail: observation.detail, confidence: "high", checkId: check.id });
+          }`;
+          replaceOnce('src/evidence.ts', executedEvidenceBefore, executedEvidenceAfter);
+
+          const qualificationBefore = `  const declaredSet = new Set(declaredTests);
+          const qualified = checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => impactedSet.has(candidate) || declaredSet.has(candidate));
+          const relatedTests = unique([...staticallyTestLike, ...qualified, ...declaredTests]).sort();`;
+          const qualificationAfter = `  const declaredSet = new Set(declaredTests);
+          const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => impactedSet.has(qualification.path) || declaredSet.has(qualification.path));
+          const qualified = relevantQualifications.map((qualification) => qualification.path);
+          const stronglyQualified = relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path);
+          const relatedTests = unique([...staticallyTestLike, ...qualified, ...declaredTests]).sort();`;
+          replaceOnce('src/evidence.ts', qualificationBefore, qualificationAfter);
+
+          const limitationsBefore = `  if (relatedTests.length === 0) limitations.push("No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically.");
+          else if (verification.executedTests.length === 0) limitations.push("Related test-like paths were found or declared, but no runner-qualified exact target produced a non-skipped passing test observation.");
+          else limitations.push("Qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
+          const unqualifiedTestLike = staticallyTestLike.filter((candidate) => !qualified.includes(candidate));
+          if (unqualifiedTestLike.length > 0) limitations.push(\`${'${unqualifiedTestLike.length}'} statically related test-like path${'${unqualifiedTestLike.length === 1 ? " was" : "s were"}'} not qualified by a recognized runner convention or configuration.\`);
+          const unqualifiedDeclared = declaredTests.filter((candidate) => !qualified.includes(candidate));
+          if (unqualifiedDeclared.length > 0) limitations.push(\`${'${unqualifiedDeclared.length}'} user-declared related test path${'${unqualifiedDeclared.length === 1 ? " was" : "s were"}'} not qualified by a recognized runner convention or configuration; declarations do not bypass runner qualification.\`);`;
+          const limitationsAfter = `  if (relatedTests.length === 0) limitations.push("No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically.");
+          else if (verification.executedTests.length === 0) limitations.push("Related test-like paths were found or declared, but no high-confidence runner-qualified source target produced a non-skipped passing test observation.");
+          else limitations.push("High-confidence qualified related targets produced passing tests, but ProofDiff did not observe whether changed symbols, lines, branches, or relevant assertions executed.");
+          const unqualifiedTestLike = staticallyTestLike.filter((candidate) => !stronglyQualified.includes(candidate));
+          if (unqualifiedTestLike.length > 0) limitations.push(\`${'${unqualifiedTestLike.length}'} statically related test-like path${'${unqualifiedTestLike.length === 1 ? " was" : "s were"}'} lacked high-confidence qualification by a recognized runner convention or configuration.\`);
+          const unqualifiedDeclared = declaredTests.filter((candidate) => !stronglyQualified.includes(candidate));
+          if (unqualifiedDeclared.length > 0) limitations.push(\`${'${unqualifiedDeclared.length}'} user-declared related test path${'${unqualifiedDeclared.length === 1 ? " was" : "s were"}'} lacked high-confidence qualification by a recognized runner convention or configuration; declarations do not bypass runner qualification.\`);`;
+          replaceOnce('src/evidence.ts', limitationsBefore, limitationsAfter);
+
+          const explanationBefore = `  const qualifiedPaths = new Set(checks.flatMap((check) => check.targetQualifications ?? []).map((qualification) => qualification.path).filter((candidate) => item.relatedTests.includes(candidate)));
+          const targetedForRelated = checks.filter((check) => (check.targetQualifications ?? []).some((qualification) => item.relatedTests.includes(qualification.path)));
+          const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
+            .filter((observation) => item.relatedTests.includes(observation.path))
+            .map((observation) => ({ check, observation })));
+          const failedObservation = observations.find(({ observation }) => observation.outcome === "failed");
+          const unavailableObservation = observations.find(({ observation }) => observation.outcome === "not-observed");
+          const zeroObservation = observations.find(({ observation }) => observation.outcome === "zero-tests");
+          const skippedObservation = observations.find(({ observation }) => observation.outcome === "skipped");
+          const unlocalizedTargetFailure = applicable.some((check) => check.targetQualifications !== undefined
+            && check.status === "failed"
+            && !recognizedNoTestsExit(check)
+            && (
+              check.targetObservations?.some((observation) => observation.outcome === "failed") !== true
+              || check.targetObservations?.some((observation) => item.relatedTests.includes(observation.path) && observation.outcome === "not-observed") === true
+            ));`;
+          const explanationAfter = `  const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => item.relatedTests.includes(qualification.path));
+          const qualifiedPaths = new Set(relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path));
+          const provisionalQualifications = relevantQualifications.filter((qualification) => qualification.confidence !== "high");
+          const targetedForRelated = checks.filter((check) => (check.targetQualifications ?? []).some((qualification) => qualification.confidence === "high" && item.relatedTests.includes(qualification.path)));
+          const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
+            .filter((observation) => item.relatedTests.includes(observation.path))
+            .map((observation) => ({ check, observation })));
+          const qualificationForObservation = (check: CheckResult, observation: NonNullable<CheckResult["targetObservations"]>[number]) => check.targetQualifications?.find((qualification) => qualification.path === observation.path && qualification.runnerPath === observation.runnerPath);
+          const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+          const failedObservation = exactObservations.find(({ observation }) => observation.outcome === "failed");
+          const unavailableObservation = exactObservations.find(({ observation }) => observation.outcome === "not-observed");
+          const zeroObservation = exactObservations.find(({ observation }) => observation.outcome === "zero-tests");
+          const skippedObservation = exactObservations.find(({ observation }) => observation.outcome === "skipped");
+          const unlocalizedTargetFailure = applicable.some((check) => check.targetQualifications !== undefined
+            && check.status === "failed"
+            && !recognizedNoTestsExit(check)
+            && (
+              check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") !== true
+              || check.targetObservations?.some((observation) => item.relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true
+            ));`;
+          replaceOnce('src/explanation.ts', explanationBefore, explanationAfter);
+
+          const qualificationBoundaryBefore = `  if (qualifiedPaths.size === 0) {
+            return {
+              strongestEvidence: strongestWithoutTarget,
+              stage: "runner-qualification",
+              reason: passingOpaqueCheck ? "opaque-passing-check" : "runner-unqualified",
+              detail: passingOpaqueCheck
+                ? "A repository command passed, but no related test-like path was qualified as an exact target for a recognized runner."
+                : "Related test-like paths were found or declared, but none were qualified as exact targets for a recognized runner.",
+              proofdiffFailClosed: true,
+              nextAction: action("qualify-related-test", "Use a supported runner convention or explicit runner target so ProofDiff can bind runtime observation to the related test file. A --test-map declaration does not bypass runner qualification."),
+            };
+          }`;
+          const qualificationBoundaryAfter = `  if (qualifiedPaths.size === 0) {
+            const provisionalDetail = provisionalQualifications.length > 0
+              ? " A lower-confidence source-to-runner mapping was available, but ProofDiff does not treat that mapping as exact source identity for file-level verification."
+              : "";
+            return {
+              strongestEvidence: strongestWithoutTarget,
+              stage: "runner-qualification",
+              reason: passingOpaqueCheck ? "opaque-passing-check" : "runner-unqualified",
+              detail: passingOpaqueCheck
+                ? \`A repository command passed, but no related test-like path had high-confidence qualification as an exact source target for a recognized runner.${'${provisionalDetail}'}\`
+                : \`Related test-like paths were found or declared, but none had high-confidence qualification as exact source targets for a recognized runner.${'${provisionalDetail}'}\`,
+              proofdiffFailClosed: true,
+              nextAction: action("qualify-related-test", "Use a supported runner convention or explicit source target so ProofDiff can bind runtime observation to the related test file with high confidence. A --test-map declaration does not bypass runner qualification."),
+            };
+          }`;
+          replaceOnce('src/explanation.ts', qualificationBoundaryBefore, qualificationBoundaryAfter);
+
+          const analyzeAnchor = 'test("failing verification cannot be mistaken for success", async (context) => {';
+          const analyzeRegression = `test("filename-only compiled mappings cannot promote stale runner output to verified", async (context) => {
+            const root = await initializeRepository({
+              "package.json": JSON.stringify({ name: "compiled-boundary", private: true, type: "module", scripts: { test: "node --test dist-test/tests/value.test.js" } }),
+              "src/value.ts": "export const value = 1;\\n",
+              "tests/value.test.ts": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.js'; test('value', () => assert.equal(value, 2));\\n",
+              "dist-test/tests/value.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; test('stale compiled artifact', () => assert.equal(1, 1));\\n",
+            });
+            context.after(() => rm(root, { recursive: true, force: true }));
+            await writeFiles(root, { "src/value.ts": "export const value = 2;\\n" });
+
+            const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+            const assessment = report.assessments[0];
+            const targeted = report.checks.find((check) => check.id.endsWith(":targeted"));
+            assert.equal(targeted?.targetQualifications?.[0]?.basis, "compiled-source-map");
+            assert.equal(targeted?.targetQualifications?.[0]?.confidence, "medium");
+            assert.equal(targeted?.targetObservations?.[0]?.outcome, "passed");
+            assert.equal(assessment?.status, "partially-verified");
+            assert.deepEqual(assessment?.relatedTests, ["tests/value.test.ts"]);
+            assert.deepEqual(assessment?.executedTests, []);
+            assert.deepEqual(assessment?.testExecutions, []);
+            assert.match(assessment?.evidence.find((item) => item.label.includes("medium-confidence target identity"))?.detail ?? "", /cannot strengthen this source path to verified/);
+            assert.match(assessment?.limitations.join("\\n") ?? "", /no high-confidence runner-qualified source target/);
+            assert.equal(assessment?.evidenceBoundary?.stage, "runner-qualification");
+            assert.equal(assessment?.evidenceBoundary?.reason, "opaque-passing-check");
+            assert.match(assessment?.evidenceBoundary?.detail ?? "", /lower-confidence source-to-runner mapping/);
+          });
+
+          `;
+          replaceOnce('tests/analyze.test.ts', analyzeAnchor, analyzeRegression + analyzeAnchor);
+          NODE
+      - run: npm test
+      - run: npm run clean && npm run build
+      - name: Commit source, regression, and generated dist
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/evidence.ts src/explanation.ts tests/analyze.test.ts dist
+          git diff --cached --check
+          git commit -m "Require high-confidence target identity for verified evidence"
+          git push
