@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: hzw0813/proofdiff@v0.5.2
+      - uses: hzw0813/proofdiff@v0.5.3
         with:
           fail-on: failed
           html: proofdiff-report.html
@@ -27,16 +27,16 @@ jobs:
           path: proofdiff-report.html
 ```
 
-On `pull_request`, the released `v0.5.2` Action can omit `base`: ProofDiff auto-resolves the exact `pull_request.base.sha` from GitHub's event payload. An explicit `base` always wins. If PR metadata is missing or malformed, the Action fails with an actionable error instead of silently falling back to an empty clean-working-tree diff. Other non-PR events preserve the historical working-tree fallback when `base` is omitted.
+On `pull_request`, the released `v0.5.3` Action can omit `base`: ProofDiff auto-resolves the exact `pull_request.base.sha` from GitHub's event payload. An explicit `base` always wins. If PR metadata is missing or malformed, the Action fails with an actionable error instead of silently falling back to an empty clean-working-tree diff. Other non-PR events preserve the historical working-tree fallback when `base` is omitted.
 
 Omitted `base` on `pull_request_target` fails closed instead of auto-resolving. GitHub's default checkout for `pull_request_target` normally points at the base repository revision, so combining that checkout with the PR base could misleadingly produce a zero diff. Prefer `pull_request` for untrusted changes. If you intentionally use `pull_request_target`, explicitly check out the trusted revision you intend to analyze and set `base` yourself.
 
 ## Declared source-to-test relationships
 
-The released `v0.5.2` Action exposes a `test-map` input corresponding to CLI `--test-map`.
+The released `v0.5.3` Action exposes a `test-map` input corresponding to CLI `--test-map`.
 
 ```yaml
-      - uses: hzw0813/proofdiff@v0.5.2
+      - uses: hzw0813/proofdiff@v0.5.3
         with:
           test-map: proofdiff.test-map.json
           run-checks: true
@@ -52,7 +52,7 @@ ProofDiff validates bounded map structure, exact test-path visibility, and snaps
 
 ## Immutable diff workspace binding
 
-The released `v0.5.2` Action deliberately fails closed when an immutable Git selection would otherwise be analyzed against a different checked-out filesystem state. For `base`/`range`, the selected target commit must be the checked-out `HEAD` and tracked worktree content must match it. For `staged`, tracked worktree content must match the index. Historical `A..B` analysis where `B` is not checked out should run from a checkout or separate worktree at `B`.
+The released `v0.5.3` Action deliberately fails closed when an immutable Git selection would otherwise be analyzed against a different checked-out filesystem state. For `base`/`range`, the selected target commit must be the checked-out `HEAD` and tracked worktree content must match it. For `staged`, tracked worktree content must match the index. Historical `A..B` analysis where `B` is not checked out should run from a checkout or separate worktree at `B`.
 
 Git-visible untracked files outside the immutable selection are rejected. Static-only analysis also rejects ignored root metadata and Python test-like files that current check discovery would read. When `run-checks: true`, ignored repository-local runtime inputs are rejected more broadly because repository-defined commands can consume them; bounded dependency/cache directories such as `node_modules` and virtual environments remain execution environment rather than declaration provenance.
 
@@ -62,7 +62,7 @@ The released Action writes a **ProofDiff · Change Evidence** job summary by def
 
 The summary is intentionally concise. Keep the upload step to retain the self-contained HTML report with full evidence, qualifications, observations, limitations, evidence-boundary detail, and bounded check output. The artifact step uses `if: always()` so a genuine verification failure does not hide its report.
 
-Use the released `v0.5.2` tag for normal stable integration. For an immutable security-sensitive pin, replace the tag with release snapshot `d2927b13aedb64403bdf1d6b3fe70f1148d1dce6`.
+Use the released `v0.5.3` tag for normal stable integration. For an immutable security-sensitive pin, replace the tag with release snapshot `d5fe3da78400a1b4d4154c0ddd9b84c3ef662e06`.
 
 The default is static-only and does not execute repository code. Set `run-checks: true` only in a job isolated from secrets and after accepting the repository-code execution risk described in [SECURITY.md](../SECURITY.md). Avoid `pull_request_target` for untrusted code. A **Related test file passed** result records a runner-qualified exact related target with at least one non-skipped passing test observation; relationship provenance can be inferred or explicitly declared, but neither shows that changed symbols or lines ran and neither is proof of correctness.
 
