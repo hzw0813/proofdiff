@@ -4,8 +4,8 @@ ProofDiff prioritizes correctness, trustworthiness, and security over feature co
 
 ## Before 1.0
 
-- Add runtime coverage ingestion as a distinct evidence type; never infer coverage from test names.
-- Improve TypeScript path-alias and Python package-root resolution without silently guessing.
+- Expand runtime coverage ingestion beyond the current LCOV support while keeping coverage a distinct, explicitly commit-bound evidence type; never infer coverage from test names.
+- Expand bounded TypeScript path-alias and Python package-root resolution without silently guessing.
 - Support check configuration with a reviewed, explicit allowlist format.
 - Benchmark and stream analysis for repositories beyond the current 5,000-file cap.
 - Add tested adapters for Go and Rust after gathering real repository requirements.
