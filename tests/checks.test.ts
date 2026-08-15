@@ -129,6 +129,24 @@ test("targeted execution rejects symbolic-link test paths", { skip: process.plat
   assert.deepEqual(targeted.checks, []);
 });
 
+test("Node targeted discovery trims only ASCII space and tab around scripts", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: {
+      test: " \tnode --test\t ",
+      "test:unit": "\u00a0node --test",
+      "test:ci": "node --test\u00a0",
+    } }),
+    "test/value.test.js": "import test from 'node:test'; test('value', () => {});\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+
+  const { checks } = await discoverChecks(root);
+  assert.equal(checks.find((check) => check.id === "js:test:test")?.targetRunner, "node-test");
+  assert.equal(checks.find((check) => check.id === "js:test:test:unit")?.targetRunner, undefined);
+  assert.equal(checks.find((check) => check.id === "js:test:test:ci")?.targetRunner, undefined);
+  assert.deepEqual((await targetedTestChecks(root, checks, ["test/value.test.js"])).checks.map((check) => check.id), ["js:test:test:targeted"]);
+});
+
 test("Node targeted discovery rejects command-chain prefixes", async (context) => {
   const root = await initializeRepository({
     "package.json": JSON.stringify({ scripts: {
