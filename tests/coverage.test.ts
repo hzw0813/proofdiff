@@ -49,6 +49,24 @@ test("declared-commit-matched LCOV adds artifact-reported changed-line evidence 
   assert.match(report.trust.statement, /LCOV artifact was parsed as bounded data/);
 });
 
+test("LCOV source paths preserve leading and trailing whitespace instead of aliasing another repository file", async (context) => {
+  const cases = ["src/value.js ", "src/value.js\u00a0", " src/value.js"];
+  for (const source of cases) {
+    const { root, base, head } = await committedChange();
+    context.after(() => rm(root, { recursive: true, force: true }));
+    await writeFiles(root, {
+      "coverage/lcov.info": `SF:${source}\nDA:2,1\nDA:3,1\nend_of_record\n`,
+    });
+    const report = await analyzeRepository({ repo: root, base, coverageLcov: "coverage/lcov.info", coverageCommit: head });
+    const item = report.assessments.find((assessment) => assessment.file.path === "src/value.js");
+    assert.equal(report.coverage?.accepted, true);
+    assert.equal(report.coverage?.filesParsed, 1);
+    assert.equal(item?.coverage?.state, "unmeasured", JSON.stringify(source));
+    assert.equal(item?.coverage?.coveredChangedLines, 0, JSON.stringify(source));
+    assert.ok(item?.evidence.every((entry) => entry.kind !== "coverage-artifact"), JSON.stringify(source));
+  }
+});
+
 test("partial changed-line coverage is not generalized to the rest of the change", async (context) => {
   const { root, base, head } = await committedChange();
   context.after(() => rm(root, { recursive: true, force: true }));

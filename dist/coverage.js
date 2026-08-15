@@ -40,7 +40,7 @@ async function parseLcov(root, file) {
     let lineRecords = 0;
     for (const record of raw.split(/\r?\n/)) {
         if (record.startsWith("SF:")) {
-            const source = record.slice(3).trim();
+            const source = record.slice(3);
             if (!source)
                 throw new CoverageError("Coverage artifact contains an empty SF record.");
             current = sourceToRepoPath(root, source);
