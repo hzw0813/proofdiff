@@ -119,6 +119,24 @@ test("Python unittest repositories receive AST-backed related evidence", async (
   assert.equal(report.assessments[0]?.status, "verified");
 });
 
+test("Python stubs remain static test relationships without inventing a runnable framework", async (context) => {
+  const root = await initializeRepository({
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.pyi": "from value import value\ndef test_value() -> None: ...\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const assessment = report.assessments[0];
+  assert.deepEqual(report.checks, []);
+  assert.deepEqual(assessment?.relatedTests, ["tests/test_value.pyi"]);
+  assert.deepEqual(assessment?.executedTests, []);
+  assert.equal(assessment?.status, "unknown");
+  assert.equal(assessment?.evidenceBoundary?.stage, "runner-qualification");
+  assert.equal(assessment?.evidenceBoundary?.reason, "runner-unqualified");
+});
+
 test("a passing filtered test script cannot imply that an unexecuted related test passed", async (context) => {
   const root = await initializeRepository({
     "package.json": JSON.stringify({ name: "filtered", private: true, type: "module", scripts: { test: "node --test test/unrelated.test.js" } }, null, 2),

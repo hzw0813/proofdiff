@@ -293,6 +293,16 @@ test("a conventional Python test file discovers pytest", async (context) => {
   assert.ok(checks.some((check) => check.id === "python:test:pytest"));
 });
 
+test("Python stub files do not invent executable pytest or unittest checks", async (context) => {
+  const root = await initializeRepository({
+    "tests/test_contract.pyi": "def test_contract() -> None: ...\n",
+    "tests/test_legacy.pyi": "import unittest\nclass Contract(unittest.TestCase): ...\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const { checks } = await discoverChecks(root);
+  assert.deepEqual(checks.filter((check) => check.kind === "test"), []);
+});
+
 test("stdlib unittest projects use unittest without requiring pytest", async (context) => {
   const root = await initializeRepository({
     "value.py": "def value():\n    return 2\n",
