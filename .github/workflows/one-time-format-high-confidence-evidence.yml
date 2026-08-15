@@ -1,0 +1,92 @@
+name: One-time high-confidence evidence formatting updater
+
+on:
+  push:
+    branches: [fix/high-confidence-target-evidence]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Normalize source indentation
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          function replaceOnce(file, before, after) {
+            const source = fs.readFileSync(file, 'utf8');
+            const count = source.split(before).length - 1;
+            if (count !== 1) throw new Error(`${file}: expected one replacement, found ${count}`);
+            fs.writeFileSync(file, source.replace(before, after));
+          }
+
+          replaceOnce('src/evidence.ts',
+          `const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+          const provisionalObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence !== "high");
+          const targetedFailures = exactObservations.filter(({ observation }) => observation.outcome === "failed");`,
+          `  const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+          const provisionalObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence !== "high");
+          const targetedFailures = exactObservations.filter(({ observation }) => observation.outcome === "failed");`);
+
+          replaceOnce('src/evidence.ts',
+          `  for (const { check, observation } of provisionalObservations) {
+          const qualification = qualificationForObservation(check, observation);
+          evidence.push({
+            kind: "limitation",
+            label: \`${'${observation.path}'}: ${'${qualification?.confidence ?? "unknown"}'}-confidence target identity\`,
+            detail: \`${'${observation.detail}'} ${'${qualification?.limitation ?? "The source-to-runner target identity was not established with high confidence."}'} The runtime observation remains available on the check, but it cannot strengthen this source path to verified without high-confidence target identity.\`,
+            confidence: "high",
+            checkId: check.id,
+          });
+          }
+
+          for (const { check, observation } of exactObservations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {`,
+          `  for (const { check, observation } of provisionalObservations) {
+            const qualification = qualificationForObservation(check, observation);
+            evidence.push({
+              kind: "limitation",
+              label: \`${'${observation.path}'}: ${'${qualification?.confidence ?? "unknown"}'}-confidence target identity\`,
+              detail: \`${'${observation.detail}'} ${'${qualification?.limitation ?? "The source-to-runner target identity was not established with high confidence."}'} The runtime observation remains available on the check, but it cannot strengthen this source path to verified without high-confidence target identity.\`,
+              confidence: "high",
+              checkId: check.id,
+            });
+          }
+
+          for (const { check, observation } of exactObservations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {`);
+
+          replaceOnce('src/evidence.ts',
+          `const qualified = relevantQualifications.map((qualification) => qualification.path);
+          const stronglyQualified = relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path);`,
+          `  const qualified = relevantQualifications.map((qualification) => qualification.path);
+          const stronglyQualified = relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path);`);
+
+          replaceOnce('src/explanation.ts',
+          `const qualifiedPaths = new Set(relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path));`,
+          `  const qualifiedPaths = new Set(relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path));`);
+          replaceOnce('src/explanation.ts',
+          `const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+          const failedObservation = exactObservations.find(({ observation }) => observation.outcome === "failed");`,
+          `  const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+          const failedObservation = exactObservations.find(({ observation }) => observation.outcome === "failed");`);
+          NODE
+      - run: npm test
+      - run: npm run clean && npm run build
+      - name: Commit formatting and generated dist
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/evidence.ts src/explanation.ts dist
+          git diff --cached --check
+          git commit -m "Normalize high-confidence evidence source formatting"
+          git push
