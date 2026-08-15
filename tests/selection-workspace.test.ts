@@ -94,6 +94,29 @@ test("ignored runtime-only inputs are allowed statically but rejected before rep
   );
 });
 
+test("explicit POSIX data artifacts preserve literal backslashes in their own identity", { skip: process.platform === "win32" }, async (context) => {
+  const root = await initializeRepository({
+    ".gitignore": "coverage*\n",
+    "src/value.js": "export const value = 1;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const base = git(root, "rev-parse", "HEAD").trim();
+  const target = await commitChange(root, "export const value = 2;\n", "selected change");
+  await writeFiles(root, {
+    "coverage\\proof.lcov": "TN:\nSF:src/value.js\nDA:1,1\nend_of_record\n",
+  });
+
+  const report = await analyzeRepository({
+    repo: root,
+    base,
+    runChecks: true,
+    coverageLcov: "coverage\\proof.lcov",
+    coverageCommit: target,
+  });
+  assert.equal(report.coverage?.accepted, true);
+  assert.equal(report.coverage?.artifact, "coverage\\proof.lcov");
+});
+
 test("ignored POSIX paths preserve literal backslashes instead of aliasing allowed artifacts", { skip: process.platform === "win32" }, async (context) => {
   const root = await initializeRepository({
     ".gitignore": "coverage*\n",

@@ -131,7 +131,7 @@ function repoLocalDataArtifact(root: string, artifact: string): string | null {
   const absolute = path.isAbsolute(artifact) ? path.normalize(artifact) : path.resolve(root, artifact);
   const relative = path.relative(root, absolute);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return null;
-  const normalized = relative.replaceAll("\\", "/");
+  const normalized = normalizeRepoPath(relative);
   return isDiscoverySensitivePath(normalized) ? null : normalized;
 }
 
