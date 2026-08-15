@@ -240,7 +240,8 @@ function classifyScript(name: string): CheckDefinition["kind"] | null {
 
 function targetingForScript(kind: CheckDefinition["kind"], command: string): Pick<CheckDefinition, "targetRunner" | "targetRunnerArgs" | "targetPattern" | "targetPatterns"> | null {
   if (kind !== "test") return null;
-  const normalized = command.trim().replaceAll(/\s+/g, " ");
+  if (/[\r\n]/.test(command)) return null;
+  const normalized = command.trim().replaceAll(/[ \t]+/g, " ");
   const invocation = normalized.match(/^(?:node|node\.exe) --test(?: (.+))?$/);
   if (!invocation) return null;
   const runnerArgs: string[] = [];

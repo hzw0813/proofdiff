@@ -165,6 +165,26 @@ test("cross-env command shapes stay opaque when the wrapper is not locally insta
   assert.deepEqual(targeted.checks, []);
 });
 
+test("multiline Jest and Vitest scripts stay opaque instead of being re-tokenized", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: {
+      test: "vitest\nrun",
+      "test:unit": "cross-env NODE_ENV=test\njest",
+    } }),
+    "test/value.test.js": "export const value = true;\n",
+    "node_modules/jest/package.json": JSON.stringify({ bin: { jest: "./bin/jest.cjs" } }),
+    "node_modules/jest/bin/jest.cjs": JEST_BIN,
+    "node_modules/vitest/package.json": JSON.stringify({ bin: { vitest: "./vitest.cjs" } }),
+    "node_modules/vitest/vitest.cjs": VITEST_BIN,
+    "node_modules/cross-env/package.json": JSON.stringify({ name: "cross-env", version: "1.0.0" }),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+
+  const discovery = await discoverChecks(root);
+  const targeted = await targetedJsFrameworkChecks(root, discovery.checks, ["test/value.test.js"]);
+  assert.deepEqual(targeted.checks, []);
+});
+
 test("custom Jest or Vitest command shapes stay opaque instead of inventing target evidence", async (context) => {
   const root = await initializeRepository({
     "package.json": JSON.stringify({ scripts: { test: "jest --config custom.js", "test:unit": "vitest --config custom.ts" } }),
