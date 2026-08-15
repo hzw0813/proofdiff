@@ -1,0 +1,96 @@
+name: One-time script whitespace fix updater
+
+on:
+  push:
+    branches: [fix/fail-closed-script-whitespace]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply fail-closed parser fix and regressions
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function replaceOnce(file, before, after) {
+            const source = fs.readFileSync(file, 'utf8');
+            const count = source.split(before).length - 1;
+            if (count !== 1) throw new Error(`${file}: expected exactly one replacement target, found ${count}`);
+            fs.writeFileSync(file, source.replace(before, after));
+          }
+
+          const normalization = '  const normalized = command.trim().replaceAll(/\\s+/g, " ");';
+          const conservativeNormalization = '  if (/[\\r\\n]/.test(command)) return null;\n  const normalized = command.trim().replaceAll(/[ \\t]+/g, " ");';
+          replaceOnce('src/checks.ts', normalization, conservativeNormalization);
+
+          const tokenization = '  const tokens = command.trim().replaceAll(/\\s+/g, " ").split(" ").filter(Boolean);';
+          const conservativeTokenization = '  if (/[\\r\\n]/.test(command)) return null;\n  const tokens = command.trim().replaceAll(/[ \\t]+/g, " ").split(" ").filter(Boolean);';
+          replaceOnce('src/js-runners.ts', tokenization, conservativeTokenization);
+
+          const checksAnchor = 'test("unsupported Node test options keep targeted execution disabled", async (context) => {';
+          const checksRegression = `test("Node targeted discovery rejects embedded command separators", async (context) => {
+            const root = await initializeRepository({
+              "package.json": JSON.stringify({ scripts: {
+                test: "node --test\\n--test-concurrency=1",
+                "test:unit": "node --test\\nquality/check.js",
+              } }),
+              "test/value.test.js": "import test from 'node:test'; test('value', () => {});\\n",
+              "quality/check.js": "export const custom = true;\\n",
+            });
+            context.after(() => rm(root, { recursive: true, force: true }));
+            const { checks } = await discoverChecks(root);
+            assert.equal(checks.length, 2);
+            assert.ok(checks.every((check) => check.targetRunner === undefined));
+            assert.deepEqual((await targetedTestChecks(root, checks, ["test/value.test.js", "quality/check.js"])).checks, []);
+          });
+
+          `;
+          replaceOnce('tests/checks.test.ts', checksAnchor, checksRegression + checksAnchor);
+
+          const jsAnchor = 'test("custom Jest or Vitest command shapes stay opaque instead of inventing target evidence", async (context) => {';
+          const jsRegression = `test("multiline Jest and Vitest scripts stay opaque instead of being re-tokenized", async (context) => {
+            const root = await initializeRepository({
+              "package.json": JSON.stringify({ scripts: {
+                test: "vitest\\nrun",
+                "test:unit": "cross-env NODE_ENV=test\\njest",
+              } }),
+              "test/value.test.js": "export const value = true;\\n",
+              "node_modules/jest/package.json": JSON.stringify({ bin: { jest: "./bin/jest.cjs" } }),
+              "node_modules/jest/bin/jest.cjs": JEST_BIN,
+              "node_modules/vitest/package.json": JSON.stringify({ bin: { vitest: "./vitest.cjs" } }),
+              "node_modules/vitest/vitest.cjs": VITEST_BIN,
+              "node_modules/cross-env/package.json": JSON.stringify({ name: "cross-env", version: "1.0.0" }),
+            });
+            context.after(() => rm(root, { recursive: true, force: true }));
+
+            const discovery = await discoverChecks(root);
+            const targeted = await targetedJsFrameworkChecks(root, discovery.checks, ["test/value.test.js"]);
+            assert.deepEqual(targeted.checks, []);
+          });
+
+          `;
+          replaceOnce('tests/js-runners.test.ts', jsAnchor, jsRegression + jsAnchor);
+          NODE
+      - run: npm test
+      - run: npm run clean && npm run build
+      - name: Commit source, regressions, and generated dist
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/checks.ts src/js-runners.ts tests/checks.test.ts tests/js-runners.test.ts dist
+          git diff --cached --check
+          git commit -m "Fail closed on multiline test scripts"
+          git push
