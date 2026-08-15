@@ -66,7 +66,7 @@ replace_once(
 
 replace_once(
     "CHANGELOG.md",
-    "## [Unreleased]\\n\\n## [0.5.3] - 2026-08-15",
+    "## [Unreleased]\n\n## [0.5.3] - 2026-08-15",
     '''## [Unreleased]
 
 ### Fixed
