@@ -241,7 +241,7 @@ function targetingForScript(kind, command) {
     if (kind !== "test")
         return null;
     const normalized = command.trim().replaceAll(/\s+/g, " ");
-    const invocation = normalized.match(/(?:^|&& )(?:node|node\.exe) --test(?: (.+))?$/);
+    const invocation = normalized.match(/^(?:node|node\.exe) --test(?: (.+))?$/);
     if (!invocation)
         return null;
     const runnerArgs = [];

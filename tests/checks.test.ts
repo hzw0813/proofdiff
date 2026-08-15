@@ -129,6 +129,23 @@ test("targeted execution rejects symbolic-link test paths", { skip: process.plat
   assert.deepEqual(targeted.checks, []);
 });
 
+test("Node targeted discovery rejects command-chain prefixes", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: {
+      test: "false && node --test",
+      "test:unit": "node setup.js && node --test",
+      "test:ci": "echo ok && node --test --test-concurrency=1",
+    } }),
+    "test/value.test.js": "import test from 'node:test'; test('value', () => {});\\n",
+    "setup.js": "process.exit(0);\\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const { checks } = await discoverChecks(root);
+  assert.equal(checks.length, 3);
+  assert.ok(checks.every((check) => check.targetRunner === undefined));
+  assert.deepEqual((await targetedTestChecks(root, checks, ["test/value.test.js"])).checks, []);
+});
+
 test("unsupported Node test options keep targeted execution disabled", async (context) => {
   const root = await initializeRepository({
     "package.json": JSON.stringify({ scripts: { test: "node --test --test-reporter=spec dist-test/tests/value.test.js" } }),
