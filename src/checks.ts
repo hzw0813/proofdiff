@@ -474,11 +474,10 @@ export function parseTargetObservations(root: string, check: CheckDefinition, ra
     records.set(absolute, record);
   }
   if (records.size !== expected.size) return notObserved(qualifications, "The runner observation omitted one or more qualified targets and was rejected.");
-  const unavailableRecords = [...records.values()].filter((record) => !record.observed);
-  const processFailureHasNoUnavailableTarget = payload.unattributedFailures > 0 && unavailableRecords.length === 0;
+  const hasUnattributedProcessFailure = payload.unattributedFailures > 0;
   return qualifications.map((qualification) => {
     const record = records.get(path.resolve(root, qualification.runnerPath))!;
-    if (!record.observed || (processFailureHasNoUnavailableTarget && record.failed === 0)) {
+    if (!record.observed || (hasUnattributedProcessFailure && record.failed === 0)) {
       const detail = !record.observed
         ? "The runner did not produce a trustworthy lifecycle observation for this exact target."
         : "The runner reported an unattributed process-level failure that could not be excluded from this target.";

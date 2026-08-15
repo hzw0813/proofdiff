@@ -142,6 +142,40 @@ test("Python unittest repositories receive AST-backed related evidence", async (
   assert.equal(report.assessments[0]?.status, "verified");
 });
 
+test("unattributed unittest failures cannot hide behind an unavailable batch target", async (context) => {
+  const root = await initializeRepository({
+    "src/__init__.py": "",
+    "src/a.py": "def value_a():\n    return 1\n",
+    "src/b.py": "def value_b():\n    return 1\n",
+    "src/c.py": "def value_c():\n    return 1\n",
+    "tests/__init__.py": "",
+    "tests/helper.py": "import unittest\n\nclass ImportedFailure(unittest.TestCase):\n    def test_imported_failure(self):\n        self.fail('imported failure')\n",
+    "tests/test_a.py": "import unittest\nfrom src.a import value_a\nfrom tests.helper import ImportedFailure\n\nclass ATest(unittest.TestCase):\n    def test_a(self):\n        self.assertEqual(value_a(), 2)\n",
+    "tests/test_b.py": "import unittest\nfrom src.b import value_b\n\nclass BTest(unittest.TestCase):\n    def test_b(self):\n        self.assertEqual(value_b(), 999)\n",
+    "tests/test_c.py": "import unittest\nfrom src.c import value_c\n\nvalue_c()\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/a.py": "def value_a():\n    return 2\n",
+    "src/b.py": "def value_b():\n    return 2\n",
+    "src/c.py": "def value_c():\n    return 2\n",
+  });
+
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const targeted = report.checks.find((check) => check.id === "python:test:unittest:targeted");
+  const observations = new Map(targeted?.targetObservations?.map((observation) => [observation.path, observation]));
+  const sourceA = report.assessments.find((assessment) => assessment.file.path === "src/a.py");
+
+  assert.equal(targeted?.status, "failed", targeted?.output);
+  assert.equal(observations.get("tests/test_a.py")?.outcome, "not-observed");
+  assert.match(observations.get("tests/test_a.py")?.detail ?? "", /unattributed process-level failure/);
+  assert.equal(observations.get("tests/test_b.py")?.outcome, "failed");
+  assert.equal(observations.get("tests/test_c.py")?.outcome, "not-observed");
+  assert.equal(sourceA?.status, "verification-failed");
+  assert.deepEqual(sourceA?.executedTests, []);
+  assert.deepEqual(sourceA?.testExecutions, []);
+});
+
 test("Python stubs remain static test relationships without inventing a runnable framework", async (context) => {
   const root = await initializeRepository({
     "value.py": "def value():\n    return 1\n",
@@ -448,7 +482,7 @@ test("a partially localized targeted batch fails closed for an ambiguous related
   assert.deepEqual(targeted?.targetObservations?.map((item) => [item.path, item.outcome]), [
     ["tests/test_fail.py", "failed"],
     ["tests/test_import.py", "not-observed"],
-    ["tests/test_pass.py", "passed"],
+    ["tests/test_pass.py", "not-observed"],
   ]);
   assert.equal(assessment?.status, "verification-failed");
   assert.ok(assessment?.evidence.some((item) => item.kind === "failing-check" && item.checkId === targeted.id));
@@ -460,7 +494,8 @@ test("a partially localized targeted batch fails closed for an ambiguous related
   const valueSummary = renderGithubSummary(valueReport);
   assert.match(valueSummary, /failed without complete attribution/);
   assert.match(valueSummary, /tests\/test_import\.py: not-observed/);
-  assert.match(valueSummary, /Independently passing target: <code>tests\/test_pass\.py<\/code>/);
+  assert.match(valueSummary, /tests\/test_pass\.py: not-observed/);
+  assert.doesNotMatch(valueSummary, /Independently passing target: <code>tests\/test_pass\.py<\/code>/);
   assert.doesNotMatch(valueSummary, /Attributed failed target: <code>tests\/test_pass\.py/);
 });
 
