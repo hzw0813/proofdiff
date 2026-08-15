@@ -24,6 +24,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
             git cat-file -e "${RELEASE_TAG}^{tag}"
             test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$RELEASE_SHA"
