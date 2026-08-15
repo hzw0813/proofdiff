@@ -10,8 +10,21 @@ function checkApplies(check, file, relatedTests) {
         return file.language === "python";
     return true;
 }
-function isRecognizedNoTestsExit(check) {
-    return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");
+function isRecognizedNoTestsExit(check, checks) {
+    if (check.status !== "failed" || check.exitCode !== 5)
+        return false;
+    if (check.targetRunner === "pytest")
+        return true;
+    if (check.targetRunner !== "unittest" || check.targetQualifications !== undefined)
+        return false;
+    const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);
+    const observations = targeted?.targetObservations ?? [];
+    return targeted?.status === "passed"
+        && observations.length > 0
+        && observations.every((observation) => observation.outcome === "zero-tests"
+            && targeted.targetQualifications?.some((qualification) => qualification.confidence === "high"
+                && qualification.path === observation.path
+                && qualification.runnerPath === observation.runnerPath) === true);
 }
 function verificationFor(file, relatedTests, checks, declaredTests) {
     const evidence = [];
@@ -28,17 +41,17 @@ function verificationFor(file, relatedTests, checks, declaredTests) {
     const hasUnavailableRelatedTarget = (check) => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
     const localizedTargetedProcessFailures = applicable.filter((check) => check.targetQualifications !== undefined
         && check.status === "failed"
-        && !isRecognizedNoTestsExit(check)
+        && !isRecognizedNoTestsExit(check, applicable)
         && hasExactTargetFailure(check)
         && !hasUnavailableRelatedTarget(check));
     const unlocalizedTargetedFailures = applicable.filter((check) => check.targetQualifications !== undefined
         && check.status === "failed"
-        && !isRecognizedNoTestsExit(check)
+        && !isRecognizedNoTestsExit(check, applicable)
         && (!hasExactTargetFailure(check) || hasUnavailableRelatedTarget(check)));
     const opaqueFailures = applicable.filter((check) => check.targetQualifications === undefined
         && ["failed", "error", "timed-out"].includes(check.status)
         && !(check.kind === "test" && check.targetRunner !== undefined && localizedTargetedProcessFailures.some((targeted) => targeted.id === `${check.id}:targeted`))
-        && !isRecognizedNoTestsExit(check));
+        && !isRecognizedNoTestsExit(check, applicable));
     const operationalFailures = applicable.filter((check) => check.targetQualifications !== undefined && ["error", "timed-out"].includes(check.status));
     const passing = applicable.filter((check) => check.status === "passed" && check.targetQualifications === undefined);
     const testExecutions = exactObservations

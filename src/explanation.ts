@@ -7,8 +7,18 @@ function checkApplies(check: CheckResult, item: FileAssessment): boolean {
   return true;
 }
 
-function recognizedNoTestsExit(check: CheckResult): boolean {
-  return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");
+function recognizedNoTestsExit(check: CheckResult, checks: CheckResult[]): boolean {
+  if (check.status !== "failed" || check.exitCode !== 5) return false;
+  if (check.targetRunner === "pytest") return true;
+  if (check.targetRunner !== "unittest" || check.targetQualifications !== undefined) return false;
+  const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);
+  const observations = targeted?.targetObservations ?? [];
+  return targeted?.status === "passed"
+    && observations.length > 0
+    && observations.every((observation) => observation.outcome === "zero-tests"
+      && targeted.targetQualifications?.some((qualification) => qualification.confidence === "high"
+        && qualification.path === observation.path
+        && qualification.runnerPath === observation.runnerPath) === true);
 }
 
 function action(kind: EvidenceNextAction["kind"], detail: string, requiresRepositoryCodeExecution = false): EvidenceNextAction {
@@ -32,7 +42,7 @@ export function explainEvidenceBoundary(item: FileAssessment, checks: CheckResul
   const skippedObservation = exactObservations.find(({ observation }) => observation.outcome === "skipped");
   const unlocalizedTargetFailure = applicable.some((check) => check.targetQualifications !== undefined
     && check.status === "failed"
-    && !recognizedNoTestsExit(check)
+    && !recognizedNoTestsExit(check, applicable)
     && (
       check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") !== true
       || check.targetObservations?.some((observation) => item.relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true
