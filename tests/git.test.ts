@@ -70,6 +70,49 @@ test("rename metadata preserves both paths", async (context) => {
   assert.equal(file?.change, "renamed");
   assert.equal(file?.previousPath, "src/old name.ts");
   assert.equal(file?.path, "src/new name.ts");
+assert.deepEqual(file?.hunks, []);
+});
+
+test("rename with content modification preserves the minimal changed hunk", async (context) => {
+  const root = await initializeRepository({
+    "src/foo.js": [
+      "export function helperA() { return 1; }",
+      "",
+      "export function target() {",
+      "  helperA();",
+      "  const x = 1;",
+      "  const y = 2;",
+      "  return x + y;",
+      "}",
+      "",
+    ].join("\n"),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  git(root, "mv", "src/foo.js", "src/bar.js");
+  await writeFiles(root, {
+    "src/bar.js": [
+      "export function helperA() { return 1; }",
+      "",
+      "export function target() {",
+      "  helperA();",
+      "  const x = 1;",
+      "  const y = 3;",
+      "  return x + y;",
+      "}",
+      "",
+    ].join("\n"),
+  });
+  const { args } = await selectDiff(root, {});
+  const [file] = await changedFiles(root, args, true);
+  assert.equal(file?.change, "renamed");
+  assert.equal(file?.previousPath, "src/foo.js");
+  assert.equal(file?.path, "src/bar.js");
+  assert.equal(file?.additions, 1);
+  assert.equal(file?.deletions, 1);
+  assert.deepEqual(file?.hunks, [{
+    oldRange: { start: 6, end: 6 },
+    newRange: { start: 6, end: 6 },
+  }]);
 });
 
 test("staged selection excludes later unstaged edits", async (context) => {
