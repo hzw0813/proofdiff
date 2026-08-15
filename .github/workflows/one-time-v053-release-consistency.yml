@@ -18,7 +18,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Align latest-release docs and published Action smoke
+      - name: Align latest-release documentation
         shell: bash
         run: |
           python3 <<'PY'
@@ -32,7 +32,6 @@ jobs:
                   raise RuntimeError(f"{path}: expected {expected} occurrences of {old!r}, found {count}")
               p.write_text(text.replace(old, new))
 
-          replace_count('.github/workflows/ci.yml', 'v0.5.2', 'v0.5.3', 2)
           replace_count('README.md', 'v0.5.2', 'v0.5.3', 2)
           replace_count('docs/github-actions.md', 'v0.5.2', 'v0.5.3', 6)
           replace_count('docs/github-actions.md', 'd2927b13aedb64403bdf1d6b3fe70f1148d1dce6', 'd5fe3da78400a1b4d4154c0ddd9b84c3ef662e06', 1)
@@ -47,12 +46,12 @@ jobs:
           changelog.write_text(text.replace(anchor, anchor + addition, 1))
           PY
       - run: npm test
-      - name: Commit release-consistency updates
+      - name: Commit release-documentation updates
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows/ci.yml README.md docs/github-actions.md docs/troubleshooting.md CHANGELOG.md
+          git add README.md docs/github-actions.md docs/troubleshooting.md CHANGELOG.md
           git diff --cached --check
-          git commit -m "Align v0.5.3 release guidance and smoke test"
+          git commit -m "Align v0.5.3 release guidance"
           git push
