@@ -79,7 +79,7 @@ jobs:
       - run: npm run test:action
 
   published-action:
-    name: Action smoke / published v0.5.2
+    name: Action smoke / published v0.5.3
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: node -e "require('node:fs').appendFileSync('fixtures/demo/base/src/discount.js', '\n// published Action smoke\n')"
       - name: Run ProofDiff from the published repository
-        uses: hzw0813/proofdiff@v0.5.2
+        uses: hzw0813/proofdiff@v0.5.3
         with:
           fail-on: never
           html: published-action-report.html
@@ -97,7 +97,7 @@ jobs:
         run: |
           test -s published-action-report.html
           grep -Fq 'fixtures/demo/base/src/discount.js' published-action-report.html
-          grep -Fq 'Generated locally by ProofDiff 0.5.2' published-action-report.html
+          grep -Fq 'Generated locally by ProofDiff 0.5.3' published-action-report.html
       - uses: actions/upload-artifact@v7
         if: always()
         with:

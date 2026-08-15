@@ -26,7 +26,7 @@ For `--base`, fetch enough history for Git to find a merge base. For `--range`, 
 
 ## Immutable base/range/staged analysis is rejected for workspace drift
 
-This is a fail-closed provenance check, not a verification failure. ProofDiff currently reads graph/config/test inputs from the checked-out filesystem, so v0.5.2 refuses to combine an immutable diff with another filesystem state. For `--base` and `--range`, make sure the selected target is the checked-out `HEAD` and the tracked worktree is clean relative to it. For `--staged`, make sure there are no unstaged tracked changes so the worktree matches the index. To inspect a historical `A..B` range, check out `B` or create a separate worktree at `B` first.
+This is a fail-closed provenance check, not a verification failure. ProofDiff currently reads graph/config/test inputs from the checked-out filesystem, so v0.5.3 refuses to combine an immutable diff with another filesystem state. For `--base` and `--range`, make sure the selected target is the checked-out `HEAD` and the tracked worktree is clean relative to it. For `--staged`, make sure there are no unstaged tracked changes so the worktree matches the index. To inspect a historical `A..B` range, check out `B` or create a separate worktree at `B` first.
 
 Git-visible untracked files are also outside an immutable selection. Commit, stage where appropriate, remove, ignore, or isolate them. Static-only analysis additionally rejects ignored metadata/Python tests that check discovery would consume. With `--run-checks`, ignored repository-local inputs are rejected more broadly because repository commands could read them; dependency/cache directories such as `node_modules` and virtual environments remain allowed environment inputs.
 
