@@ -201,30 +201,39 @@ test("custom Jest or Vitest command shapes stay opaque instead of inventing targ
   assert.deepEqual(targeted.checks, []);
 });
 
-test("shell-like prefixes, command chains, unsupported wrappers, and excessive environment prefixes stay opaque", async (context) => {
-  const root = await initializeRepository({
-    "package.json": JSON.stringify({ scripts: {
-      test: "jest --coverage",
-      "test:substitution": "FOO=$(command) jest",
-      "test:chain": "NODE_ENV=test jest && eslint .",
-      "test:dotenv": "dotenv -e .env -- vitest run",
-      "test:concurrently": "concurrently jest vitest",
-      "test:cross-env-shell": "cross-env-shell NODE_ENV=test jest",
-      "test:too-many-env": "A=1 B=2 C=3 D=4 E=5 jest",
-      "test:duplicate-env": "CI=1 CI=true jest",
-    } }),
-    "test/value.test.js": "export const value = true;\n",
-    "node_modules/jest/package.json": JSON.stringify({ bin: { jest: "./bin/jest.cjs" } }),
-    "node_modules/jest/bin/jest.cjs": JEST_BIN,
-    "node_modules/vitest/package.json": JSON.stringify({ bin: { vitest: "./vitest.cjs" } }),
-    "node_modules/vitest/vitest.cjs": VITEST_BIN,
-    "node_modules/cross-env/package.json": JSON.stringify({ name: "cross-env", version: "1.0.0" }),
-  });
-  context.after(() => rm(root, { recursive: true, force: true }));
+test("unsafe Jest and Vitest script shapes are individually exercised and stay opaque", async (context) => {
+  const cases = [
+    { label: "unsupported Jest flag", script: "jest --coverage" },
+    { label: "command substitution", script: "FOO=$(command) jest" },
+    { label: "command chain", script: "NODE_ENV=test jest && eslint ." },
+    { label: "dotenv wrapper", script: "dotenv -e .env -- vitest run" },
+    { label: "concurrently wrapper", script: "concurrently jest vitest" },
+    { label: "cross-env-shell wrapper", script: "cross-env-shell NODE_ENV=test jest" },
+    { label: "too many environment assignments", script: "A=1 B=2 C=3 D=4 E=5 jest" },
+    { label: "duplicate environment assignment", script: "CI=1 CI=true jest" },
+    { label: "non-ASCII whitespace", script: "jest\u00a0--ci" },
+  ];
 
-  const discovery = await discoverChecks(root);
-  const targeted = await targetedJsFrameworkChecks(root, discovery.checks, ["test/value.test.js"]);
-  assert.deepEqual(targeted.checks, []);
+  for (const { label, script } of cases) {
+    const root = await initializeRepository({
+      "package.json": JSON.stringify({ scripts: { test: script } }),
+      "test/value.test.js": "export const value = true;\n",
+      "node_modules/jest/package.json": JSON.stringify({ bin: { jest: "./bin/jest.cjs" } }),
+      "node_modules/jest/bin/jest.cjs": JEST_BIN,
+      "node_modules/vitest/package.json": JSON.stringify({ bin: { vitest: "./vitest.cjs" } }),
+      "node_modules/vitest/vitest.cjs": VITEST_BIN,
+      "node_modules/cross-env/package.json": JSON.stringify({ name: "cross-env", version: "1.0.0" }),
+    });
+    context.after(() => rm(root, { recursive: true, force: true }));
+
+    const discovery = await discoverChecks(root);
+    const discoveredJsTests = discovery.checks.filter((check) => check.id.startsWith("js:test:"));
+    assert.equal(discoveredJsTests.length, 1, `${label}: adversarial script must be discovered as a test check`);
+    assert.equal(discoveredJsTests[0]?.id, "js:test:test", `${label}: parser must receive the recognized test script`);
+
+    const targeted = await targetedJsFrameworkChecks(root, discovery.checks, ["test/value.test.js"]);
+    assert.deepEqual(targeted.checks, [], `${label}: unsafe command shape must remain opaque`);
+  }
 });
 
 test("a runner JSON report with no exact suite result cannot strengthen evidence", async (context) => {
