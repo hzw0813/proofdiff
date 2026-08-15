@@ -15,5 +15,6 @@ export declare function impactedFiles(graph: RepositoryGraph, file: string, limi
     files: string[];
     truncated: boolean;
 };
+export declare function hasExactCurrentLineHunks(file: ChangedFile): boolean;
 export declare function symbolsChanged(file: ChangedFile, analysis: SourceAnalysis | undefined): SymbolInfo[];
 //# sourceMappingURL=graph.d.ts.map

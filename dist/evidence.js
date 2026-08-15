@@ -1,5 +1,5 @@
 import path from "node:path";
-import { impactedFiles, symbolsChanged } from "./graph.js";
+import { hasExactCurrentLineHunks, impactedFiles, symbolsChanged } from "./graph.js";
 import { clamp, compareCodeUnits, isTestLikePath, unique } from "./util.js";
 function checkApplies(check, file, relatedTests) {
     if (check.targetFiles)
@@ -154,7 +154,7 @@ function verificationFor(file, relatedTests, checks, declaredTests) {
     return { status: "unverified", evidence, executedTests, testExecutions };
 }
 function callsInChangedLines(file, analysis, limit = 100) {
-    if (!analysis?.callSites || file.binary || file.change === "deleted")
+    if (!analysis?.callSites || file.binary || file.change === "deleted" || !hasExactCurrentLineHunks(file))
         return { calls: [], truncated: false };
     const seen = new Set();
     const matching = analysis.callSites.filter((site) => {
@@ -273,6 +273,8 @@ export function assessFile(file, graph, checks, declaredTests = []) {
         limitations.push("Only file-level analysis is available for this file type.");
     if (file.binary)
         limitations.push("Binary file contents were not inspected.");
+    if (!file.binary && file.change !== "deleted" && !hasExactCurrentLineHunks(file))
+        limitations.push("Zero-context diff hunks could not be reconciled exactly with Git's current-line addition count, so changed-symbol and changed-call attribution was withheld.");
     if (changedCallSites.truncated)
         limitations.push("Call references in changed lines were limited to the first 100 parser-observed sites.");
     if (declaredTests.length > 0)

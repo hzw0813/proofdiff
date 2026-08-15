@@ -103,11 +103,25 @@ function overlaps(a: { start: number; end: number }, b: { start: number; end: nu
   return a.start <= b.end && b.start <= a.end;
 }
 
+export function hasExactCurrentLineHunks(file: ChangedFile): boolean {
+  if (!Number.isSafeInteger(file.additions) || file.additions < 0) return false;
+  let currentLines = 0;
+  for (const hunk of file.hunks) {
+    const { start, end } = hunk.newRange;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) return false;
+    const span = end - start + 1;
+    if (!Number.isSafeInteger(span) || span > file.additions - currentLines) return false;
+    currentLines += span;
+  }
+  return currentLines === file.additions;
+}
+
 export function symbolsChanged(file: ChangedFile, analysis: SourceAnalysis | undefined): SymbolInfo[] {
   if (file.change === "deleted") {
     return file.deletedSymbolHints.map((name) => ({ name, kind: "function", range: { start: 1, end: 1 }, exported: false, confidence: "low" }));
   }
   if (!analysis || file.binary) return [];
+  if (!hasExactCurrentLineHunks(file)) return [];
   const changed = analysis.symbols.filter((symbol) => file.hunks.some((hunk) => overlaps(symbol.range, hunk.newRange)));
   if (changed.length > 0) {
     return changed.filter((candidate) => !changed.some((other) =>
