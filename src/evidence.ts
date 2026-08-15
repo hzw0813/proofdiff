@@ -11,8 +11,24 @@ function checkApplies(check: CheckResult, file: ChangedFile, relatedTests: strin
   return true;
 }
 
-function isRecognizedNoTestsExit(check: CheckResult): boolean {
-  return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");
+function hasExactZeroTestObservations(check: CheckResult): boolean {
+  const observations = check.targetObservations ?? [];
+  return observations.length > 0
+    && observations.every((observation) => observation.outcome === "zero-tests"
+      && check.targetQualifications?.some((qualification) => qualification.confidence === "high"
+        && qualification.path === observation.path
+        && qualification.runnerPath === observation.runnerPath) === true);
+}
+
+function isRecognizedNoTestsExit(check: CheckResult, checks: CheckResult[]): boolean {
+  if (check.status !== "failed" || check.exitCode !== 5 || (check.targetRunner !== "pytest" && check.targetRunner !== "unittest")) return false;
+  if (check.targetQualifications !== undefined) {
+    return check.targetRunner === "pytest" && hasExactZeroTestObservations(check);
+  }
+  const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);
+  if (targeted === undefined || !hasExactZeroTestObservations(targeted)) return false;
+  return targeted.status === "passed"
+    || (targeted.status === "failed" && targeted.exitCode === 5 && targeted.targetRunner === "pytest");
 }
 
 function verificationFor(file: ChangedFile, relatedTests: string[], checks: CheckResult[], declaredTests: string[]): { status: VerificationStatus; evidence: EvidenceItem[]; executedTests: string[]; testExecutions: FileAssessment["testExecutions"] } {
@@ -30,17 +46,17 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
   const hasUnavailableRelatedTarget = (check: CheckResult): boolean => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
   const localizedTargetedProcessFailures = applicable.filter((check) => check.targetQualifications !== undefined
     && check.status === "failed"
-    && !isRecognizedNoTestsExit(check)
+    && !isRecognizedNoTestsExit(check, applicable)
     && hasExactTargetFailure(check)
     && !hasUnavailableRelatedTarget(check));
   const unlocalizedTargetedFailures = applicable.filter((check) => check.targetQualifications !== undefined
     && check.status === "failed"
-    && !isRecognizedNoTestsExit(check)
+    && !isRecognizedNoTestsExit(check, applicable)
     && (!hasExactTargetFailure(check) || hasUnavailableRelatedTarget(check)));
   const opaqueFailures = applicable.filter((check) => check.targetQualifications === undefined
     && ["failed", "error", "timed-out"].includes(check.status)
     && !(check.kind === "test" && check.targetRunner !== undefined && localizedTargetedProcessFailures.some((targeted) => targeted.id === `${check.id}:targeted`))
-    && !isRecognizedNoTestsExit(check));
+    && !isRecognizedNoTestsExit(check, applicable));
   const operationalFailures = applicable.filter((check) => check.targetQualifications !== undefined && ["error", "timed-out"].includes(check.status));
   const passing = applicable.filter((check) => check.status === "passed" && check.targetQualifications === undefined);
   const testExecutions: FileAssessment["testExecutions"] = exactObservations

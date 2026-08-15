@@ -7,8 +7,25 @@ function checkApplies(check, item) {
         return item.file.language === "python";
     return true;
 }
-function recognizedNoTestsExit(check) {
-    return check.status === "failed" && check.exitCode === 5 && (check.targetRunner === "pytest" || check.targetRunner === "unittest");
+function hasExactZeroTestObservations(check) {
+    const observations = check.targetObservations ?? [];
+    return observations.length > 0
+        && observations.every((observation) => observation.outcome === "zero-tests"
+            && check.targetQualifications?.some((qualification) => qualification.confidence === "high"
+                && qualification.path === observation.path
+                && qualification.runnerPath === observation.runnerPath) === true);
+}
+function recognizedNoTestsExit(check, checks) {
+    if (check.status !== "failed" || check.exitCode !== 5 || (check.targetRunner !== "pytest" && check.targetRunner !== "unittest"))
+        return false;
+    if (check.targetQualifications !== undefined) {
+        return check.targetRunner === "pytest" && hasExactZeroTestObservations(check);
+    }
+    const targeted = checks.find((candidate) => candidate.id === `${check.id}:targeted`);
+    if (targeted === undefined || !hasExactZeroTestObservations(targeted))
+        return false;
+    return targeted.status === "passed"
+        || (targeted.status === "failed" && targeted.exitCode === 5 && targeted.targetRunner === "pytest");
 }
 function action(kind, detail, requiresRepositoryCodeExecution = false) {
     return { kind, detail, requiresRepositoryCodeExecution };
@@ -30,7 +47,7 @@ export function explainEvidenceBoundary(item, checks) {
     const skippedObservation = exactObservations.find(({ observation }) => observation.outcome === "skipped");
     const unlocalizedTargetFailure = applicable.some((check) => check.targetQualifications !== undefined
         && check.status === "failed"
-        && !recognizedNoTestsExit(check)
+        && !recognizedNoTestsExit(check, applicable)
         && (check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") !== true
             || check.targetObservations?.some((observation) => item.relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true));
     const passingOpaqueCheck = applicable.some((check) => check.status === "passed" && check.targetQualifications === undefined);

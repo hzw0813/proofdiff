@@ -327,6 +327,41 @@ test("pytest exit 5 remains a non-failing no-collection outcome", async (context
   assert.ok(!report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));
 });
 
+test("pytest exit 5 without lifecycle observations remains a verification failure", async (context) => {
+  const root = await initializeRepository({
+    "pyproject.toml": "[tool.pytest]\n",
+    "pytest.py": "raise SystemExit(5)\n",
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "from value import value\ndef test_value():\n    assert value() == 2\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const pytestChecks = report.checks.filter((check) => check.targetRunner === "pytest" && check.exitCode === 5);
+  assert.ok(pytestChecks.length >= 1);
+  assert.ok(pytestChecks.some((check) => check.targetQualifications !== undefined && check.targetObservations?.[0]?.outcome === "not-observed"));
+  assert.equal(report.assessments[0]?.status, "verification-failed");
+  assert.ok(report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));
+  assert.equal(report.assessments[0]?.evidenceBoundary?.reason, "failure-unattributed");
+});
+
+test("unittest exit 5 requires corroborating zero-test observations instead of being blindly suppressed", async (context) => {
+  const root = await initializeRepository({
+    "unittest.py": "raise SystemExit(5)\n",
+    "value.py": "def value():\n    return 1\n",
+    "tests/test_value.py": "import unittest\nfrom value import value\nclass ValueTest(unittest.TestCase):\n    def test_value(self):\n        self.assertEqual(value(), 2)\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "value.py": "def value():\n    return 2\n" });
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const unittestChecks = report.checks.filter((check) => check.targetRunner === "unittest" && check.exitCode === 5);
+  assert.ok(unittestChecks.length >= 1);
+  assert.ok(unittestChecks.every((check) => check.status === "failed"));
+  assert.equal(report.assessments[0]?.status, "verification-failed");
+  assert.ok(report.assessments[0]?.evidence.some((item) => item.kind === "failing-check"));
+  assert.equal(report.assessments[0]?.evidenceBoundary?.reason, "failure-unattributed");
+});
+
 test("a unittest loader failure without an attributable test failure fails closed", async (context) => {
   const root = await initializeRepository({
     "value.py": "def value():\n    return 1\n",
