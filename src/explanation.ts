@@ -19,14 +19,14 @@ export function explainEvidenceBoundary(item: FileAssessment, checks: CheckResul
   const executed = checks.filter((check) => check.status !== "not-run");
   const applicable = executed.filter((check) => checkApplies(check, item));
   const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => item.relatedTests.includes(qualification.path));
-const qualifiedPaths = new Set(relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path));
+  const qualifiedPaths = new Set(relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path));
   const targetedForRelated = checks.filter((check) => (check.targetQualifications ?? []).some((qualification) => qualification.confidence === "high" && item.relatedTests.includes(qualification.path)));
   const observations = applicable.flatMap((check) => (check.targetObservations ?? [])
     .filter((observation) => item.relatedTests.includes(observation.path))
     .map((observation) => ({ check, observation })));
   const qualificationForObservation = (check: CheckResult, observation: NonNullable<CheckResult["targetObservations"]>[number]) => check.targetQualifications?.find((qualification) => qualification.path === observation.path && qualification.runnerPath === observation.runnerPath);
-const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
-const failedObservation = exactObservations.find(({ observation }) => observation.outcome === "failed");
+  const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+  const failedObservation = exactObservations.find(({ observation }) => observation.outcome === "failed");
   const unavailableObservation = exactObservations.find(({ observation }) => observation.outcome === "not-observed");
   const zeroObservation = exactObservations.find(({ observation }) => observation.outcome === "zero-tests");
   const skippedObservation = exactObservations.find(({ observation }) => observation.outcome === "skipped");

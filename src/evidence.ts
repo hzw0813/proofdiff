@@ -23,9 +23,9 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
     .filter((observation) => relatedTests.includes(observation.path))
     .map((observation) => ({ check, observation })));
   const qualificationForObservation = (check: CheckResult, observation: NonNullable<CheckResult["targetObservations"]>[number]) => check.targetQualifications?.find((qualification) => qualification.path === observation.path && qualification.runnerPath === observation.runnerPath);
-const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
-const provisionalObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence !== "high");
-const targetedFailures = exactObservations.filter(({ observation }) => observation.outcome === "failed");
+  const exactObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence === "high");
+  const provisionalObservations = observations.filter(({ check, observation }) => qualificationForObservation(check, observation)?.confidence !== "high");
+  const targetedFailures = exactObservations.filter(({ observation }) => observation.outcome === "failed");
   const hasExactTargetFailure = (check: CheckResult): boolean => check.targetObservations?.some((observation) => observation.outcome === "failed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
   const hasUnavailableRelatedTarget = (check: CheckResult): boolean => check.targetObservations?.some((observation) => relatedTests.includes(observation.path) && observation.outcome === "not-observed" && qualificationForObservation(check, observation)?.confidence === "high") === true;
   const localizedTargetedProcessFailures = applicable.filter((check) => check.targetQualifications !== undefined
@@ -114,17 +114,17 @@ const targetedFailures = exactObservations.filter(({ observation }) => observati
   }
 
   for (const { check, observation } of provisionalObservations) {
-  const qualification = qualificationForObservation(check, observation);
-  evidence.push({
-    kind: "limitation",
-    label: `${observation.path}: ${qualification?.confidence ?? "unknown"}-confidence target identity`,
-    detail: `${observation.detail} ${qualification?.limitation ?? "The source-to-runner target identity was not established with high confidence."} The runtime observation remains available on the check, but it cannot strengthen this source path to verified without high-confidence target identity.`,
-    confidence: "high",
-    checkId: check.id,
-  });
-}
+    const qualification = qualificationForObservation(check, observation);
+    evidence.push({
+      kind: "limitation",
+      label: `${observation.path}: ${qualification?.confidence ?? "unknown"}-confidence target identity`,
+      detail: `${observation.detail} ${qualification?.limitation ?? "The source-to-runner target identity was not established with high confidence."} The runtime observation remains available on the check, but it cannot strengthen this source path to verified without high-confidence target identity.`,
+      confidence: "high",
+      checkId: check.id,
+    });
+  }
 
-for (const { check, observation } of exactObservations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
+  for (const { check, observation } of exactObservations.filter(({ observation }) => !["passed", "failed"].includes(observation.outcome))) {
     evidence.push({ kind: "limitation", label: `${observation.path}: ${observation.outcome}`, detail: observation.detail, confidence: "high", checkId: check.id });
   }
 
@@ -206,8 +206,8 @@ export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: Ch
   if (isTestLikePath(file.path)) staticallyTestLike.unshift(file.path);
   const declaredSet = new Set(declaredTests);
   const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => impactedSet.has(qualification.path) || declaredSet.has(qualification.path));
-const qualified = relevantQualifications.map((qualification) => qualification.path);
-const stronglyQualified = relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path);
+  const qualified = relevantQualifications.map((qualification) => qualification.path);
+  const stronglyQualified = relevantQualifications.filter((qualification) => qualification.confidence === "high").map((qualification) => qualification.path);
   const relatedTests = unique([...staticallyTestLike, ...qualified, ...declaredTests]).sort();
   const changedCallSites = callsInChangedLines(file, analysis);
   const verification = verificationFor(file, relatedTests, checks, declaredTests);
