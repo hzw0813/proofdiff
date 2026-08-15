@@ -4,6 +4,16 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-15
+
+### Fixed
+
+- Refused to dereference symbolic-link repository source/config/test paths during static reads and exact-target qualification. Working-tree untracked symlinks no longer cause ProofDiff to read their targets, symlinked repository metadata cannot enable checks by existence alone, and symlinked test paths cannot produce exact per-target evidence. Dependency/package-manager environment paths and explicitly supplied external data artifacts keep their existing separate trust rules.
+
+### Changed
+
+- JSON `schemaVersion: "1.0"` and the human meaning of `verified` remain unchanged: **Related test file passed**. This patch strengthens filesystem/snapshot boundaries and does not claim changed-symbol execution, changed-line execution, assertion relevance, coverage completeness, or correctness.
+
 ## [0.5.2] - 2026-08-15
 
 ### Fixed
