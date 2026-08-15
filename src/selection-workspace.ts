@@ -2,6 +2,7 @@ import path from "node:path";
 import { diffTargetCommit, GitError, gitNullDevice, listUntrackedFiles, resolveRevisionCommit } from "./git.js";
 import { runProcess, safeExecutablePath, type ProcessResult } from "./process.js";
 import type { DiffSelection } from "./types.js";
+import { normalizeRepoPath } from "./util.js";
 
 const ROOT_DISCOVERY_METADATA = new Set([
   "package.json",
@@ -112,7 +113,7 @@ async function ignoredFiles(root: string, pathspecs: string[], exclusions: strin
     const message = result.stderr.trim() || result.error || `git ls-files exited with ${String(result.exitCode)}`;
     throw new GitError(`Could not inspect ignored immutable-workspace inputs: ${message}`);
   }
-  return [...new Set(result.stdout.split("\0").filter(Boolean).map((file) => file.replaceAll("\\", "/")))].sort();
+  return [...new Set(result.stdout.split("\0").filter(Boolean).map(normalizeRepoPath))].sort();
 }
 
 function isPythonDiscoveryPath(repoPath: string): boolean {

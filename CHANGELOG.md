@@ -6,6 +6,7 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Preserved ignored-file path identity across platforms when enforcing immutable workspace alignment. POSIX filenames containing literal backslashes are no longer rewritten as directory separators, so a distinct ignored runtime input such as `coverage\proof.lcov` cannot alias an explicitly allowed `coverage/proof.lcov` data artifact and bypass the pre-execution fail-closed gate.
 - Failed closed on unattributed targeted-runner process failures even when another qualified batch target is unavailable. An unavailable target can no longer act as a sink that lets unrelated observed passes survive an ambiguous process-level failure; only explicitly failed targets retain localized failure attribution.
 - Failed closed on deletion-only zero-context hunks when attributing current changed symbols and call references. Git represents a deletion-only hunk with a zero-length new-side range anchored to a neighboring current line; ProofDiff now reconciles reconstructed current-line spans with Git numstat additions before treating those anchors as changed current code.
 - Preserved precise changed-line hunks across renames by scoping per-file Git diffs to both the previous and current path. This prevents a rename with content edits from being reinterpreted as a whole-file addition and overstating changed-line or call-reference evidence.
