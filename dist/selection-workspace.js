@@ -1,6 +1,7 @@
 import path from "node:path";
 import { diffTargetCommit, GitError, gitNullDevice, listUntrackedFiles, resolveRevisionCommit } from "./git.js";
 import { runProcess, safeExecutablePath } from "./process.js";
+import { normalizeRepoPath } from "./util.js";
 const ROOT_DISCOVERY_METADATA = new Set([
     "package.json",
     "tsconfig.json",
@@ -108,7 +109,7 @@ async function ignoredFiles(root, pathspecs, exclusions) {
         const message = result.stderr.trim() || result.error || `git ls-files exited with ${String(result.exitCode)}`;
         throw new GitError(`Could not inspect ignored immutable-workspace inputs: ${message}`);
     }
-    return [...new Set(result.stdout.split("\0").filter(Boolean).map((file) => file.replaceAll("\\", "/")))].sort();
+    return [...new Set(result.stdout.split("\0").filter(Boolean).map(normalizeRepoPath))].sort();
 }
 function isPythonDiscoveryPath(repoPath) {
     const segments = repoPath.split("/");
@@ -125,7 +126,7 @@ function repoLocalDataArtifact(root, artifact) {
     const relative = path.relative(root, absolute);
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative))
         return null;
-    const normalized = relative.replaceAll("\\", "/");
+    const normalized = normalizeRepoPath(relative);
     return isDiscoverySensitivePath(normalized) ? null : normalized;
 }
 function boundedDetail(files) {
