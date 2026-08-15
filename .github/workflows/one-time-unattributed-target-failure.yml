@@ -1,0 +1,101 @@
+name: One-time unattributed target failure hardening
+
+on:
+  push:
+    branches:
+      - fix/unattributed-target-failure-sink
+    paths:
+      - .github/workflows/one-time-unattributed-target-failure.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/unattributed-target-failure-sink
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply soundness fix and regression
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          checks = Path('src/checks.ts')
+          text = checks.read_text()
+          old = '''  const unavailableRecords = [...records.values()].filter((record) => !record.observed);\n  const processFailureHasNoUnavailableTarget = payload.unattributedFailures > 0 && unavailableRecords.length === 0;\n  return qualifications.map((qualification) => {\n    const record = records.get(path.resolve(root, qualification.runnerPath))!;\n    if (!record.observed || (processFailureHasNoUnavailableTarget && record.failed === 0)) {\n'''
+          new = '''  const hasUnattributedProcessFailure = payload.unattributedFailures > 0;\n  return qualifications.map((qualification) => {\n    const record = records.get(path.resolve(root, qualification.runnerPath))!;\n    if (!record.observed || (hasUnattributedProcessFailure && record.failed === 0)) {\n'''
+          if old not in text:
+              raise SystemExit('checks.ts target block not found')
+          checks.write_text(text.replace(old, new, 1))
+
+          tests = Path('tests/analyze.test.ts')
+          text = tests.read_text()
+          anchor = '''test("Python stubs remain static test relationships without inventing a runnable framework", async (context) => {\n'''
+          if anchor not in text:
+              raise SystemExit('analyze.test.ts insertion anchor not found')
+          regression = r'''test("unattributed unittest failures cannot hide behind an unavailable batch target", async (context) => {
+  const root = await initializeRepository({
+    "src/__init__.py": "",
+    "src/a.py": "def value_a():\n    return 1\n",
+    "src/b.py": "def value_b():\n    return 1\n",
+    "src/c.py": "def value_c():\n    return 1\n",
+    "tests/__init__.py": "",
+    "tests/helper.py": "import unittest\n\nclass ImportedFailure(unittest.TestCase):\n    def test_imported_failure(self):\n        self.fail('imported failure')\n",
+    "tests/test_a.py": "import unittest\nfrom src.a import value_a\nfrom tests.helper import ImportedFailure\n\nclass ATest(unittest.TestCase):\n    def test_a(self):\n        self.assertEqual(value_a(), 2)\n",
+    "tests/test_b.py": "import unittest\nfrom src.b import value_b\n\nclass BTest(unittest.TestCase):\n    def test_b(self):\n        self.assertEqual(value_b(), 999)\n",
+    "tests/test_c.py": "from src.c import value_c\n\nvalue_c()\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/a.py": "def value_a():\n    return 2\n",
+    "src/b.py": "def value_b():\n    return 2\n",
+    "src/c.py": "def value_c():\n    return 2\n",
+  });
+
+  const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
+  const targeted = report.checks.find((check) => check.id === "python:test:unittest:targeted");
+  const observations = new Map(targeted?.targetObservations?.map((observation) => [observation.path, observation]));
+  const sourceA = report.assessments.find((assessment) => assessment.file.path === "src/a.py");
+
+  assert.equal(targeted?.status, "failed", targeted?.output);
+  assert.equal(observations.get("tests/test_a.py")?.outcome, "not-observed");
+  assert.match(observations.get("tests/test_a.py")?.detail ?? "", /unattributed process-level failure/);
+  assert.equal(observations.get("tests/test_b.py")?.outcome, "failed");
+  assert.equal(observations.get("tests/test_c.py")?.outcome, "not-observed");
+  assert.equal(sourceA?.status, "verification-failed");
+  assert.deepEqual(sourceA?.executedTests, []);
+  assert.deepEqual(sourceA?.testExecutions, []);
+});
+
+'''
+          tests.write_text(text.replace(anchor, regression + anchor, 1))
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          anchor = '### Fixed\n\n'
+          if anchor not in text:
+              raise SystemExit('CHANGELOG fixed section not found')
+          item = '- Failed closed on unattributed targeted-runner process failures even when another qualified batch target is unavailable. An unavailable target can no longer act as a sink that lets unrelated observed passes survive an ambiguous process-level failure; only explicitly failed targets retain localized failure attribution.\n'
+          changelog.write_text(text.replace(anchor, anchor + item, 1))
+          PY
+      - name: Run full tests
+        run: npm test
+      - name: Clean rebuild tracked dist
+        run: npm run clean && npm run build
+      - name: Validate diff
+        run: git diff --check
+      - name: Commit generated update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md src/checks.ts tests/analyze.test.ts dist
+          git diff --cached --stat
+          git commit -m "Fail closed on unattributed batch failures"
+          git push origin HEAD:fix/unattributed-target-failure-sink
