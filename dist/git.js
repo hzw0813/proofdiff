@@ -82,7 +82,11 @@ export async function findRepository(value) {
     const result = await gitResult(candidate, ["rev-parse", "--show-toplevel"]);
     if (result.exitCode !== 0)
         throw new GitError(`Not a Git repository: ${candidate}`);
-    return (await resolveRepositoryPath(result.stdout.trim()));
+    const lineEndingLength = process.platform === "win32" && result.stdout.endsWith("\r\n")
+        ? 2
+        : result.stdout.endsWith("\n") ? 1 : 0;
+    const topLevel = lineEndingLength === 0 ? result.stdout : result.stdout.slice(0, -lineEndingLength);
+    return await resolveRepositoryPath(topLevel);
 }
 async function hasHead(root) {
     const result = await gitResult(root, ["rev-parse", "--verify", "HEAD"]);

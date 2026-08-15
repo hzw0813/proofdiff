@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import test from "node:test";
 import path from "node:path";
 import { changedFiles, findRepository, gitNullDevice, repositoryInfo, selectDiff } from "../src/git.js";
@@ -41,6 +41,17 @@ test("findRepository accepts a nested directory", async (context) => {
   const root = await initializeRepository({ "src/a.js": "export const a = 1;\n" });
   context.after(() => rm(root, { recursive: true, force: true }));
   assert.equal(await findRepository(`${root}/src`), root);
+});
+
+test("findRepository preserves trailing whitespace in the repository root", { skip: process.platform === "win32" }, async (context) => {
+  const parent = await temporaryDirectory("proofdiff-root-space-");
+  const root = path.join(parent, "repository ");
+  const trimmedSibling = path.join(parent, "repository");
+  context.after(() => rm(parent, { recursive: true, force: true }));
+  await mkdir(path.join(root, "src"), { recursive: true });
+  await mkdir(trimmedSibling, { recursive: true });
+  git(root, "init", "-q");
+  assert.equal(await findRepository(path.join(root, "src")), root);
 });
 
 test("revision-like options are rejected before reaching git", async (context) => {
