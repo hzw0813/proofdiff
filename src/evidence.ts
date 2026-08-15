@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { CallInfo, ChangedFile, CheckResult, EvidenceItem, FileAssessment, RiskLevel, SourceAnalysis, VerificationStatus } from "./types.js";
 import type { RepositoryGraph } from "./graph.js";
-import { impactedFiles, symbolsChanged } from "./graph.js";
+import { hasExactCurrentLineHunks, impactedFiles, symbolsChanged } from "./graph.js";
 import { clamp, compareCodeUnits, isTestLikePath, unique } from "./util.js";
 
 function checkApplies(check: CheckResult, file: ChangedFile, relatedTests: string[]): boolean {
@@ -158,7 +158,7 @@ function verificationFor(file: ChangedFile, relatedTests: string[], checks: Chec
 }
 
 function callsInChangedLines(file: ChangedFile, analysis: SourceAnalysis | undefined, limit = 100): { calls: CallInfo[]; truncated: boolean } {
-  if (!analysis?.callSites || file.binary || file.change === "deleted") return { calls: [], truncated: false };
+  if (!analysis?.callSites || file.binary || file.change === "deleted" || !hasExactCurrentLineHunks(file)) return { calls: [], truncated: false };
   const seen = new Set<string>();
   const matching = analysis.callSites.filter((site) => {
     if (!file.hunks.some((hunk) => site.line >= hunk.newRange.start && site.line <= hunk.newRange.end)) return false;
@@ -236,6 +236,7 @@ export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: Ch
   if (file.deletedSymbolHints.length > 0) limitations.push("Deleted symbol names were inferred from removed declaration lines; ranges and full structure are unavailable.");
   if (file.language === "unknown") limitations.push("Only file-level analysis is available for this file type.");
   if (file.binary) limitations.push("Binary file contents were not inspected.");
+  if (!file.binary && file.change !== "deleted" && !hasExactCurrentLineHunks(file)) limitations.push("Zero-context diff hunks could not be reconciled exactly with Git's current-line addition count, so changed-symbol and changed-call attribution was withheld.");
   if (changedCallSites.truncated) limitations.push("Call references in changed lines were limited to the first 100 parser-observed sites.");
   if (declaredTests.length > 0) limitations.push(`${declaredTests.length} related test path${declaredTests.length === 1 ? " was" : "s were"} user-declared by --test-map; the declaration itself does not establish runner identity, runtime execution, coverage, assertion relevance, or correctness.`);
   if (relatedTests.length === 0) limitations.push("No test-like path or runner-qualified target was related to the change; dynamic imports and runtime dispatch may not be visible statically.");

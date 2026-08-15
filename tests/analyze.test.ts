@@ -26,6 +26,29 @@ test("static-only analysis is useful and does not claim verification", async (co
   assert.equal(report.checks[0]?.status, "not-run");
 });
 
+test("deletion-only hunks do not attribute unchanged current calls or symbols", async (context) => {
+  const root = await initializeRepository({
+    "src/value.js": "export function helper() { nested(); return 1; }\nconst removed = 1;\nexport const keep = 2;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/value.js": "export function helper() { nested(); return 1; }\nexport const keep = 2;\n",
+  });
+
+  const report = await analyzeRepository({ repo: root });
+  const assessment = report.assessments[0];
+  assert.equal(assessment?.file.additions, 0);
+  assert.equal(assessment?.file.deletions, 1);
+  assert.deepEqual(assessment?.file.hunks, [{
+    oldRange: { start: 2, end: 2 },
+    newRange: { start: 1, end: 1 },
+  }]);
+  assert.deepEqual(assessment?.changedSymbols, []);
+  assert.deepEqual(assessment?.changedCalls, []);
+  assert.equal(assessment?.evidence.some((item) => item.label.includes("call reference")), false);
+  assert.match(assessment?.limitations.join("\n") ?? "", /could not be reconciled exactly with Git's current-line addition count/);
+});
+
 test("passing related test evidence produces a qualified verified status", async (context) => {
   const root = await initializeRepository(baseline);
   context.after(() => rm(root, { recursive: true, force: true }));

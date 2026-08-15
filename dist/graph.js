@@ -88,11 +88,28 @@ export function impactedFiles(graph, file, limit = 250) {
 function overlaps(a, b) {
     return a.start <= b.end && b.start <= a.end;
 }
+export function hasExactCurrentLineHunks(file) {
+    if (!Number.isSafeInteger(file.additions) || file.additions < 0)
+        return false;
+    let currentLines = 0;
+    for (const hunk of file.hunks) {
+        const { start, end } = hunk.newRange;
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start)
+            return false;
+        const span = end - start + 1;
+        if (!Number.isSafeInteger(span) || span > file.additions - currentLines)
+            return false;
+        currentLines += span;
+    }
+    return currentLines === file.additions;
+}
 export function symbolsChanged(file, analysis) {
     if (file.change === "deleted") {
         return file.deletedSymbolHints.map((name) => ({ name, kind: "function", range: { start: 1, end: 1 }, exported: false, confidence: "low" }));
     }
     if (!analysis || file.binary)
+        return [];
+    if (!hasExactCurrentLineHunks(file))
         return [];
     const changed = analysis.symbols.filter((symbol) => file.hunks.some((hunk) => overlaps(symbol.range, hunk.newRange)));
     if (changed.length > 0) {
