@@ -4,6 +4,10 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+### Fixed
+
+- Stopped `.pyi` stub files with test-like names from inventing executable pytest or `unittest` checks. Stubs remain available to static Python analysis and relationship discovery, but framework discovery now requires an executable `.py` test file; this prevents `--run-checks` from launching a Python test runner merely because a repository contains test-shaped type stubs.
+
 ## [0.5.3] - 2026-08-15
 
 ### Fixed

@@ -206,7 +206,7 @@ async function detectPythonTests(root: string, limit = 2_000): Promise<PythonTes
       if (entry.isDirectory() && !entry.isSymbolicLink() && !["node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"].includes(entry.name)) {
         queue.push({ absolute: target, directory: current.directory === "." && (entry.name === "tests" || entry.name === "test") ? entry.name : current.directory });
       }
-      if (entry.isFile() && /(?:^test_.*|.*_(?:test|spec))\.pyi?$/.test(entry.name)) {
+      if (entry.isFile() && /(?:^test_.*|.*_(?:test|spec))\.py$/.test(entry.name)) {
         const content = await readUtf8File(target, 200_000);
         const framework = content !== null && /(?:^|\n)\s*(?:from\s+unittest\b|import\s+unittest\b)|unittest\.TestCase/.test(content) ? "unittest" : "pytest";
         if (framework === "pytest") return { framework, directory: current.directory };
