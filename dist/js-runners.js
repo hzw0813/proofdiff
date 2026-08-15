@@ -21,7 +21,9 @@ function safeEnvironmentAssignment(token) {
     return [name, value];
 }
 function recognizedRunnerScript(command) {
-    const tokens = command.trim().replaceAll(/\s+/g, " ").split(" ").filter(Boolean);
+    if (/[\r\n]/.test(command))
+        return null;
+    const tokens = command.trim().replaceAll(/[ \t]+/g, " ").split(" ").filter(Boolean);
     if (tokens.length === 0)
         return null;
     let index = 0;

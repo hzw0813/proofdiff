@@ -146,6 +146,22 @@ test("Node targeted discovery rejects command-chain prefixes", async (context) =
   assert.deepEqual((await targetedTestChecks(root, checks, ["test/value.test.js"])).checks, []);
 });
 
+test("Node targeted discovery rejects embedded command separators", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: {
+      test: "node --test\n--test-concurrency=1",
+      "test:unit": "node --test\nquality/check.js",
+    } }),
+    "test/value.test.js": "import test from 'node:test'; test('value', () => {});\n",
+    "quality/check.js": "export const custom = true;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const { checks } = await discoverChecks(root);
+  assert.equal(checks.length, 2);
+  assert.ok(checks.every((check) => check.targetRunner === undefined));
+  assert.deepEqual((await targetedTestChecks(root, checks, ["test/value.test.js", "quality/check.js"])).checks, []);
+});
+
 test("unsupported Node test options keep targeted execution disabled", async (context) => {
   const root = await initializeRepository({
     "package.json": JSON.stringify({ scripts: { test: "node --test --test-reporter=spec dist-test/tests/value.test.js" } }),
