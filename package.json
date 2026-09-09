@@ -65,7 +65,7 @@
     "@babel/parser": "^7.28.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.4.1",
     "typescript": "^5.9.0"
   }
 }
