@@ -29,7 +29,9 @@ test("all immutable static modes suppress configured Git clean filters", async (
 
 test("linked worktree configuration cannot enable static Git helper execution", async (context) => {
   const root = await initializeRepository({
-    ".gitattributes": "*.txt filter=probe\n",
+    // The checkout must remain byte-aligned even when the host has global autocrlf=true;
+    // static Git reads deliberately exclude global configuration.
+    ".gitattributes": "* text eol=lf\n*.txt filter=probe\n",
     "value.txt": "baseline\n",
     "probe.cjs": "require('node:fs').writeFileSync('probe-ran','yes');process.stdin.pipe(process.stdout);\n",
   });
