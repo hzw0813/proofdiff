@@ -3,7 +3,7 @@ export declare function packageManagerInvocation(command: string, args: string[]
     command: string;
     args: string[];
 };
-export declare function discoverChecks(root: string): Promise<{
+export declare function discoverChecks(root: string, submodulePaths?: string[]): Promise<{
     checks: CheckDefinition[];
     notes: string[];
 }>;

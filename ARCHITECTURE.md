@@ -42,6 +42,12 @@ Test files are programs. Package scripts are shell programs. Automatically runni
 
 A path under `tests/` can be a fixture or setup module, and a successful runner process can execute zero tests. ProofDiff therefore keeps three reviewable layers: static test-like relationship, runner-qualified target identity, and runner-native per-target observation. Only a positive non-skipped observation for the exact qualified path can strengthen evidence. In a batch, observations are joined by normalized target identity so one file's tests cannot lend evidence to another.
 
+### Submodule boundaries
+
+Raw NUL-delimited Git diff records retain old/new file modes so mode `160000` on either side identifies a gitlink change. `--ignore-submodules=dirty` preserves pointer visibility without nested dirty-content inspection; `--submodule=short` prevents repository configuration from expanding nested patches. Gitlinks are excluded from the source inventory and changed-path resolution candidates. Their synthetic Git patch lines never become source hunks, line counts, symbols, or coverage. Assessment and explanation stop at metadata-only unknown evidence even when root checks pass or a test map declares related targets.
+
+Python discovery excludes indexed and changed submodule boundaries, as well as embedded `.git` repositories. Superproject static analysis can proceed without initializing a submodule. Immutable execution fails closed when indexed submodules exist, since checked-out nested inputs are not bound to the selected superproject snapshot. Working-tree execution remains an explicit opt-in. Repository dirty status observes pointer movement but deliberately excludes nested content-only dirtiness; reports state that scope.
+
 ### Small adapter interface
 
 An adapter identifies symbols, imports, calls, diagnostics, and its confidence. Repository traversal, evidence, reporting, and Git behavior remain language-independent. This is enough for the current three languages without predicting every future parser's needs.

@@ -4,13 +4,30 @@ import { rm } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
 import { pathExists } from "../src/util.js";
-import { git, initializeRepository, runCli, writeFiles } from "./helpers.js";
+import { addSubmodule, git, initializeRepository, runCli, writeFiles } from "./helpers.js";
 
 const fixture = {
   "package.json": JSON.stringify({ name: "selection-binding", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
   "src/value.js": "export const value = 1;\n",
   "test/value.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.js'; test('value', () => assert.equal(value, 1));\n",
 };
+
+test("immutable execution cannot bind nested submodule inputs to the selected snapshot", async (context) => {
+  const root = await initializeRepository({
+    "package.json": JSON.stringify({ scripts: { test: "node probe.cjs" } }),
+    "probe.cjs": "require('node:fs').writeFileSync('probe-ran', 'yes');\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const nested = await addSubmodule(root, "vendor", { "value.js": "export const value = 1;\n" });
+  await writeFiles(nested, { "value.js": "export const value = 999;\n", "hidden-input": "outside the superproject snapshot\n" });
+  for (const selection of [{ base: "HEAD" }, { range: "HEAD..HEAD" }, { staged: true }]) {
+    const report = await analyzeRepository({ repo: root, ...selection });
+    assert.equal(report.trust.repositoryCodeExecuted, false);
+    await assert.rejects(analyzeRepository({ repo: root, ...selection, runChecks: true }), /nested filesystem inputs are not bound/);
+    assert.match(report.notes.join("\n"), /submodule/);
+  }
+  assert.equal(await pathExists(path.join(root, "probe-ran")), false);
+});
 
 for (const flag of ["assume-unchanged", "skip-worktree"]) {
   test(`${flag} cannot hide filesystem changes from any selection or authorize checks`, async (context) => {

@@ -184,7 +184,7 @@ function riskFor(
 
   if (status === "verification-failed") { score += 70; reasons.push("An applicable verification check failed."); }
   else if (status === "unverified") { score += 30; reasons.push("Executed checks provided no applicable successful evidence."); }
-  else if (status === "unknown") { score += 22; reasons.push("No verification command was run for this change."); }
+  else if (status === "unknown") { score += 22; reasons.push(file.submodule ? "Superproject checks do not verify Git submodule contents." : "No verification command was run for this change."); }
   else if (status === "partially-verified") { score += 12; reasons.push("Evidence exists but is not connected to a related passing test."); }
 
   if (!hasStaticallyRelatedTest && !isTestLikePath(file.path)) {
@@ -214,6 +214,13 @@ function riskFor(
 }
 
 export function assessFile(file: ChangedFile, graph: RepositoryGraph, checks: CheckResult[], declaredTests: string[] = []): FileAssessment {
+  if (file.submodule) {
+    const risk = riskFor(file, "unknown", false, false, [], undefined);
+    const detail = "This change includes a Git submodule pointer. Nested source, tests, and dirty contents were not analyzed. Superproject check results, declared test relationships, and LCOV cannot verify this nested repository; analyze it separately.";
+    return { file, changedSymbols: [], changedCalls: [], impactedFiles: [], relatedTests: [], executedTests: [], testExecutions: [],
+      status: "unknown", risk: risk.level, riskScore: risk.score, reasons: risk.reasons,
+      evidence: [{ kind: "limitation", label: "Git submodule pointer change", detail, confidence: "high" }], limitations: [detail] };
+  }
   const analysis = graph.analyses.get(file.path);
   const impact = impactedFiles(graph, file.path);
   const relationshipImpact = impactedFiles(graph, file.path, 5_000);

@@ -30,7 +30,7 @@ The repository's `lint` command is TypeScript typechecking, not a separate styli
 
 ## Remaining boundaries
 
-- Git submodule contents are not analyzed; current diff inspection ignores submodules. The superproject report must not be interpreted as verification of nested repositories.
+- Git submodule contents are not analyzed. The follow-up after PR #70 below makes gitlink changes visible, without interpreting a superproject report as verification of nested repositories.
 - Immutable selections still require alignment with the checked-out filesystem; arbitrary historical snapshots and concurrent filesystem changes are not isolated.
 - Exact-target support remains limited to the documented runner/configuration subsets. Monorepo scripts, dynamic imports, and unsupported resolvers remain explicit limitations.
 - Check execution remains arbitrary repository code with reduced environment and bounded output, not an OS sandbox or authenticated coverage attestation.
@@ -51,3 +51,19 @@ Baseline: current main `9b886a25abe7f809112c13d26184ed28cc5b173b`. The downloade
 These changes add no dependencies, runtime network access, telemetry, uploads, or automatic check execution. They do not strengthen verification statuses or change schema `1.0`. Sparse checkouts are deliberately rejected rather than claimed supported; use a full checkout. Even clean flagged entries are rejected because cached Git stat assumptions cannot independently establish filesystem alignment. The index inventory uses the existing 8 MB output bound and fails closed if incomplete. No index flags or checkout contents are changed by inspection.
 
 The expanded suite contains 176 tests, including two new POSIX-only process tests. Full validation outcomes, including the existing Linux/macOS/Windows × Node 22/24/26 matrix, are recorded in the draft PR. Remaining work includes the submodule visibility limitation above, broader bounded runner/monorepo support, and isolated snapshot analysis. Process-group cleanup remains best effort: deliberately detached descendants and arbitrary repository code require an external OS sandbox. Concurrent repository mutation remains outside this pass.
+
+## Follow-up after PR #70
+
+Baseline: current main `72211d94539ca3166e1bac056bbdd094383b63f5`, whose tree matches the previously validated PR #70 head. This pass prioritized a demonstrated completeness failure over expanding runner guesses: a committed submodule pointer update produced an empty-change report. The audit also found Python discovery crossing nested-repository boundaries and immutable execution accepting unbound nested inputs. Six regression cases failed against the baseline distribution before the fixes.
+
+| Priority | Finding | Change and regression coverage |
+| --- | --- | --- |
+| High | `--ignore-submodules=all` silently removed gitlink changes from selected diffs. | Read bounded raw NUL-delimited mode/path records with pointer visibility enabled. Tests cover additions, updates, renames, deletions, gitlink-to-file transitions, base/range/staged selections, working-tree HEAD movement, and repository ignore/diff-format overrides. |
+| High | A source-shaped gitlink could enter structural candidate inventories; adding pointer visibility alone would let declared tests or synthetic Git patch lines imply nested verification/coverage. | Optional `submodule: true`, metadata-only unknown assessments, no source hunks/counts, and no borrowed test/LCOV evidence. Tests cover source-shaped names, graph exclusion, passing root checks, user-declared relationships, LCOV, and the GitHub summary. |
+| High | Python discovery walked submodules outside the superproject inventory. Immutable checks could consume nested dirty/untracked inputs while alignment ignored them. | Exclude submodules and embedded Git repositories from discovery. Reject immutable execution with indexed submodules before checks run. Tests cover nested tests under the seeded `tests/` directory, a removed gitlink with its checkout left behind, all three immutable modes, and absence of an execution marker. |
+
+Static immutable analysis still works with submodules, including uninitialized gitlinks. Explicit working-tree execution remains available, but gitlink evidence stays unknown. Submodules are never fetched, initialized, updated, or recursively verified. Nested content-only dirtiness is deliberately excluded from repository dirty status, and the report explains that boundary. A nested filesystem-monitor regression checks that pointer inspection does not execute that helper.
+
+The full suite now contains 182 tests. Validation includes lint/typecheck, tests/build, dogfood, asserted demos, Action smoke, packaging lifecycle, generated-dist parity, and the existing three-OS/three-Node CI matrix; actual outcomes are recorded in the draft PR. No runtime dependencies, telemetry, uploads, LLM calls, or automatic execution were added. JSON schema remains `1.0` with an additive optional gitlink marker.
+
+Remaining priorities include isolated immutable snapshots, protection from concurrent mutation, broader bounded monorepo/runner support, and unsupported module-resolution cases. This pass does not claim recursive submodule verification or adversarial filesystem isolation. Immutable execution in repositories with submodules is intentionally more restrictive until nested inputs can be bound reliably.

@@ -6,6 +6,8 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Made submodule pointer changes visible instead of silently omitting them from all diffs. Gitlinks remain metadata-only unknown evidence, with no source hunks, synthetic line coverage, or verification borrowed from passing root checks or declared relationships.
+- Kept submodules and embedded repositories out of Python check discovery and gitlinks out of the static source inventory. Immutable check execution now rejects indexed submodules with unbound nested inputs; static analysis and explicit working-tree execution remain available.
 - Rejected unresolved merge stages and `assume-unchanged`/`skip-worktree` index entries before diff evidence or repository checks in every selection mode. Hidden modifications and sparse-checkout omissions now produce actionable errors instead of misleading empty or snapshot-aligned reports; the index is never modified.
 - Preserved POSIX timeout escalation after a parent exits, preventing descendants with redirected output and a TERM handler from surviving cancellation of the KILL timer. Windows process-tree termination remains unchanged.
 - Repaired the dogfood gate by moving test preparation into npm's `pretest` lifecycle and retaining a direct serial `node --test` command. It now requires positive observations for every related compiled target while correctly retaining partial evidence for filename-mapped TypeScript source. Added a self-discovery regression and a PR CI dogfood step; shell-chain recognition and compiled-source confidence remain conservative.

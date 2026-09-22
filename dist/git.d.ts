@@ -13,9 +13,11 @@ export declare function selectDiff(root: string, options: {
 }>;
 export declare function changedFiles(root: string, diffArgs: string[], includeUntracked: boolean, knownUntracked?: string[]): Promise<ChangedFile[]>;
 export declare function listUntrackedFiles(root: string): Promise<string[]>;
+export declare function listSubmodulePaths(root: string): Promise<string[]>;
 export declare function listRepositoryFiles(root: string, limit?: number): Promise<{
     files: string[];
     truncated: boolean;
+    submodules: string[];
 }>;
 export declare function repositoryInfo(root: string): Promise<RepositoryInfo>;
 //# sourceMappingURL=git.d.ts.map

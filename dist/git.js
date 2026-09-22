@@ -124,21 +124,30 @@ export async function selectDiff(root, options) {
     const args = (await hasHead(root)) ? ["HEAD"] : [await emptyTree(root)];
     return { selection: { mode: "working-tree", description: "working tree vs HEAD" }, args };
 }
-function parseNameStatus(raw) {
+function parseRawStatus(raw) {
     const fields = raw.split("\0");
     if (fields.at(-1) === "")
         fields.pop();
     const entries = [];
     for (let index = 0; index < fields.length;) {
-        const status = fields[index++] ?? "";
+        const header = fields[index++] ?? "";
+        const match = header.match(/^:([0-7]{6}) ([0-7]{6}) [0-9a-f]{40,64} [0-9a-f]{40,64} ([ACDMRTUXB][0-9]*)$/);
+        if (!match)
+            throw new GitError("Unrecognized raw Git diff record; cannot establish complete evidence.");
+        const status = match[3];
+        const kind = match[1] === "160000" || match[2] === "160000" ? { submodule: true } : {};
         if (/^[RC]/.test(status)) {
             const previousPath = fields[index++] ?? "";
             const currentPath = fields[index++] ?? "";
-            entries.push({ status, path: normalizeRepoPath(currentPath), previousPath: normalizeRepoPath(previousPath) });
+            if (!previousPath || !currentPath)
+                throw new GitError("Incomplete renamed Git path record.");
+            entries.push({ status, path: normalizeRepoPath(currentPath), previousPath: normalizeRepoPath(previousPath), ...kind });
         }
         else {
             const currentPath = fields[index++] ?? "";
-            entries.push({ status, path: normalizeRepoPath(currentPath) });
+            if (!currentPath)
+                throw new GitError("Incomplete Git path record.");
+            entries.push({ status, path: normalizeRepoPath(currentPath), ...kind });
         }
     }
     return entries.filter((entry) => entry.path.length > 0);
@@ -214,8 +223,9 @@ function changeKind(status) {
 }
 export async function changedFiles(root, diffArgs, includeUntracked, knownUntracked) {
     await assertInspectableIndex(root);
-    const safeDiffOptions = ["--no-ext-diff", "--no-textconv", "--ignore-submodules=all"];
-    const status = parseNameStatus(await git(root, ["diff", ...safeDiffOptions, "--name-status", "-z", "--find-renames", ...diffArgs, "--"]));
+    // Observe gitlink identities without asking Git to inspect nested dirty contents.
+    const safeDiffOptions = ["--no-ext-diff", "--no-textconv", "--ignore-submodules=dirty", "--submodule=short"];
+    const status = parseRawStatus(await git(root, ["diff", ...safeDiffOptions, "--raw", "--no-abbrev", "-z", "--find-renames", ...diffArgs, "--"]));
     const stats = parseNumstat(await git(root, ["diff", ...safeDiffOptions, "--numstat", "-z", "--find-renames", ...diffArgs, "--"]));
     if (includeUntracked) {
         const untracked = knownUntracked ?? await listUntrackedFiles(root);
@@ -224,6 +234,12 @@ export async function changedFiles(root, diffArgs, includeUntracked, knownUntrac
     }
     const files = [];
     for (const entry of status) {
+        if (entry.submodule) {
+            files.push({ path: entry.path, ...(entry.previousPath === undefined ? {} : { previousPath: entry.previousPath }),
+                submodule: true, change: changeKind(entry.status), language: "unknown", additions: 0, deletions: 0,
+                binary: false, hunks: [], deletedSymbolHints: [] });
+            continue;
+        }
         const isUntracked = includeUntracked && !(stats.has(entry.path));
         let patch = "";
         let metric = stats.get(entry.path);
@@ -260,19 +276,25 @@ export async function listUntrackedFiles(root) {
         .map(normalizeRepoPath)
         .sort();
 }
+export async function listSubmodulePaths(root) {
+    const records = (await git(root, ["ls-files", "--stage", "-z"])).split("\0");
+    return unique(records.filter((record) => record.startsWith("160000 ")).map((record) => normalizeRepoPath(record.slice(record.indexOf("\t") + 1)))).sort();
+}
 export async function listRepositoryFiles(root, limit = 5_000) {
     const result = await gitResult(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
     if (result.exitCode !== 0) {
         const message = result.stderr.trim() || result.error || `git exited with ${String(result.exitCode)}`;
         throw new GitError(message);
     }
-    const files = unique(result.stdout.split("\0").filter(Boolean).map(normalizeRepoPath)).sort();
-    return { files: files.slice(0, limit), truncated: result.truncated || files.length > limit };
+    const submodules = await listSubmodulePaths(root);
+    const links = new Set(submodules);
+    const files = unique(result.stdout.split("\0").filter(Boolean).map(normalizeRepoPath)).filter((file) => !links.has(file)).sort();
+    return { files: files.slice(0, limit), truncated: result.truncated || files.length > limit, submodules };
 }
 export async function repositoryInfo(root) {
     const head = (await hasHead(root)) ? (await git(root, ["rev-parse", "--short=12", "HEAD"])).trim() : null;
     const branchRaw = (await git(root, ["symbolic-ref", "--short", "HEAD"], true)).trim();
-    const dirty = (await git(root, ["status", "--porcelain=v1", "--ignore-submodules=all"])).length > 0;
+    const dirty = (await git(root, ["status", "--porcelain=v1", "--ignore-submodules=dirty"])).length > 0;
     return {
         root,
         name: path.basename(root),

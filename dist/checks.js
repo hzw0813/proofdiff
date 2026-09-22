@@ -172,7 +172,8 @@ function nodeDefaultTarget(file) {
     const stem = name.replace(/\.(?:cjs|mjs|js)$/, "");
     return stem === "test" || stem.startsWith("test-") || stem.endsWith("-test") || stem.endsWith("_test") || stem.endsWith(".test") || normalized.split("/").slice(0, -1).includes("test");
 }
-async function detectPythonTests(root, limit = 2_000) {
+async function detectPythonTests(root, excludedDirectories, limit = 2_000) {
+    const excluded = new Set(excludedDirectories.map((directory) => path.resolve(root, directory)));
     const queue = [
         { absolute: root, directory: "." },
         { absolute: path.join(root, "tests"), directory: "tests" },
@@ -183,6 +184,11 @@ async function detectPythonTests(root, limit = 2_000) {
     let detected = null;
     while (queue.length > 0 && inspected < limit) {
         const current = queue.shift();
+        if (excluded.has(current.absolute))
+            continue;
+        // Untracked embedded repositories are boundaries too, even without a gitlink.
+        if (current.absolute !== root && await pathExists(path.join(current.absolute, ".git")))
+            continue;
         if (visited.has(current.absolute))
             continue;
         visited.add(current.absolute);
@@ -198,6 +204,8 @@ async function detectPythonTests(root, limit = 2_000) {
             if (inspected >= limit)
                 break;
             const target = path.join(current.absolute, entry.name);
+            if (excluded.has(target))
+                continue;
             if (entry.isDirectory() && !entry.isSymbolicLink() && !["node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"].includes(entry.name)) {
                 queue.push({ absolute: target, directory: current.directory === "." && (entry.name === "tests" || entry.name === "test") ? entry.name : current.directory });
             }
@@ -266,7 +274,7 @@ function targetingForScript(kind, command) {
         return { ...runnerMetadata, targetPatterns: targetArguments };
     return null;
 }
-export async function discoverChecks(root) {
+export async function discoverChecks(root, submodulePaths = []) {
     const checks = [];
     const notes = [];
     const packagePath = path.join(root, "package.json");
@@ -307,7 +315,7 @@ export async function discoverChecks(root) {
     const pyproject = hasPythonProject ? await readUtf8File(path.join(root, "pyproject.toml")) : null;
     const pytestConfiguration = await readPytestConfiguration(root);
     const explicitPytest = pytestConfiguration !== null;
-    const pythonTests = await detectPythonTests(root);
+    const pythonTests = await detectPythonTests(root, submodulePaths);
     const pythonCommand = process.platform === "win32" ? "python" : "python3";
     if (explicitPytest || pythonTests?.framework === "pytest") {
         const patterns = pytestConfiguration?.patterns ?? ["test_*.py", "*_test.py"];

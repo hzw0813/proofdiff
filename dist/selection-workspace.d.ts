@@ -2,6 +2,7 @@ import type { DiffSelection } from "./types.js";
 export interface SelectionWorkspaceOptions {
     allowedDataArtifacts?: string[];
     repositoryCodeWillExecute?: boolean;
+    submodulePaths?: string[];
 }
 /**
  * Graph analysis, check discovery, and exact-target execution currently use the checked-out filesystem.
