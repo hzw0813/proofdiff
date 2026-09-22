@@ -20,6 +20,8 @@ export interface DiffHunk {
 
 export interface ChangedFile {
   path: string;
+  /** At least one side is a Git gitlink; nested repository contents are not analyzed. */
+  submodule?: true;
   previousPath?: string;
   change: ChangeKind;
   language: LanguageId;

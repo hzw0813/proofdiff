@@ -2,10 +2,69 @@ import assert from "node:assert/strict";
 import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import test from "node:test";
 import path from "node:path";
-import { changedFiles, findRepository, gitNullDevice, repositoryInfo, selectDiff } from "../src/git.js";
+import { changedFiles, findRepository, gitNullDevice, listRepositoryFiles, repositoryInfo, selectDiff } from "../src/git.js";
 import { runGit } from "../src/git-command.js";
 import { pathExists, readUtf8File } from "../src/util.js";
-import { git, initializeRepository, runCli, temporaryDirectory, writeFiles } from "./helpers.js";
+import { addSubmodule, git, initializeRepository, runCli, temporaryDirectory, writeFiles } from "./helpers.js";
+
+test("gitlink additions, updates, renames, deletions, and type changes remain visible without source hunks", async (context) => {
+  const root = await initializeRepository({ "README.md": "fixture\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const first = git(root, "rev-parse", "HEAD").trim();
+  git(root, "commit", "--allow-empty", "-qm", "another commit");
+  const second = git(root, "rev-parse", "HEAD").trim();
+  const link = "sub[module].js";
+  const inspect = async (expected: string, options = { staged: true }) => {
+    const files = await changedFiles(root, (await selectDiff(root, options)).args, false);
+    assert.equal(files.length, 1);
+    assert.equal(files[0]?.submodule, true);
+    assert.equal(files[0]?.change, expected);
+    assert.equal(files[0]?.language, "unknown");
+    assert.equal(files[0]?.additions, 0);
+    assert.equal(files[0]?.deletions, 0);
+    assert.deepEqual(files[0]?.hunks, []);
+    return files[0]!;
+  };
+  git(root, "update-index", "--add", "--cacheinfo", `160000,${first},${link}`);
+  await inspect("added");
+  git(root, "commit", "-qm", "add pointer");
+  git(root, "update-index", "--cacheinfo", `160000,${second},${link}`);
+  await inspect("modified");
+  assert.equal((await listRepositoryFiles(root)).files.includes(link), false);
+  git(root, "commit", "-qm", "update pointer");
+  git(root, "update-index", "--force-remove", link);
+  git(root, "update-index", "--add", "--cacheinfo", `160000,${second},renamed.js`);
+  assert.equal((await inspect("renamed")).previousPath, link);
+  git(root, "commit", "-qm", "rename pointer");
+  git(root, "update-index", "--force-remove", "renamed.js");
+  await inspect("deleted");
+  await writeFiles(root, { "renamed.js": "export const value = 1;\n" });
+  git(root, "add", "renamed.js");
+  await inspect("unknown"); // T: a gitlink-to-file transition is conservatively outside source semantics.
+});
+
+test("working-tree submodule HEAD changes are visible while nested dirty contents stay out of scope", async (context) => {
+  const root = await initializeRepository({ "README.md": "fixture\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const nested = await addSubmodule(root, "vendor", { "value.js": "export const value = 1;\n" });
+  // Local ignore and diff-format preferences must not hide pointer changes or expand nested source.
+  git(root, "config", "submodule.nested.ignore", "all");
+  git(root, "config", "diff.submodule", "diff");
+  await writeFiles(nested, { "value.js": "export const value = 2;\n", "untracked.py": "raise Exception('nested')\n" });
+  assert.deepEqual(await changedFiles(root, (await selectDiff(root, {})).args, true), []);
+  assert.equal((await repositoryInfo(root)).dirty, false);
+  git(nested, "add", "value.js");
+  git(nested, "commit", "-qm", "nested change");
+  const files = await changedFiles(root, (await selectDiff(root, {})).args, true);
+  assert.deepEqual(files.map((file) => [file.path, file.submodule, file.hunks]), [["vendor", true, []]]);
+  assert.equal((await repositoryInfo(root)).dirty, true);
+  await writeFiles(nested, { "probe.cjs": "require('node:fs').writeFileSync('helper-ran', 'yes');\n" });
+  git(nested, "config", "core.fsmonitor", "node probe.cjs");
+  await changedFiles(root, (await selectDiff(root, {})).args, true);
+  await repositoryInfo(root);
+  assert.equal(await pathExists(path.join(nested, "helper-ran")), false);
+  assert.equal(await pathExists(path.join(root, "helper-ran")), false);
+});
 
 test("Git uses the native null device accepted by each platform", () => {
   assert.equal(gitNullDevice("win32"), "NUL");

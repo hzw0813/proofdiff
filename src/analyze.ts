@@ -92,10 +92,13 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   await assertSelectionWorkspaceAligned(root, selection, {
     ...(options.coverageLcov === undefined ? {} : { allowedDataArtifacts: [options.coverageLcov] }),
     repositoryCodeWillExecute: options.runChecks === true,
+    submodulePaths: inventory.submodules,
   });
 
   const graph = await buildRepositoryGraph(root, inventory.files, files);
-  const discovery = await discoverChecks(root);
+  const submoduleBoundaries = unique([...inventory.submodules, ...files.filter((file) => file.submodule)
+    .flatMap((file) => [file.path, ...(file.previousPath === undefined ? [] : [file.previousPath])])]);
+  const discovery = await discoverChecks(root, submoduleBoundaries);
   const impactedPaths = unique(files.flatMap((file) => [
     file.path,
     ...impactedFiles(graph, file.path, 5_000).files,
@@ -142,6 +145,9 @@ export async function analyzeRepository(options: AnalyzeRepositoryOptions): Prom
   );
   const checksRun = checks.filter((check) => check.status !== "not-run").length;
   const notes = [...discovery.notes, ...graph.diagnostics];
+  if (inventory.submodules.length > 0 || files.some((file) => file.submodule)) {
+    notes.push("Git submodule pointers are reported, but nested contents and dirty files are not analyzed. Superproject checks and coverage do not verify nested repositories; analyze each submodule separately. Repository dirty status excludes nested content-only changes.");
+  }
   const generatedUntracked = untracked.filter((file) => /^(?:node_modules|vendor|dist|build|coverage|\.venv|venv)\//.test(file));
   if (generatedUntracked.length > 0) {
     const directories = [...new Set(generatedUntracked.map((file) => file.split("/")[0]))].sort();

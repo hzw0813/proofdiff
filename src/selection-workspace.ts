@@ -1,5 +1,5 @@
 import path from "node:path";
-import { diffTargetCommit, GitError, listUntrackedFiles, resolveRevisionCommit } from "./git.js";
+import { diffTargetCommit, GitError, listSubmodulePaths, listUntrackedFiles, resolveRevisionCommit } from "./git.js";
 import { runGit } from "./git-command.js";
 import type { DiffSelection } from "./types.js";
 import { normalizeRepoPath } from "./util.js";
@@ -105,6 +105,7 @@ function boundedDetail(files: string[]): string {
 export interface SelectionWorkspaceOptions {
   allowedDataArtifacts?: string[];
   repositoryCodeWillExecute?: boolean;
+  submodulePaths?: string[];
 }
 
 /**
@@ -115,6 +116,9 @@ export interface SelectionWorkspaceOptions {
  */
 export async function assertSelectionWorkspaceAligned(root: string, selection: DiffSelection, options: SelectionWorkspaceOptions = {}): Promise<void> {
   if (selection.mode === "working-tree") return;
+  if (options.repositoryCodeWillExecute && (options.submodulePaths ?? await listSubmodulePaths(root)).length > 0) {
+    throw new GitError("Immutable check execution with Git submodules is unsupported: nested filesystem inputs are not bound to the selected snapshot. Use static analysis, analyze the submodules separately, or explicitly use working-tree analysis for local execution without immutable snapshot claims.");
+  }
 
   let target: string | null = null;
   if (selection.mode === "base" || selection.mode === "range") {

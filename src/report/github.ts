@@ -57,6 +57,10 @@ function safeSummaryNotes(notes: string[]): { notes: string[]; hasStaticLimitati
   const exact = new Set<string>(exactPriority);
   const categoryRules = [
     {
+      pattern: /^Git submodule pointers are reported,/,
+      message: "Git submodule pointers are visible, but nested contents are outside this report's analysis and verification scope. Analyze submodules separately.",
+    },
+    {
       pattern: /malformed compiler configuration/i,
       message: "Compiler configuration could not be parsed; static alias resolution was unavailable.",
     },

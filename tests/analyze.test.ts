@@ -4,13 +4,72 @@ import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
 import { buildRepositoryGraph } from "../src/graph.js";
 import { renderGithubSummary } from "../src/report/github.js";
-import { initializeRepository, writeFiles } from "./helpers.js";
+import { addSubmodule, git, initializeRepository, writeFiles } from "./helpers.js";
 
 const baseline = {
   "package.json": JSON.stringify({ name: "fixture", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
   "src/math.js": "export function add(a, b) { return a + b; }\n",
   "test/math.test.js": `import test from "node:test";\nimport assert from "node:assert/strict";\nimport { add } from "../src/math.js";\ntest("add", () => assert.equal(add(1, 2), 3));\n`,
 };
+
+test("committed submodule updates are reported in base and range modes without LCOV line claims", async (context) => {
+  const root = await initializeRepository({ "README.md": "fixture\n", "consumer.js": "import './vendor.js';\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const nested = await addSubmodule(root, "vendor.js", { "value.js": "export const value = 1;\n" });
+  const base = git(root, "rev-parse", "HEAD").trim();
+  git(nested, "commit", "--allow-empty", "-qm", "next nested commit");
+  git(root, "add", "vendor.js");
+  git(root, "commit", "-qm", "update nested pointer");
+  await writeFiles(root, { "coverage.lcov": "SF:vendor.js\nDA:1,99\nend_of_record\n" });
+  for (const selection of [{ base }, { range: `${base}..HEAD` }]) {
+    const report = await analyzeRepository({ repo: root, ...selection, coverageLcov: "coverage.lcov", coverageCommit: "HEAD" });
+    assert.equal(report.summary.filesChanged, 1);
+    const item = report.assessments[0]!;
+    assert.equal(item.file.submodule, true);
+    assert.equal(item.status, "unknown");
+    assert.equal(item.coverage?.state, "not-applicable");
+    assert.deepEqual(item.changedSymbols, []);
+    assert.deepEqual(item.relatedTests, []);
+    const graph = await buildRepositoryGraph(root, ["consumer.js"], [item.file]);
+    assert.deepEqual([...(graph.dependencies.get("consumer.js") ?? [])], []);
+    assert.match(item.evidenceBoundary?.detail ?? "", /submodule pointer changed/);
+    const summary = renderGithubSummary(report);
+    assert.match(summary, /vendor\.js/);
+    assert.match(summary, /nested contents are outside/);
+    assert.doesNotMatch(summary, /No changes matched/);
+  }
+});
+
+test("submodule Python tests cannot invent superproject runners or static relationships", async (context) => {
+  const root = await initializeRepository({ "value.js": "export const value = 1;\n", "consumer.js": "import './tests';\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await addSubmodule(root, "tests", { "test_nested.py": "def test_nested():\n    assert True\n" });
+  await writeFiles(root, { "value.js": "export const value = 2;\n" });
+  const report = await analyzeRepository({ repo: root });
+  assert.deepEqual(report.discoveredChecks, []);
+  assert.equal(report.trust.repositoryCodeExecuted, false);
+  assert.match(report.notes.join("\n"), /nested contents and dirty files are not analyzed/);
+  // Leaving the nested checkout behind after removing its gitlink must not make
+  // its tests eligible for superproject discovery either.
+  git(root, "rm", "--cached", "tests");
+  const removed = await analyzeRepository({ repo: root });
+  assert.deepEqual(removed.discoveredChecks, []);
+});
+
+test("passing superproject checks and declared relationships cannot verify a gitlink", async (context) => {
+  const root = await initializeRepository({
+    ...baseline,
+    "mapping.json": JSON.stringify({ version: 1, relationships: [{ source: "vendor.js", tests: ["test/math.test.js"] }] }),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const nested = await addSubmodule(root, "vendor.js", { "value.js": "export const value = 1;\n" });
+  git(nested, "commit", "--allow-empty", "-qm", "next nested commit");
+  const report = await analyzeRepository({ repo: root, runChecks: true, testMap: "mapping.json", timeoutMs: 20_000 });
+  assert.ok(report.checks.some((check) => check.status === "passed"));
+  assert.equal(report.assessments[0]?.status, "unknown");
+  assert.deepEqual(report.assessments[0]?.executedTests, []);
+  assert.equal(report.assessments[0]?.evidenceBoundary?.strongestEvidence, "change-observed");
+});
 
 test("concurrent source parsing retains inventory order for analyses and diagnostics", async (context) => {
   const root = await initializeRepository({

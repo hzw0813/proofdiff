@@ -31,6 +31,22 @@ export async function initializeRepository(files: Record<string, string>): Promi
   return root;
 }
 
+/** A local old-form submodule, requiring no network or protocol-policy overrides. */
+export async function addSubmodule(root: string, directory: string, files: Record<string, string>): Promise<string> {
+  const nested = path.join(root, directory);
+  await mkdir(nested, { recursive: true });
+  git(nested, "init", "-q");
+  git(nested, "config", "user.email", "proofdiff-tests@example.invalid");
+  git(nested, "config", "user.name", "ProofDiff Tests");
+  await writeFiles(nested, { ".gitattributes": "* text eol=lf\n", ...files });
+  git(nested, "add", ".");
+  git(nested, "commit", "-qm", "nested baseline");
+  await writeFiles(root, { ".gitmodules": `[submodule "nested"]\n\tpath = ${directory}\n\turl = https://example.invalid/nested.git\n` });
+  git(root, "add", ".gitmodules", directory);
+  git(root, "commit", "-qm", "add nested repository");
+  return nested;
+}
+
 export function runCli(args: string[], cwd?: string): { status: number | null; stdout: string; stderr: string } {
   const cli = fileURLToPath(new URL("../src/cli.js", import.meta.url));
   const result = spawnSync(process.execPath, [cli, ...args], { cwd, encoding: "utf8" });

@@ -32,6 +32,11 @@ function action(kind: EvidenceNextAction["kind"], detail: string, requiresReposi
 }
 
 export function explainEvidenceBoundary(item: FileAssessment, checks: CheckResult[]): EvidenceBoundary {
+  if (item.file.submodule) {
+    return { strongestEvidence: "change-observed", stage: "static-relationship", reason: "unsupported-semantics",
+      detail: "A Git submodule pointer changed; nested contents were not analyzed and superproject evidence cannot verify them.",
+      proofdiffFailClosed: true, nextAction: action("inspect-static-limitations", "Inspect the submodule commit change and analyze the nested repository separately.") };
+  }
   const executed = checks.filter((check) => check.status !== "not-run");
   const applicable = executed.filter((check) => checkApplies(check, item));
   const relevantQualifications = checks.flatMap((check) => check.targetQualifications ?? []).filter((qualification) => item.relatedTests.includes(qualification.path));

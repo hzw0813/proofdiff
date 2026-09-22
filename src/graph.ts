@@ -37,7 +37,7 @@ function candidatesForPython(importer: string, source: string, names: string[]):
 
 export async function buildRepositoryGraph(root: string, repositoryFiles: string[], changedFiles: ChangedFile[]): Promise<RepositoryGraph> {
   const sourceFiles = repositoryFiles.filter((file) => SOURCE_EXTENSIONS.has(path.extname(file).toLowerCase()));
-  const available = new Set([...sourceFiles, ...changedFiles.map((file) => file.path)]);
+  const available = new Set([...sourceFiles, ...changedFiles.filter((file) => !file.submodule).map((file) => file.path)]);
   const analyses = new Map<string, SourceAnalysis>();
   const dependencies = new Map<string, Set<string>>();
   const dependents = new Map<string, Set<string>>();
