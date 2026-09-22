@@ -89,3 +89,18 @@ test("Python AST analysis retries the alternate interpreter after a candidate ti
   assert.equal(result.confidence, "high");
   assert.ok(result.symbols.some((symbol) => symbol.name === "public" && symbol.exported));
 });
+
+test("valid-looking Python helper JSON cannot override process failure or truncation", async () => {
+  for (const failure of [{ error: "Could not write process stdin" }, { truncated: true }, { timedOut: true }]) {
+    let attempts = 0;
+    const result = await analyzePythonSource("def public():\n    return 1\n", process.cwd(), {
+      run: async () => {
+        attempts += 1;
+        return { exitCode: 0, stdout: "{}", stderr: "", timedOut: false, durationMs: 1, truncated: false, ...failure };
+      },
+    });
+    assert.equal(attempts, 2);
+    assert.equal(result.parser, "lexical fallback");
+    assert.equal(result.confidence, "low");
+  }
+});

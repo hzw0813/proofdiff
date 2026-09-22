@@ -87,6 +87,7 @@ export function pythonInterpreterCandidates(platform: NodeJS.Platform = process.
 
 function failureReason(result: ProcessResult): string {
   if (result.timedOut) return "timed out";
+  if (result.truncated) return "AST helper output exceeded its byte limit";
   return result.stderr.trim() || result.error || `exited with ${String(result.exitCode)}`;
 }
 
@@ -105,7 +106,7 @@ export async function analyzePythonSource(
       maxOutputBytes: 1_000_000,
       env: { PATH: safeExecutablePath(), PYTHONIOENCODING: "utf-8" },
     });
-    if (result.exitCode === 0) {
+    if (result.exitCode === 0 && !result.timedOut && !result.truncated && result.error === undefined) {
       try {
         const parsed = JSON.parse(result.stdout) as PythonOutput;
         if (parsed.error) return lexicalFallback(source, parsed.error);

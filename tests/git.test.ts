@@ -3,8 +3,9 @@ import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import test from "node:test";
 import path from "node:path";
 import { changedFiles, findRepository, gitNullDevice, repositoryInfo, selectDiff } from "../src/git.js";
+import { runGit } from "../src/git-command.js";
 import { pathExists, readUtf8File } from "../src/util.js";
-import { git, initializeRepository, temporaryDirectory, writeFiles } from "./helpers.js";
+import { git, initializeRepository, runCli, temporaryDirectory, writeFiles } from "./helpers.js";
 
 test("Git uses the native null device accepted by each platform", () => {
   assert.equal(gitNullDevice("win32"), "NUL");
@@ -206,4 +207,99 @@ test("static Git inspection suppresses repository-configured helper execution", 
   await changedFiles(root, args, false);
   await repositoryInfo(root);
   assert.equal(await pathExists(path.join(root, "helper-ran")), false);
+});
+
+test("per-file hunks treat bracket filenames literally", async (context) => {
+  const root = await initializeRepository({
+    "src/[a].js": "export const bracket = 1;\n",
+    "src/a.js": "\n\nexport const other = 1;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, {
+    "src/[a].js": "export const bracket = 2;\n",
+    "src/a.js": "\n\nexport const other = 2;\n",
+  });
+  const files = await changedFiles(root, (await selectDiff(root, {})).args, true);
+  assert.deepEqual(files.map((file) => [file.path, file.hunks]), [
+    ["src/[a].js", [{ oldRange: { start: 1, end: 1 }, newRange: { start: 1, end: 1 } }]],
+    ["src/a.js", [{ oldRange: { start: 3, end: 3 }, newRange: { start: 3, end: 3 } }]],
+  ]);
+});
+
+test("renamed wildcard paths preserve exact old and new hunk identity", async (context) => {
+  const content = "export function target() {\n  const a = 1;\n  const b = 2;\n  return a + b;\n}\n";
+  const root = await initializeRepository({ "old[a].js": content, "olda.js": "export const decoy = 1;\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  git(root, "mv", "old[a].js", "new[a].js");
+  await writeFiles(root, { "new[a].js": content.replace("b = 2", "b = 3"), "olda.js": "export const decoy = 2;\n" });
+  const files = await changedFiles(root, (await selectDiff(root, {})).args, true);
+  const renamed = files.find((file) => file.path === "new[a].js");
+  assert.equal(renamed?.previousPath, "old[a].js");
+  assert.deepEqual(renamed?.hunks, [{ oldRange: { start: 3, end: 3 }, newRange: { start: 3, end: 3 } }]);
+});
+
+test("pathspec magic in a filename cannot select other files", { skip: process.platform === "win32" }, async (context) => {
+  const root = await initializeRepository({ ":(exclude)victim.js": "export const literal = 1;\n", "victim.js": "\n\nexport const victim = 1;\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { ":(exclude)victim.js": "export const literal = 2;\n", "victim.js": "\n\nexport const victim = 2;\n" });
+  const files = await changedFiles(root, (await selectDiff(root, {})).args, true);
+  assert.deepEqual(files[0]?.hunks, [{ oldRange: { start: 1, end: 1 }, newRange: { start: 1, end: 1 } }]);
+});
+
+test("oversized per-file Git patches fail closed instead of returning partial evidence", async (context) => {
+  const root = await initializeRepository({ "large.txt": "baseline\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await writeFiles(root, { "large.txt": `${"x".repeat(8_000_100)}\n` });
+  await assert.rejects(changedFiles(root, (await selectDiff(root, {})).args, false), /Git output exceeded.*incomplete/i);
+  const output = path.join(root, "report.json");
+  const result = runCli(["--repo", root, "--json", "--output", output, "--fail-on", "never"]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Git output exceeded.*incomplete/i);
+  assert.equal(await pathExists(output), false);
+});
+
+test("helper suppression refreshes after configuration changes in the same process", async (context) => {
+  const root = await initializeRepository({
+    ".gitattributes": "*.txt filter=late\n",
+    "data.txt": "baseline\n",
+    "helper.cjs": "require('node:fs').writeFileSync('helper-ran','yes');process.stdin.pipe(process.stdout);\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await findRepository(root);
+  git(root, "config", "filter.late.clean", "node helper.cjs");
+  await writeFiles(root, { "data.txt": "changed\n" });
+  await changedFiles(root, (await selectDiff(root, {})).args, false);
+  assert.equal(await pathExists(path.join(root, "helper-ran")), false);
+});
+
+test("unborn SHA-256 repositories support working-tree and staged selections", async (context) => {
+  const root = await temporaryDirectory();
+  context.after(() => rm(root, { recursive: true, force: true }));
+  git(root, "init", "-q", "--object-format=sha256");
+  await writeFiles(root, { "first.ts": "export const first = 1;\n" });
+  git(root, "add", ".");
+  for (const options of [{}, { staged: true }]) {
+    const [file] = await changedFiles(root, (await selectDiff(root, options)).args, !options.staged);
+    assert.equal(file?.path, "first.ts");
+    assert.equal(file?.additions, 1);
+  }
+});
+
+test("bounded Git inventories reject an incomplete path record", async (context) => {
+  const root = await initializeRepository({ "a-long-filename.js": "export const value = 1;\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await assert.rejects(runGit(root, ["ls-files", "-z"], { maxOutputBytes: 8 }), /Git output exceeded.*incomplete/i);
+});
+
+test("oversized driver configuration stops inspection before any helper can run", async (context) => {
+  const root = await initializeRepository({
+    ".gitattributes": "*.txt filter=probe\n",
+    "value.txt": "baseline\n",
+    "probe.cjs": "require('node:fs').writeFileSync('probe-ran','yes');process.stdin.pipe(process.stdout);\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const drivers = Array.from({ length: 1_000 }, (_, i) => `[filter "${"x".repeat(70)}${i}"]\nclean = false\n`).join("");
+  await writeFile(path.join(root, ".git", "config"), `${drivers}[filter "probe"]\nclean = node probe.cjs\n`);
+  await assert.rejects(findRepository(root), /Git output exceeded the 64000 byte limit/);
+  assert.equal(await pathExists(path.join(root, "probe-ran")), false);
 });

@@ -24,6 +24,18 @@ proofdiff --range v1.0.0..HEAD
 
 For `--base`, fetch enough history for Git to find a merge base. For `--range`, both endpoints must resolve to commits.
 
+## Git output exceeded its limit or inspection could not complete
+
+ProofDiff exits with code `2` when a Git read times out, cannot start, fails to read a patch, or exceeds its output cap. It does not produce a report from a partial inventory or patch, even with `--fail-on never`. Ordinary Git reads have an 8,000,000-byte combined stdout/stderr cap and a 30-second timeout. Driver-name discovery has a 64,000-byte cap, and ignored-workspace inventory has a 512,000-byte cap.
+
+Narrow the committed diff or use a smaller checkout. For a driver-configuration error, inspect the trusted repository and linked-worktree Git configuration; ProofDiff must discover and disable configured content helpers before static inspection. This is an analysis error, not evidence that tests failed. Existing output files from an earlier run are not refreshed after an error, so CI must check the current exit status before consuming them.
+
+Filenames containing brackets or wildcard characters are supported literally. Repositories using SHA-256 object IDs also support working-tree and staged analysis before the first commit.
+
+## Python reports a helper input error or lexical fallback
+
+A Python helper that exits before consuming its input, times out, or exceeds its output cap cannot supply structural AST evidence, even if it printed valid JSON. ProofDiff retries the alternate interpreter, then reports low-confidence lexical analysis if neither helper completes. Confirm a working Python installation is available on the trusted executable path. No repository modules are imported during this parsing step.
+
 ## Immutable base/range/staged analysis is rejected for workspace drift
 
 This is a fail-closed provenance check, not a verification failure. ProofDiff currently reads graph/config/test inputs from the checked-out filesystem, so v0.5.3 refuses to combine an immutable diff with another filesystem state. For `--base` and `--range`, make sure the selected target is the checked-out `HEAD` and the tracked worktree is clean relative to it. For `--staged`, make sure there are no unstaged tracked changes so the worktree matches the index. To inspect a historical `A..B` range, check out `B` or create a separate worktree at `B` first.

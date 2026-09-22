@@ -2,8 +2,18 @@ import assert from "node:assert/strict";
 import { rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { discoverChecks, packageManagerInvocation, parseTargetObservations, runChecks, targetedTestChecks } from "../src/checks.js";
 import { initializeRepository } from "./helpers.js";
+
+test("ProofDiff's own test command qualifies without interpreting lifecycle command chains", async () => {
+  const projectRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const { checks } = await discoverChecks(projectRoot);
+  const ownTest = checks.find((check) => check.id === "js:test:test");
+  assert.equal(ownTest?.targetRunner, "node-test");
+  assert.ok(ownTest?.targetPatterns?.includes("dist-test/tests/process.test.js"));
+  assert.equal(checks.some((check) => check.id.includes("pretest")), false);
+});
 
 test("repository scripts are discovered but execution is a separate operation", async (context) => {
   const root = await initializeRepository({ "package.json": JSON.stringify({ scripts: { test: "node -e \"console.log('ok')\"", postinstall: "exit 99", deploy: "exit 98" } }) });

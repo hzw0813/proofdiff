@@ -35,14 +35,16 @@ export async function buildRepositoryGraph(root, repositoryFiles, changedFiles) 
     const concurrency = 16;
     for (let offset = 0; offset < sourceFiles.length; offset += concurrency) {
         const batch = sourceFiles.slice(offset, offset + concurrency);
-        await Promise.all(batch.map(async (file) => {
+        const results = await Promise.all(batch.map(async (file) => {
             const source = await readUtf8File(path.join(root, file));
-            if (source === null) {
-                diagnostics.push(`Skipped ${file}: unreadable, binary, or larger than 1 MB.`);
-                return;
-            }
-            analyses.set(file, await analyzeSource(file, source, root));
+            return { file, analysis: source === null ? null : await analyzeSource(file, source, root) };
         }));
+        for (const { file, analysis } of results) {
+            if (analysis === null)
+                diagnostics.push(`Skipped ${file}: unreadable, binary, or larger than 1 MB.`);
+            else
+                analyses.set(file, analysis);
+        }
     }
     for (const [file, analysis] of [...analyses.entries()].sort(([left], [right]) => compareCodeUnits(left, right))) {
         const targets = new Set();

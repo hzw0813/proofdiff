@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { rm } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
+import { buildRepositoryGraph } from "../src/graph.js";
 import { renderGithubSummary } from "../src/report/github.js";
 import { initializeRepository, writeFiles } from "./helpers.js";
 
@@ -10,6 +11,22 @@ const baseline = {
   "src/math.js": "export function add(a, b) { return a + b; }\n",
   "test/math.test.js": `import test from "node:test";\nimport assert from "node:assert/strict";\nimport { add } from "../src/math.js";\ntest("add", () => assert.equal(add(1, 2), 3));\n`,
 };
+
+test("concurrent source parsing retains inventory order for analyses and diagnostics", async (context) => {
+  const root = await initializeRepository({
+    "a.py": "def value():\n    return 1\n",
+    "b.js": "export const value = 1;\n",
+    "c.ts": "export const value: number = 1;\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const files = ["a.py", "missing-a.js", "b.js", "missing-b.py", "c.ts"];
+  const graph = await buildRepositoryGraph(root, files, []);
+  assert.deepEqual([...graph.analyses.keys()], ["a.py", "b.js", "c.ts"]);
+  assert.deepEqual(graph.diagnostics, [
+    "Skipped missing-a.js: unreadable, binary, or larger than 1 MB.",
+    "Skipped missing-b.py: unreadable, binary, or larger than 1 MB.",
+  ]);
+});
 
 test("static-only analysis is useful and does not claim verification", async (context) => {
   const root = await initializeRepository(baseline);

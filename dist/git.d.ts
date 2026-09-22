@@ -1,8 +1,5 @@
 import type { ChangedFile, DiffSelection, RepositoryInfo } from "./types.js";
-export declare class GitError extends Error {
-    name: string;
-}
-export declare function gitNullDevice(platform?: NodeJS.Platform): string;
+export { GitError, gitNullDevice } from "./git-command.js";
 export declare function findRepository(value: string): Promise<string>;
 export declare function resolveRevisionCommit(root: string, value: string): Promise<string>;
 export declare function diffTargetCommit(root: string, selection: DiffSelection): Promise<string | null>;
