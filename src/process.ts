@@ -41,6 +41,7 @@ export async function runProcess(command: string, args: string[], options: Proce
     let childExitCode: number | null = null;
     let windowsTerminationComplete = false;
     let windowsTerminationError: string | undefined;
+    let posixTerminationError: string | undefined;
     let timer: NodeJS.Timeout | undefined;
     let terminationFallback: NodeJS.Timeout | undefined;
 
@@ -109,6 +110,8 @@ export async function runProcess(command: string, args: string[], options: Proce
     child.on("error", (error) => {
       if (timedOut && process.platform === "win32") {
         windowsTerminationError ??= error.message;
+      } else if (timedOut) {
+        posixTerminationError ??= error.message;
       } else {
         finish(null, error.message);
       }
@@ -123,9 +126,11 @@ export async function runProcess(command: string, args: string[], options: Proce
         childExited = true;
         childExitCode = code;
         finishWindowsTimeoutIfComplete();
-      } else {
+      } else if (!timedOut) {
         finish(code);
       }
+      // On POSIX, parent close says nothing about descendants with redirected
+      // stdio. Keep the timeout escalation alive until the process group is killed.
     });
 
     if (options.stdin !== undefined) {
@@ -139,7 +144,7 @@ export async function runProcess(command: string, args: string[], options: Proce
       if (settled) return;
       closeChildStreams();
       child.unref();
-      finish(null, error);
+      finish(null, error ?? posixTerminationError);
     };
 
     const scheduleForcedFinish = (error?: string, delayMs = 1_000): void => {
