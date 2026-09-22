@@ -1,25 +1,8 @@
 import path from "node:path";
 import { readFile } from "node:fs/promises";
-import { diffTargetCommit, gitNullDevice } from "./git.js";
-import { runProcess, safeExecutablePath } from "./process.js";
+import { diffTargetCommit } from "./git.js";
+import { runGit } from "./git-command.js";
 const MAX_BINDING_BYTES = 256 * 1024;
-function gitEnvironment() {
-    const env = {
-        PATH: safeExecutablePath(),
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: gitNullDevice(),
-        GIT_NO_REPLACE_OBJECTS: "1",
-        GIT_TERMINAL_PROMPT: "0",
-        GIT_PAGER: "cat",
-        GIT_OPTIONAL_LOCKS: "0",
-        LC_ALL: "C",
-    };
-    for (const key of ["SystemRoot", "WINDIR", "TMPDIR", "TMP", "TEMP"]) {
-        if (process.env[key] !== undefined)
-            env[key] = process.env[key];
-    }
-    return env;
-}
 function canonicalJson(value) {
     if (Array.isArray(value))
         return `[${value.map(canonicalJson).join(",")}]`;
@@ -40,12 +23,7 @@ function parseBoundedJson(value) {
     }
 }
 async function snapshotBlob(root, object) {
-    const result = await runProcess("git", ["--no-pager", "cat-file", "blob", object], {
-        cwd: root,
-        timeoutMs: 30_000,
-        maxOutputBytes: MAX_BINDING_BYTES + 1,
-        env: gitEnvironment(),
-    });
+    const result = await runGit(root, ["cat-file", "blob", object], { maxOutputBytes: MAX_BINDING_BYTES + 1 });
     if (result.exitCode !== 0 || result.truncated)
         return null;
     return result.stdout;

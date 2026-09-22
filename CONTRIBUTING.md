@@ -22,6 +22,8 @@ npm run dogfood
 npm pack --dry-run
 ```
 
+`npm test` runs its `pretest` lifecycle first to build, compile tests, and validate the explicit test manifest. Keep preparation there: the `test` script itself must remain an exact serial `node --test` invocation so ProofDiff can qualify its own test targets without interpreting shell chains. CI also runs `npm run dogfood`: all checks and related compiled targets must pass, while the TypeScript source correctly remains partially verified because filename mapping does not attest compilation provenance.
+
 ## Expectations
 
 - Add observable-behavior tests for fixes and features.

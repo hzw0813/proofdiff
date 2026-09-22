@@ -1,6 +1,6 @@
 import path from "node:path";
-import { diffTargetCommit, GitError, gitNullDevice, listUntrackedFiles, resolveRevisionCommit } from "./git.js";
-import { runProcess, safeExecutablePath } from "./process.js";
+import { diffTargetCommit, GitError, listUntrackedFiles, resolveRevisionCommit } from "./git.js";
+import { runGit } from "./git-command.js";
 import { normalizeRepoPath } from "./util.js";
 const ROOT_DISCOVERY_METADATA = new Set([
     "package.json",
@@ -38,40 +38,6 @@ function exclusionPathspecs(directories) {
 }
 const IGNORED_DISCOVERY_EXCLUSIONS = exclusionPathspecs(STATIC_PYTHON_SCAN_EXCLUDED_DIRECTORIES);
 const IGNORED_EXECUTION_EXCLUSIONS = exclusionPathspecs(EXECUTION_ENVIRONMENT_DIRECTORIES);
-function gitEnvironment() {
-    const env = {
-        PATH: safeExecutablePath(),
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: gitNullDevice(),
-        GIT_ATTR_NOSYSTEM: "1",
-        GIT_NO_REPLACE_OBJECTS: "1",
-        GIT_TERMINAL_PROMPT: "0",
-        GIT_PAGER: "cat",
-        GIT_OPTIONAL_LOCKS: "0",
-        LC_ALL: "C",
-    };
-    for (const key of ["SystemRoot", "WINDIR", "TMPDIR", "TMP", "TEMP"]) {
-        if (process.env[key] !== undefined)
-            env[key] = process.env[key];
-    }
-    return env;
-}
-async function runGit(root, args, maxOutputBytes = 64_000) {
-    return await runProcess("git", [
-        "--no-pager",
-        "-c", "core.quotepath=false",
-        "-c", "core.fsmonitor=false",
-        "-c", `core.hooksPath=${gitNullDevice()}`,
-        "-c", "diff.external=",
-        "-c", "attr.tree=refs/proofdiff/no-attributes",
-        ...args,
-    ], {
-        cwd: root,
-        timeoutMs: 30_000,
-        maxOutputBytes,
-        env: gitEnvironment(),
-    });
-}
 async function trackedFilesystemMatches(root, target) {
     const result = await runGit(root, [
         "diff",
@@ -81,9 +47,7 @@ async function trackedFilesystemMatches(root, target) {
         "--ignore-submodules=all",
         ...(target === null ? [] : [target]),
         "--",
-    ]);
-    if (result.timedOut)
-        throw new GitError("Timed out while checking whether the selected immutable snapshot matches the checked-out filesystem.");
+    ], { maxOutputBytes: 64_000 });
     if (result.exitCode === 0)
         return true;
     if (result.exitCode === 1)
@@ -101,10 +65,7 @@ async function ignoredFiles(root, pathspecs, exclusions) {
         "--",
         ...pathspecs,
         ...exclusions,
-    ], 512_000);
-    if (result.timedOut || result.truncated) {
-        throw new GitError("Could not completely establish whether ignored files can influence immutable analysis within ProofDiff's bounded Git limits.");
-    }
+    ], { maxOutputBytes: 512_000 });
     if (result.exitCode !== 0) {
         const message = result.stderr.trim() || result.error || `git ls-files exited with ${String(result.exitCode)}`;
         throw new GitError(`Could not inspect ignored immutable-workspace inputs: ${message}`);

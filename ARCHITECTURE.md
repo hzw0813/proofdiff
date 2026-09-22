@@ -12,7 +12,7 @@ check discovery → target qualification → per-target observation
 
 ## Modules
 
-- `src/git.ts` uses `git` argument arrays without a shell. It validates revisions, parses NUL-delimited paths, includes untracked files for the default selection, and extracts zero-context hunk ranges. Read commands suppress hooks, filesystem monitors, external diff/text conversion, and configured content drivers.
+- `src/git.ts` validates revisions, parses NUL-delimited paths, includes untracked files for the default selection, and extracts zero-context hunk ranges using literal per-file pathspecs. `src/git-command.ts` supplies the shared argument-array, no-shell boundary for all static Git reads, including immutable workspace and test-map binding checks. It suppresses hooks, filesystem monitors, external diff/text conversion, and configured content drivers, refreshing bounded driver discovery (including linked-worktree config) before each operation. Timed-out, failed-to-start, and truncated reads fail closed. Unborn repositories derive their empty-tree object from Git rather than assuming SHA-1.
 - `src/adapters/` contains the small `LanguageAdapter` boundary. JavaScript/TypeScript use `@babel/parser`. Python sends source text to `python -I -S` and the standard `ast` module; it does not import repository modules. Built-in adapters retain line-numbered call sites so reports can show structural call references that intersect changed lines.
 - `src/graph.ts` resolves only local, statically identifiable imports. It builds reverse dependencies for impact estimates and broad test-like relationship discovery. Test-like path heuristics do not establish runnable identity.
 - `src/resolution.ts` adds a fail-closed metadata layer for non-relative JavaScript/TypeScript imports. It reads bounded JSON/JSONC only, supports a narrow subset of compiler `paths` and package self-exports, retains inspectable graph evidence for successful edges, and never invokes a compiler, package manager, or repository resolver.
@@ -52,6 +52,8 @@ Every report is derived during one run and can be serialized as JSON or HTML. Th
 
 - Files larger than 1 MB and binary files are not parsed.
 - At most 5,000 repository files are structurally analyzed per run.
+- Source parsing runs concurrently, but analyses and diagnostics are collected in inventory order rather than completion order.
+- Git stdout/stderr is capped at 8 MB per ordinary read, driver-name discovery at 64 KB, ignored-workspace inventory at 512 KB, and test-map snapshot reads at 256 KiB plus one byte. A reached output cap aborts analysis rather than parsing a partial record. Git reads have a 30-second timeout.
 - The displayed/risk-scored reverse-impact list is capped at 250 files per changed file; test-like relationship and qualification traversal is separately bounded by the 5,000-file analyzed inventory.
 - Static module metadata is capped at 256 KB per file, 64 compiler files, 256 package files, 32 ancestor directories, 8 inherited-config levels, 128 path keys, 8 targets per key, 32 custom conditions, 64 candidates per import, 8 export-condition levels, 64 visited export branches, 50,000 non-relative import observations, 10,000 retained resolution records, and 100 emitted resolution diagnostics. A reached bound creates no edge.
 - Check stdout/stderr defaults to 256 KB, runner observations are separately capped at 64 KB, and check duration defaults to 120 seconds.

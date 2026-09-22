@@ -77,6 +77,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:action
+      - name: Verify dogfood evidence boundaries
+        run: npm run dogfood
 
   published-action:
     name: Action smoke / published v0.5.3

@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import assert from "node:assert/strict";
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -44,10 +45,19 @@ try {
   await writeFile(path.join(scratchRoot, "dogfood-report.html"), renderHtmlReport(report));
   await writeFile(path.join(scratchRoot, "dogfood-terminal.txt"), `${renderTerminalReport(report, { color: false, width: 100 }).trimStart()}\n`);
 
-  if (report.summary.filesChanged !== 1 || report.summary.overallStatus !== "verified" || report.checks.some((check) => check.status !== "passed")) {
-    throw new Error(`Dogfood invariant failed: ${report.summary.filesChanged} files, ${report.summary.overallStatus}, checks ${report.checks.map((check) => check.status).join(", ")}.`);
-  }
-  process.stdout.write(`Dogfood passed: ${report.assessments[0].file.path} had a related test-file pass; all ${report.checks.length} executed checks passed.\n`);
+  assert.equal(report.summary.filesChanged, 1);
+  assert.equal(report.assessments[0]?.file.path, "src/evidence.ts");
+  assert.equal(report.summary.overallStatus, "partially-verified", "Filename-based compiled mappings must not verify TypeScript source identity");
+  assert.deepEqual(report.assessments[0]?.executedTests, []);
+  assert.deepEqual(report.checks.map((check) => check.id).sort(), ["js:lint:lint", "js:test:test", "js:test:test:targeted", "js:typecheck:typecheck"]);
+  assert.ok(report.checks.every((check) => check.status === "passed"), "Every discovered check must pass");
+  const targeted = report.checks.find((check) => check.id === "js:test:test:targeted");
+  assert.ok(targeted?.targetQualifications?.length, "Dogfood must qualify related compiled targets");
+  assert.ok(targeted.targetQualifications.every((target) => target.basis === "compiled-source-map" && target.confidence === "medium"));
+  const observations = targeted.targetObservations ?? [];
+  assert.deepEqual(observations.map((item) => item.path).sort(), targeted.targetQualifications.map((item) => item.path).sort());
+  assert.ok(observations.every((item) => item.outcome === "passed" && item.testsObserved > 0), "Each compiled target must have a positive passing observation");
+  process.stdout.write(`Dogfood passed: all ${report.checks.length} checks passed and ${observations.length} compiled targets had positive observations; TypeScript source evidence correctly remained partially verified.\n`);
 } finally {
   await rm(target, { recursive: true, force: true });
 }

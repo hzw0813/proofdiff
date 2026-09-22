@@ -6,6 +6,13 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Repaired the dogfood gate by moving test preparation into npm's `pretest` lifecycle and retaining a direct serial `node --test` command. It now requires positive observations for every related compiled target while correctly retaining partial evidence for filename-mapped TypeScript source. Added a self-discovery regression and a PR CI dogfood step; shell-chain recognition and compiled-source confidence remain conservative.
+- Unified static Git execution so immutable workspace checks and test-map snapshot reads receive the same helper suppression as diff inspection. Driver discovery now includes worktree configuration, refreshes on each operation, uses NUL-delimited names, and fails closed when incomplete.
+- Rejected truncated, timed-out, or failed Git reads instead of treating partial paths or patches as complete evidence. Per-file patch failures now stop analysis with exit code 2.
+- Treated per-file Git paths literally, including both sides of a rename, so brackets, wildcards, and pathspec magic cannot mix another file's hunks into evidence.
+- Derived the empty-tree object from the repository's object format, supporting SHA-256 repositories before their first commit.
+- Handled early child-stdin closure as a process error instead of an unhandled `EPIPE` crash. Python analysis rejects otherwise-valid output from failed, timed-out, or truncated helpers and retries or reports a lexical fallback.
+- Preserved inventory order when collecting concurrent source analyses and diagnostics, eliminating parser/I/O completion order from those results.
 - Preserved ignored-file path identity across platforms when enforcing immutable workspace alignment. POSIX filenames containing literal backslashes are no longer rewritten as directory separators, so a distinct ignored runtime input such as `coverage\proof.lcov` cannot alias an explicitly allowed `coverage/proof.lcov` data artifact and bypass the pre-execution fail-closed gate.
 - Failed closed on unattributed targeted-runner process failures even when another qualified batch target is unavailable. An unavailable target can no longer act as a sink that lets unrelated observed passes survive an ambiguous process-level failure; only explicitly failed targets retain localized failure attribution.
 - Failed closed on deletion-only zero-context hunks when attributing current changed symbols and call references. Git represents a deletion-only hunk with a zero-length new-side range anchored to a neighboring current line; ProofDiff now reconciles reconstructed current-line spans with Git numstat additions before treating those anchors as changed current code.

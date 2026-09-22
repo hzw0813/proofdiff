@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import { rm } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
+import { pathExists } from "../src/util.js";
 import { git, initializeRepository, writeFiles } from "./helpers.js";
 
 const fixture = {
@@ -9,6 +11,38 @@ const fixture = {
   "src/value.js": "export const value = 1;\n",
   "test/value.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.js'; test('value', () => assert.equal(value, 1));\n",
 };
+
+test("all immutable static modes suppress configured Git clean filters", async (context) => {
+  const root = await initializeRepository({
+    ".gitattributes": "*.txt filter=probe\n",
+    "value.txt": "baseline\n",
+    "probe.cjs": "require('node:fs').writeFileSync('probe-ran','yes');process.stdin.pipe(process.stdout);\n",
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  git(root, "config", "filter.probe.clean", "node probe.cjs");
+  for (const selection of [{ base: "HEAD" }, { range: "HEAD..HEAD" }, { staged: true }]) {
+    const report = await analyzeRepository({ repo: root, ...selection });
+    assert.equal(await pathExists(path.join(root, "probe-ran")), false, JSON.stringify(selection));
+    assert.equal(report.trust.repositoryCodeExecuted, false);
+  }
+});
+
+test("linked worktree configuration cannot enable static Git helper execution", async (context) => {
+  const root = await initializeRepository({
+    ".gitattributes": "*.txt filter=probe\n",
+    "value.txt": "baseline\n",
+    "probe.cjs": "require('node:fs').writeFileSync('probe-ran','yes');process.stdin.pipe(process.stdout);\n",
+  });
+  const linked = `${root}-linked`;
+  context.after(() => rm(linked, { recursive: true, force: true }));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  git(root, "config", "extensions.worktreeConfig", "true");
+  git(root, "worktree", "add", "--detach", linked, "HEAD");
+  git(linked, "config", "--worktree", "filter.probe.clean", "node probe.cjs");
+  const report = await analyzeRepository({ repo: linked, base: "HEAD" });
+  assert.equal(await pathExists(path.join(linked, "probe-ran")), false);
+  assert.equal(report.trust.repositoryCodeExecuted, false);
+});
 
 async function commitChange(root: string, content: string, message: string): Promise<string> {
   await writeFiles(root, { "src/value.js": content });

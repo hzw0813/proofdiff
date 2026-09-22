@@ -1,74 +1,7 @@
 import path from "node:path";
-import { runProcess, safeExecutablePath } from "./process.js";
+import { GitError, runGit as gitResult } from "./git-command.js";
 import { compareCodeUnits, isLikelyBinaryFile, languageForPath, normalizeRepoPath, readUtf8File, resolveRepositoryPath, unique } from "./util.js";
-const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
-export class GitError extends Error {
-    name = "GitError";
-}
-export function gitNullDevice(platform = process.platform) {
-    return platform === "win32" ? "NUL" : "/dev/null";
-}
-function gitEnvironment() {
-    const env = {
-        PATH: safeExecutablePath(),
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: gitNullDevice(),
-        GIT_ATTR_NOSYSTEM: "1",
-        GIT_NO_REPLACE_OBJECTS: "1",
-        GIT_TERMINAL_PROMPT: "0",
-        GIT_PAGER: "cat",
-        GIT_OPTIONAL_LOCKS: "0",
-        LC_ALL: "C",
-    };
-    for (const key of ["SystemRoot", "WINDIR", "TMPDIR", "TMP", "TEMP"]) {
-        if (process.env[key] !== undefined)
-            env[key] = process.env[key];
-    }
-    return env;
-}
-const driverOverrideCache = new Map();
-async function rawGitResult(root, args, driverOverrides = []) {
-    return await runProcess("git", [
-        "--no-pager",
-        "-c", "core.quotepath=false",
-        "-c", "core.fsmonitor=false",
-        "-c", `core.hooksPath=${gitNullDevice()}`,
-        "-c", "diff.external=",
-        "-c", "attr.tree=refs/proofdiff/no-attributes",
-        ...driverOverrides,
-        ...args,
-    ], {
-        cwd: root,
-        timeoutMs: 30_000,
-        maxOutputBytes: 8_000_000,
-        env: gitEnvironment(),
-    });
-}
-async function configuredDriverOverrides(root) {
-    const cached = driverOverrideCache.get(root);
-    if (cached)
-        return cached;
-    const result = await rawGitResult(root, ["config", "--local", "--includes", "--name-only", "--get-regexp", "^(filter|diff)\\..*\\.(clean|smudge|process|required|command|textconv)$"]);
-    const prefixes = new Set();
-    for (const key of result.stdout.split("\n").map((value) => value.trim()).filter(Boolean)) {
-        const match = key.match(/^((?:filter|diff)\..+)\.(?:clean|smudge|process|required|command|textconv)$/i);
-        if (match?.[1])
-            prefixes.add(match[1]);
-    }
-    const overrides = [];
-    for (const prefix of prefixes) {
-        const properties = prefix.toLowerCase().startsWith("filter.")
-            ? ["clean", "smudge", "process", "required"]
-            : ["command", "textconv"];
-        for (const property of properties)
-            overrides.push("-c", `${prefix}.${property}=${property === "required" ? "false" : ""}`);
-    }
-    driverOverrideCache.set(root, overrides);
-    return overrides;
-}
-async function gitResult(root, args) {
-    return await rawGitResult(root, args, await configuredDriverOverrides(root));
-}
+export { GitError, gitNullDevice } from "./git-command.js";
 async function git(root, args, allowFailure = false) {
     const result = await gitResult(root, args);
     if (!allowFailure && result.exitCode !== 0) {
@@ -121,6 +54,14 @@ export async function diffTargetCommit(root, selection) {
     }
     return null;
 }
+async function emptyTree(root) {
+    const result = await gitResult(root, ["hash-object", "-t", "tree", "--stdin"], { stdin: "" });
+    const object = result.stdout.trim();
+    if (result.exitCode !== 0 || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(object)) {
+        throw new GitError("Could not resolve the empty tree for this repository object format.");
+    }
+    return object;
+}
 export async function selectDiff(root, options) {
     const selected = Number(options.base !== undefined) + Number(options.range !== undefined) + Number(options.staged === true);
     if (selected > 1)
@@ -148,10 +89,10 @@ export async function selectDiff(root, options) {
         };
     }
     if (options.staged === true) {
-        const args = (await hasHead(root)) ? ["--cached"] : ["--cached", EMPTY_TREE];
+        const args = (await hasHead(root)) ? ["--cached"] : ["--cached", await emptyTree(root)];
         return { selection: { mode: "staged", description: "staged changes" }, args };
     }
-    const args = (await hasHead(root)) ? ["HEAD"] : [EMPTY_TREE];
+    const args = (await hasHead(root)) ? ["HEAD"] : [await emptyTree(root)];
     return { selection: { mode: "working-tree", description: "working tree vs HEAD" }, args };
 }
 function parseNameStatus(raw) {
@@ -266,7 +207,7 @@ export async function changedFiles(root, diffArgs, includeUntracked, knownUntrac
         }
         else {
             const pathspec = entry.previousPath === undefined ? [entry.path] : [entry.previousPath, entry.path];
-            patch = await git(root, ["diff", ...safeDiffOptions, "--unified=0", "--find-renames", ...diffArgs, "--", ...pathspec], true);
+            patch = await git(root, ["diff", ...safeDiffOptions, "--unified=0", "--find-renames", ...diffArgs, "--", ...pathspec.map((file) => `:(literal)${file}`)]);
         }
         files.push({
             path: entry.path,

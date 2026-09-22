@@ -12,6 +12,7 @@ export async function runProcess(command, args, options) {
         let truncated = false;
         let observationTruncated = false;
         let timedOut = false;
+        let inputError;
         let settled = false;
         let childExited = false;
         let childExitCode = null;
@@ -57,6 +58,7 @@ export async function runProcess(command, args, options) {
                 clearTimeout(timer);
             if (terminationFallback !== undefined)
                 clearTimeout(terminationFallback);
+            const finalError = error ?? inputError;
             resolve({
                 exitCode,
                 stdout: stdout.toString("utf8"),
@@ -65,7 +67,7 @@ export async function runProcess(command, args, options) {
                 durationMs: Date.now() - started,
                 truncated,
                 ...(options.observe ? { observation: observation.toString("utf8"), observationTruncated } : {}),
-                ...(error === undefined ? {} : { error }),
+                ...(finalError === undefined ? {} : { error: finalError }),
             });
         };
         const closeChildStreams = () => {
@@ -104,6 +106,9 @@ export async function runProcess(command, args, options) {
             }
         });
         if (options.stdin !== undefined) {
+            // A parser can exit before consuming its input. Wait for close/timeout, but never
+            // turn an incomplete write into successful analysis or an unhandled EPIPE crash.
+            child.stdin?.on("error", (error) => { inputError = `Could not write process stdin: ${error.message}`; });
             child.stdin?.end(options.stdin);
         }
         const forceTimedOutFinish = (error) => {
