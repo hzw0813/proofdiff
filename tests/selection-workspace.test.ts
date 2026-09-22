@@ -4,13 +4,66 @@ import { rm } from "node:fs/promises";
 import test from "node:test";
 import { analyzeRepository } from "../src/analyze.js";
 import { pathExists } from "../src/util.js";
-import { git, initializeRepository, writeFiles } from "./helpers.js";
+import { git, initializeRepository, runCli, writeFiles } from "./helpers.js";
 
 const fixture = {
   "package.json": JSON.stringify({ name: "selection-binding", private: true, type: "module", scripts: { test: "node --test" } }, null, 2),
   "src/value.js": "export const value = 1;\n",
   "test/value.test.js": "import test from 'node:test'; import assert from 'node:assert/strict'; import { value } from '../src/value.js'; test('value', () => assert.equal(value, 1));\n",
 };
+
+for (const flag of ["assume-unchanged", "skip-worktree"]) {
+  test(`${flag} cannot hide filesystem changes from any selection or authorize checks`, async (context) => {
+    const root = await initializeRepository({
+      ...fixture,
+      "probe.cjs": "require('node:fs').writeFileSync('probe-ran', 'yes');\n",
+      "package.json": JSON.stringify({ scripts: { test: "node probe.cjs" } }),
+    });
+    context.after(() => rm(root, { recursive: true, force: true }));
+    git(root, "update-index", `--${flag}`, "src/value.js");
+    await writeFiles(root, { "src/value.js": "export const value = 999;\n" });
+    for (const selection of [{}, { base: "HEAD" }, { range: "HEAD..HEAD" }, { staged: true }]) {
+      await assert.rejects(analyzeRepository({ repo: root, ...selection, runChecks: true }), new RegExp(flag));
+    }
+    assert.equal(await pathExists(path.join(root, "probe-ran")), false);
+    const cli = runCli(["--repo", root, "--json", "--output", path.join(root, "report.json"), "--fail-on", "never"]);
+    assert.equal(cli.status, 2);
+    assert.match(cli.stderr, new RegExp(flag));
+    assert.equal(await pathExists(path.join(root, "report.json")), false);
+    // Inspection must not clear flags or rewrite the user's index.
+    assert.match(git(root, "ls-files", "-v", "src/value.js"), flag === "skip-worktree" ? /^S / : /^h /);
+    git(root, "update-index", `--no-${flag}`, "src/value.js");
+    const report = await analyzeRepository({ repo: root });
+    assert.deepEqual(report.assessments.map((item) => item.file.path), ["src/value.js"]);
+  });
+}
+
+test("sparse checkouts fail closed with a recovery diagnostic for missing source inputs", async (context) => {
+  const root = await initializeRepository({ ...fixture, "other/module.js": "export const other = 1;\n" });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  git(root, "sparse-checkout", "set", "--cone", "--sparse-index", "src");
+  await assert.rejects(analyzeRepository({ repo: root, base: "HEAD" }), /skip-worktree.*full checkout/s);
+});
+
+test("unresolved merge stages cannot produce reports or execute checks", async (context) => {
+  const root = await initializeRepository({
+    ...fixture,
+    "probe.cjs": "require('node:fs').writeFileSync('probe-ran', 'yes');\n",
+    "package.json": JSON.stringify({ scripts: { test: "node probe.cjs" } }),
+  });
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const branch = git(root, "symbolic-ref", "--short", "HEAD").trim();
+  git(root, "checkout", "-qb", "conflict-side");
+  await commitChange(root, "export const value = 2;\n", "side");
+  git(root, "checkout", "-q", branch);
+  await commitChange(root, "export const value = 3;\n", "main");
+  assert.throws(() => git(root, "merge", "conflict-side"));
+  for (const selection of [{}, { base: "HEAD" }, { range: "HEAD..HEAD" }, { staged: true }]) {
+    await assert.rejects(analyzeRepository({ repo: root, ...selection, runChecks: true }), /unresolved merge.*src\/value\.js/s);
+  }
+  assert.match(git(root, "ls-files", "--unmerged"), /src\/value\.js/);
+  assert.equal(await pathExists(path.join(root, "probe-ran")), false);
+});
 
 test("all immutable static modes suppress configured Git clean filters", async (context) => {
   const root = await initializeRepository({

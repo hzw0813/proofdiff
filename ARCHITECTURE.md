@@ -22,6 +22,8 @@ check discovery → target qualification → per-target observation
 - `src/report/` renders terminal, self-contained HTML, and bounded GitHub job-summary reports from the same typed report object. The GitHub renderer is a presentation projection only and cannot add evidence.
 - `src/analyze.ts` orchestrates the pipeline and exposes the public API.
 
+Before diff extraction, `src/git.ts` validates a bounded NUL-delimited index inventory, including merge stages and cached-stat flags. Unresolved merges and `assume-unchanged`/`skip-worktree` entries abort all selection modes rather than allowing Git to hide inputs consumed by filesystem-backed analysis. The index is never rewritten. On POSIX, a timeout waits through the one-second TERM-to-KILL grace period even if the parent closes first, so descendants with redirected output cannot cancel process-group escalation. Windows retains its separate `taskkill /T /F` completion boundary.
+
 ## Design decisions
 
 ### Local static relationships, not runtime coverage

@@ -6,6 +6,8 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ### Fixed
 
+- Rejected unresolved merge stages and `assume-unchanged`/`skip-worktree` index entries before diff evidence or repository checks in every selection mode. Hidden modifications and sparse-checkout omissions now produce actionable errors instead of misleading empty or snapshot-aligned reports; the index is never modified.
+- Preserved POSIX timeout escalation after a parent exits, preventing descendants with redirected output and a TERM handler from surviving cancellation of the KILL timer. Windows process-tree termination remains unchanged.
 - Repaired the dogfood gate by moving test preparation into npm's `pretest` lifecycle and retaining a direct serial `node --test` command. It now requires positive observations for every related compiled target while correctly retaining partial evidence for filename-mapped TypeScript source. Added a self-discovery regression and a PR CI dogfood step; shell-chain recognition and compiled-source confidence remain conservative.
 - Unified static Git execution so immutable workspace checks and test-map snapshot reads receive the same helper suppression as diff inspection. Driver discovery now includes worktree configuration, refreshes on each operation, uses NUL-delimited names, and fails closed when incomplete.
 - Rejected truncated, timed-out, or failed Git reads instead of treating partial paths or patches as complete evidence. Per-file patch failures now stop analysis with exit code 2.

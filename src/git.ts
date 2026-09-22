@@ -14,6 +14,32 @@ async function git(root: string, args: string[], allowFailure = false): Promise<
   return result.stdout;
 }
 
+/** Git's cached stat flags must not hide inputs that filesystem-backed analysis reads. */
+async function assertInspectableIndex(root: string): Promise<void> {
+  const output = await git(root, ["ls-files", "--stage", "-v", "-z"]);
+  const conflicts: string[] = [];
+  const hidden: string[] = [];
+  if (output !== "" && !output.endsWith("\0")) throw new GitError("Incomplete Git index inventory; cannot establish evidence.");
+  for (const record of output.split("\0").filter(Boolean)) {
+    // Parse only the fixed prefix; paths may contain tabs, newlines, and literal backslashes.
+    const entry = record.match(/^([A-Za-z?]) [0-7]{6} (?:[0-9a-f]{40}|[0-9a-f]{64}) ([0-3])\t([\s\S]+)$/);
+    if (!entry) throw new GitError("Unrecognized Git index record; cannot establish evidence.");
+    const [, tag, stage, file] = entry as [string, string, string, string];
+    if (stage !== "0") conflicts.push(file);
+    if (tag === "S" || tag !== tag.toUpperCase()) hidden.push(file);
+  }
+  const detail = (files: string[]): string => {
+    const paths = unique(files);
+    return `${paths.slice(0, 5).map((file) => JSON.stringify(file)).join(", ")}${paths.length > 5 ? `, and ${paths.length - 5} more` : ""}`;
+  };
+  if (conflicts.length > 0) {
+    throw new GitError(`The Git index contains unresolved merge stages: ${detail(conflicts)}. Resolve and stage the conflicts (or abort the merge) before analysis; combined conflict diffs cannot establish a single source snapshot.`);
+  }
+  if (hidden.length > 0) {
+    throw new GitError(`The Git index contains assume-unchanged or skip-worktree entries: ${detail(hidden)}. Those flags can hide changed or missing filesystem inputs. Use a full checkout (git sparse-checkout disable for sparse checkouts), or clear the flags with git update-index --no-assume-unchanged --no-skip-worktree -- <path>, then retry. ProofDiff does not modify the index.`);
+  }
+}
+
 export async function findRepository(value: string): Promise<string> {
   const candidate = await resolveRepositoryPath(value);
   const result = await gitResult(candidate, ["rev-parse", "--show-toplevel"]);
@@ -188,6 +214,7 @@ function changeKind(status: string): ChangeKind {
 }
 
 export async function changedFiles(root: string, diffArgs: string[], includeUntracked: boolean, knownUntracked?: string[]): Promise<ChangedFile[]> {
+  await assertInspectableIndex(root);
   const safeDiffOptions = ["--no-ext-diff", "--no-textconv", "--ignore-submodules=all"];
   const status = parseNameStatus(await git(root, ["diff", ...safeDiffOptions, "--name-status", "-z", "--find-renames", ...diffArgs, "--"]));
   const stats = parseNumstat(await git(root, ["diff", ...safeDiffOptions, "--numstat", "-z", "--find-renames", ...diffArgs, "--"]));

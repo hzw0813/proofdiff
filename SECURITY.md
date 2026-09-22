@@ -42,6 +42,10 @@ Runner qualification is static and data-only. pytest configuration reads are bou
 
 These measures are defense in depth, **not a sandbox**. A command can still read accessible files, use the network, spawn processes, exploit installed tools, or persist outside the repository. Use a disposable VM/container with network and secrets removed when executing checks from untrusted contributions. On pull requests from forks, keep `run-checks: false` unless the code has been reviewed.
 
+POSIX timeout cleanup sends TERM to the process group and preserves the one-second KILL escalation even after the direct child exits and its output pipes close. This covers ordinary descendants with redirected output; descendants that deliberately leave the process group remain outside that mechanism. Windows uses its existing native process-tree termination. These mechanisms do not promise containment of arbitrary programs.
+
+All selections reject unresolved index merge stages and `assume-unchanged`/`skip-worktree` entries before check execution. Otherwise Git can report an aligned snapshot while filesystem-backed discovery reads different or missing code. Sparse checkouts must be expanded by the user or analyzed in a full separate checkout; static inspection never modifies the user's index flags.
+
 ## Data handling
 
 Terminal, JSON, and HTML reports can contain repository paths, symbol names, relationships, target-qualification reasons, per-target counts, check commands, and bounded check output. Owned inline observer source is abbreviated in the HTML command display but remains present in machine-readable JSON for reproducibility. Treat reports as repository-sensitive artifacts. The HTML report is self-contained, loads no remote resources, and has a restrictive Content Security Policy, but anyone receiving it can read its contents. The shorter GitHub job summary still contains changed and test-target paths; users with access to the workflow run can read them.

@@ -37,3 +37,17 @@ The repository's `lint` command is TypeScript typechecking, not a separate styli
 - Dependency major-version PRs are separate compatibility decisions and were not merged by this audit.
 
 This is a tested hardening pass, not a claim that every real-world repository or threat has been verified.
+
+## Follow-up after PR #69
+
+Baseline: current main `9b886a25abe7f809112c13d26184ed28cc5b173b`. The downloaded text files were checked against that commit's Git blob identities before editing. This follow-up examined the remaining filesystem-alignment assumptions and process lifetime boundary. Six new regression cases reproduced five failures against the baseline; the inherited-output descendant case already passed and now protects the existing behavior.
+
+| Priority | Reproduced weakness | Fix and regression coverage |
+| --- | --- | --- |
+| High | `assume-unchanged` and `skip-worktree` hid a modified source file from `git diff`; immutable analysis accepted it as aligned and reported no changes. | Read index stages and flags as bounded NUL-delimited data before diff extraction. Reject hidden inputs in working-tree, base, range, and staged modes before checks run. Tests assert exit 2 even under `--fail-on never`, no new report or execution marker, preserved flags, and successful analysis after the caller clears flags. |
+| High | A real sparse-index checkout with absent source/test paths passed immutable analysis. An unresolved merge also reached analysis and execution despite lacking a single resolved snapshot. | Reject sparse/skip-worktree entries and nonzero merge stages with recovery guidance. Regressions create a real cone-mode sparse index and a conflicting merge, including all four selection modes for conflicts. |
+| Medium | A timed-out POSIX parent exited and closed its pipes, cancelling the escalation timer while a TERM-resistant descendant with redirected output kept running. | Parent close no longer completes a POSIX timeout before process-group KILL escalation. Real-process tests check that a descendant heartbeat stops with both redirected and inherited output. Windows retains its native termination path. |
+
+These changes add no dependencies, runtime network access, telemetry, uploads, or automatic check execution. They do not strengthen verification statuses or change schema `1.0`. Sparse checkouts are deliberately rejected rather than claimed supported; use a full checkout. Even clean flagged entries are rejected because cached Git stat assumptions cannot independently establish filesystem alignment. The index inventory uses the existing 8 MB output bound and fails closed if incomplete. No index flags or checkout contents are changed by inspection.
+
+The expanded suite contains 176 tests, including two new POSIX-only process tests. Full validation outcomes, including the existing Linux/macOS/Windows × Node 22/24/26 matrix, are recorded in the draft PR. Remaining work includes the submodule visibility limitation above, broader bounded runner/monorepo support, and isolated snapshot analysis. Process-group cleanup remains best effort: deliberately detached descendants and arbitrary repository code require an external OS sandbox. Concurrent repository mutation remains outside this pass.
