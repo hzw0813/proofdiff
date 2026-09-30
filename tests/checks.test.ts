@@ -340,7 +340,7 @@ test("stdlib unittest projects use unittest without requiring pytest", async (co
   const { checks } = await discoverChecks(root);
   assert.deepEqual(checks.map((check) => check.id), ["python:test:unittest"]);
   const [result] = await runChecks(root, checks, { timeoutMs: 10_000, maxOutputBytes: 10_000 });
-  assert.equal(result?.status, "passed", result?.output);
+  assert.equal(result?.status, "passed", result?.output ?? "");
 });
 
 test("checks receive no inherited application secrets", async (context) => {
