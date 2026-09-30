@@ -130,7 +130,7 @@ test("passing related test evidence produces a qualified verified status", async
   context.after(() => rm(root, { recursive: true, force: true }));
   await writeFiles(root, { "src/math.js": "export function add(a, b) { return a + b + 0; }\n" });
   const report = await analyzeRepository({ repo: root, runChecks: true, timeoutMs: 20_000 });
-  assert.equal(report.checks[0]?.status, "passed", report.checks[0]?.output);
+  assert.equal(report.checks[0]?.status, "passed", report.checks[0]?.output ?? "");
   assert.ok(report.checks.some((check) => check.id.endsWith(":targeted") && check.status === "passed"));
   assert.equal(report.assessments[0]?.status, "verified");
   assert.equal(report.summary.overallStatus, "verified");
@@ -242,7 +242,7 @@ test("unattributed unittest failures cannot hide behind an unavailable batch tar
   const observations = new Map(targeted?.targetObservations?.map((observation) => [observation.path, observation]));
   const sourceA = report.assessments.find((assessment) => assessment.file.path === "src/a.py");
 
-  assert.equal(targeted?.status, "failed", targeted?.output);
+  assert.equal(targeted?.status, "failed", targeted?.output ?? "");
   assert.equal(observations.get("tests/test_a.py")?.outcome, "not-observed");
   assert.match(observations.get("tests/test_a.py")?.detail ?? "", /unattributed process-level failure/);
   assert.equal(observations.get("tests/test_b.py")?.outcome, "failed");
